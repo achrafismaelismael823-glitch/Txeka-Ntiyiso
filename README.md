@@ -1,3 +1,8 @@
+## Executive Summary
+
+DocVerify MZ is a secure digital infrastructure platform designed to eliminate document fraud, streamline institutional validation processes, and enable real-time verification across government, financial, and enterprise ecosystems in Mozambique.
+
+The system leverages cryptographic hashing (SHA-256), secure APIs, and QR-based validation mechanisms to create a trusted, scalable, and auditable document verification environment.
 
 # DocVerify MZ — Plataforma Digital de Verificação e Autenticação de Documentos
 
