@@ -1,0 +1,12 @@
+docverify-mz/
+├── .github/
+│   └── workflows/          # Pipelines de CI/CD (Testes automatizados e deploy)
+├── core/                   # Módulo Criptográfico Central (Partilhado)
+│   ├── src/
+│   │   ├── hashing.py      # Lógica de geração de SHA-256
+│   │   └── qr_generator.py # Emissão de QR Code assinado
+│   └── tests/              # Testes unitários do motor criptográfico
+├── api-gateway/            # Camada de Integração (API RESTful - Ex: FastAPI / Node)
+├── portal-web/             # Interface Web para upload e validação de PDFs
+├── app-mobile/             # Aplicação móvel (React Native / Flutter) para agentes de campo
+└── LICENSE
