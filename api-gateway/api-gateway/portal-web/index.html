@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>DocVerify MZ - Validador</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center; background: #f4f6f9; }
+        .box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        button { background: #0070f3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>DocVerify MZ</h2>
+        <p>Arraste ou selecione o documento governamental (PDF) para verificar a autenticidade.</p>
+        <input type="file" id="fileInput" style="margin-bottom: 20px;"><br>
+        <button onclick="simularVerificacao()">Verificar Documento</button>
+        <div id="resultado" style="margin-top: 20px; font-weight: bold;"></div>
+    </div>
+
+    <script>
+        function simularVerificacao() {
+            const file = document.getElementById('fileInput').files;
+            const resultado = document.getElementById('resultado');
+            if (!file) {
+                resultado.innerHTML = "❌ Por favor, selecione um ficheiro primeiro.";
+                return;
+            }
+            resultado.innerHTML = "⏳ A calcular hash criptográfico e a contactar API Gateway...";
+            setTimeout(() => {
+                resultado.innerHTML = "✅ Documento Autêntico! Registado no INAGE.";
+                resultado.style.color = "green";
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
