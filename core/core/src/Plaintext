@@ -1,5 +1,0 @@
-docverify-mz/
-├── core/
-├── api-gateway/            # <--- Nova pasta
-│   ├── requirements.txt    # Dependências da API
-│   └── main.py             # Código principal da API
