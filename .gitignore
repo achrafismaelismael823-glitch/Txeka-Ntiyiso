@@ -1,1 +1,91 @@
+# Ambiente Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
 
+# Ambientes virtuais
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.sublime-project
+.sublime-workspace
+*.code-workspace
+
+# Testes e cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+
+# Ficheiros de configuração sensíveis
+.env
+.env.local
+.env.*.local
+
+# Base de dados e caches
+*.db
+*.sqlite
+*.sqlite3
+*.pkl
+.cache/
+
+# Logs
+*.log
+logs/
+
+# Artefatos de build
+*.tar.gz
+*.zip
+
+# Dependências locais
+poetry.lock
+
+# Ficheiros temporários
+tmp/
+temp/
+*.tmp
+
+# Docker
+docker-compose.override.yml
+
+# Node (para futuras integrações frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Render.com específico
+.render/
+render.yaml
