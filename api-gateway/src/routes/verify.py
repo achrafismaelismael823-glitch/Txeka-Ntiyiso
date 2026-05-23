@@ -1,65 +1,81 @@
 """
-Verify Routes Module - DocVerify MZ
-
-Define os endpoints da API (FastAPI) para submissão e verificação de documentos.
-Mapeia as requisições HTTP para os serviços da camada de negócio.
+Verify Routes - Endpoints para verificação de documentos
 """
 
 from fastapi import APIRouter, HTTPException, status
-from src.models.schemas import (
-    DocumentUploadRequest,
-    DocumentResponse,
-    VerificationResponse
-)
+import logging
+
+from src.models.schemas import VerifyRequest, VerifyResponse
 from src.services.verification_service import VerificationService
 
-# Instância do router principal para o domínio de verificação
-router = APIRouter(prefix="/verify", tags=["Document Verification"])
+logger = logging.getLogger(__name__)
+
+router = APIRouter(
+    prefix="/verify",
+    tags=["verification"],
+    responses={404: {"description": "Documento não encontrado"}},
+)
+
 
 @router.post(
-    "/custody", 
-    response_model=DocumentResponse, 
-    status_code=status.HTTP_201_CREATED,
-    summary="Registar Novo Documento",
-    description="Recebe os dados de um documento (BI, NUIT, etc.), gera a assinatura SHA-256 e guarda na custódia."
+    "",
+    response_model=VerifyResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Verificar documento pelo hash",
+    description="Verifica a autenticidade de um documento através do seu hash SHA-256"
 )
-async def create_document_custody(request: DocumentUploadRequest):
-    """Endpoint para submeter um novo documento à plataforma."""
+async def verify_document(request: VerifyRequest) -> VerifyResponse:
+    """
+    Endpoint principal de verificação de documentos.
+    
+    Recebe um hash SHA-256 de um documento e retorna os dados públicos
+    se o documento estiver registrado no ledger.
+    """
     try:
-        # O Pydantic já validou o 'request' na entrada.
-        # Passamos diretamente para a camada de serviço (O Cérebro).
-        response = VerificationService.process_new_document(request)
-        return response
+        resultado = VerificationService.verify_document(
+            doc_hash=request.doc_hash,
+            institution_id=request.institution_id
+        )
+        
+        if resultado.status == "not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Documento com hash {request.doc_hash} não encontrado no ledger"
+            )
+        
+        return resultado
+        
     except Exception as e:
-        # Captura falhas inesperadas para não expor a stack trace ao cliente
+        logger.error(f"Erro ao verificar documento: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao processar o documento: {str(e)}"
+            detail="Erro interno ao verificar documento"
         )
 
+
 @router.get(
-    "/{document_hash}", 
-    response_model=VerificationResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Verificar Autenticidade",
-    description="Verifica se um hash criptográfico existe e é válido na plataforma DocVerify MZ."
+    "/{doc_hash}",
+    response_model=VerifyResponse,
+    summary="Verificar documento pelo hash (GET)",
+    description="Forma alternativa de verificação usando método GET"
 )
-async def verify_document(document_hash: str):
-    """Endpoint público para verificação de um hash SHA-256 (via QR Code ou Manual)."""
-    # Validação básica de segurança na entrada da rota
-    if len(document_hash) != 64:
+async def verify_document_get(doc_hash: str) -> VerifyResponse:
+    """
+    Endpoint alternativo que permite verificação através de GET request.
+    Útil para QR codes e URLs diretas.
+    """
+    if len(doc_hash) != 64:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Formato de Hash inválido. Um hash SHA-256 deve conter exatamente 64 caracteres."
+            detail="Hash SHA-256 deve ter exactamente 64 caracteres hexadecimais"
         )
-        
-    response = VerificationService.verify_document_hash(document_hash)
     
-    # Se a verificação falhar (ex: hash adulterado), retornamos um Erro 404 estruturado
-    if not response.verified:
+    resultado = VerificationService.verify_document(doc_hash)
+    
+    if resultado.status == "not_found":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=response.message
+            detail=f"Documento com hash {doc_hash} não encontrado"
         )
-        
-    return response
+    
+    return resultado
