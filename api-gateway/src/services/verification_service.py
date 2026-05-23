@@ -1,66 +1,77 @@
 """
-Verification Service Module - DocVerify MZ
-
-Contém a lógica de negócio central para a custódia e validação de documentos.
-Faz a ponte estrita entre as rotas da API e o motor criptográfico.
+Verification Service - Lógica de negócio para verificação de documentos
 """
 
-import hashlib
-import uuid
-from datetime import datetime, timezone
+from datetime import datetime
+from typing import Optional
+import logging
 
-from src.models.schemas import (
-    DocumentUploadRequest, 
-    DocumentResponse, 
-    VerificationResponse
-)
+from src.models.schemas import DadosPublicos, VerifyResponse
+from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class VerificationService:
-    """Serviço central de processamento de documentos e hashes."""
+    """Serviço centralizado de verificação de documentos"""
+    
+    # Simulação de ledger distribuído (será substituído por base de dados real)
+    MOCK_LEDGER = {
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": {
+            "doc_id": "DUAT-INAGE-2026",
+            "instituicao": "INAGE - Instituto Nacional de Gestão de Educação",
+            "estado": "ativo",
+            "revogado": False,
+            "data_verificacao": datetime(2026, 5, 23, 15, 30, 0)
+        }
+    }
     
     @staticmethod
-    def process_new_document(data: DocumentUploadRequest) -> DocumentResponse:
+    def verify_document(doc_hash: str, institution_id: Optional[str] = None) -> VerifyResponse:
         """
-        Processa um novo documento: gera identificador, calcula o hash SHA-256
-        e prepara a string de dados para o QR Code assinado.
-        """
-        # 1. Gerar ID único para o sistema de custódia
-        doc_id = f"DOC-{uuid.uuid4().hex[:8].upper()}"
+        Verifica a autenticidade de um documento através do seu hash SHA-256.
         
-        # 2. Preparar os dados puros para o Hash (Isto será movido para o 'core' na Fase 3)
-        raw_string = f"{data.document_type}|{data.owner_id}|{data.owner_name}".encode('utf-8')
-        doc_hash = hashlib.sha256(raw_string).hexdigest()
-        
-        # 3. Gerar a carga útil do QR Code para verificação off-grid
-        qr_data = f"mz.gov.docverify://{doc_id}?hash={doc_hash}"
-        
-        # 4. Retornar o modelo de resposta estrito validado pelo Pydantic
-        return DocumentResponse(
-            id=doc_id,
-            document_type=data.document_type,
-            owner_name=data.owner_name,
-            document_hash=doc_hash,
-            qr_code_data=qr_data,
-            created_at=datetime.now(timezone.utc),
-            status="VALID"
-        )
-
-    @staticmethod
-    def verify_document_hash(document_hash: str) -> VerificationResponse:
-        """
-        Verifica a autenticidade de um hash contra a base de custódia.
-        """
-        # TODO: Integração com Base de Dados real nas fases de DevOps.
-        # Por agora, validação estrutural de tamanho (SHA-256 tem 64 caracteres)
-        
-        if len(document_hash) == 64:
-            return VerificationResponse(
-                verified=True,
-                message="✅ Documento autêntico. Assinatura criptográfica validada com sucesso."
-            )
+        Args:
+            doc_hash: Hash SHA-256 do documento (64 caracteres)
+            institution_id: ID opcional da instituição
             
-        return VerificationResponse(
-            verified=False,
-            message="❌ Falha na verificação. O documento foi adulterado ou não existe na custódia."
+        Returns:
+            VerifyResponse com status e dados públicos se encontrado
+        """
+        logger.info(f"Verificando documento com hash: {doc_hash[:8]}...")
+        
+        # Procura no ledger simulado
+        if doc_hash in VerificationService.MOCK_LEDGER:
+            dados = VerificationService.MOCK_LEDGER[doc_hash]
+            dados_publicos = DadosPublicos(**dados)
+            
+            logger.info(f"Documento encontrado: {dados_publicos.doc_id}")
+            
+            return VerifyResponse(
+                status="success",
+                dados_publicos=dados_publicos
             )
+        
+        logger.warning(f"Documento não encontrado: {doc_hash}")
+        
+        return VerifyResponse(
+            status="not_found",
+            dados_publicos=None
+        )
+    
+    @staticmethod
+    def register_document(doc_hash: str, doc_id: str, instituicao: str) -> bool:
+        """
+        Registra um novo documento no ledger (placeholder para futuro).
+        
+        Args:
+            doc_hash: Hash SHA-256 do documento
+            doc_id: Identificador do documento
+            instituicao: Nome da instituição
+            
+        Returns:
+            True se registrado com sucesso
+        """
+        logger.info(f"Registrando documento {doc_id} com hash {doc_hash[:8]}...")
+        # Implementação futura com persistência real
+        return True
