@@ -5,7 +5,7 @@ Gere as configurações da aplicação e variáveis de ambiente
 utilizando validação estrita com Pydantic Settings.
 """
 
-from typing import List
+from typing import List, Union
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,27 +16,25 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
     
-    # Configuração de Ambiente
-    ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    # Configuração de Ambiente (Alterado para os padrões da Render)
+    ENVIRONMENT: str = "production"
+    DEBUG: Union[bool, str] = False
     
-    # Segurança e CORS (Origins permitidas)
-    # Em produção, estas origens serão substituídas pelo domínio real do frontend
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:8000",
-        "http://localhost:3000",
-        "http://127.0.0.1:8000",
-    ]
+    # Segurança e CORS (Aceita lista ou string "*" vinda da Render)
+    ALLOWED_ORIGINS: Union[List[str], str] = ["*"]
     
     # Configuração do Sistema Monorepo (Criptografia)
     SECRET_KEY: str = "CHANGEME_DEFAULTS_MUITA_ATENCAO_EM_PRODUCAO_SHA256"
     
-    # Suporte para carregar ficheiro .env se presente na raiz do módulo
+    # 🌟 CORREÇÃO VITAL PARA O UVICORN:
+    LOG_LEVEL: str = "INFO"
+    
+    # Configuração do Pydantic Settings
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore"  # Ignora variáveis extra configuradas na Render para não quebrar o arranque
     )
 
 
