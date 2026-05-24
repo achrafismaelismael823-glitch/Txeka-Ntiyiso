@@ -1,12 +1,21 @@
-fastapi==0.110.0
-uvicorn[standard]==0.28.0
-pydantic==2.6.4
-pydantic-settings==2.2.1
-python-multipart==0.0.9
-python-dotenv==1.0.1
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-cryptography==42.0.5
-requests==2.31.0
-aiofiles==23.2.1
-qrcode==7.4.2
+from pydantic_settings import BaseSettings
+from typing import List, Union
+
+class Settings(BaseSettings):
+    # As variáveis de ambiente que configurou no Dashboard da Render
+    ALLOWED_ORIGINS: Union[List[str], str] = ["*"]
+    DEBUG: str = "false"
+    ENVIRONMENT: str = "production"
+    SECRET_KEY: str = "sua-chave-secreta"
+    
+    # A correção vital para resolver o erro do Uvicorn:
+    LOG_LEVEL: str = "INFO"
+    
+    # Configuração de segurança do Pydantic v2
+    model_config = {
+        "env_file": ".env",
+        "extra": "ignore" # Protege a aplicação ignorando variáveis extra não declaradas
+    }
+
+# Instancia as configurações para serem importadas pelo main.py
+settings = Settings()
