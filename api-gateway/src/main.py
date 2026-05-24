@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     logger.info("🚀 DocVerify MZ API Gateway iniciando...")
     logger.info(f"Ambiente: {settings.ENVIRONMENT}")
     logger.info(f"Versão: {settings.VERSION}")
-    logger.info(f"CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
+    logger.info(f"CORS Origins: {settings.ALLOWED_ORIGINS}")
     
     yield
     
