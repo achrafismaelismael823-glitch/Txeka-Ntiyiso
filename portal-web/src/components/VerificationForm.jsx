@@ -17,7 +17,9 @@ export default function VerificationForm({ onVerificationResult }) {
   };
 
   const handleFileChange = (e) => {
+    // Correção Profissional: Aceder corretamente ao primeiro ficheiro do input
     const selectedFile = e.target.files?.;
+    
     if (selectedFile) {
       if (selectedFile.size > 50 * 1024 * 1024) {
         setError('Ficheiro muito grande. Máximo 50MB.');
@@ -194,4 +196,4 @@ export default function VerificationForm({ onVerificationResult }) {
       </form>
     </div>
   );
-              }
+      }
