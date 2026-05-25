@@ -17,7 +17,7 @@ export default function VerificationForm({ onVerificationResult }) {
   };
 
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files?.[0];
+    const selectedFile = e.target.files?.;
     if (selectedFile) {
       if (selectedFile.size > 50 * 1024 * 1024) {
         setError('Ficheiro muito grande. Máximo 50MB.');
@@ -65,8 +65,18 @@ export default function VerificationForm({ onVerificationResult }) {
 
       onVerificationResult(result, hashToVerify);
     } catch (err) {
-      setError(err.message || 'Erro ao verificar documento');
       console.error('Verification error:', err);
+      
+      const errorMessage = err.message || '';
+      
+      // Lógica de tratamento de erro profissional
+      if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+        setError('Documento não encontrado na base de dados oficial.');
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
+        setError('Erro de conexão: Verifique se o servidor está online.');
+      } else {
+        setError('Erro ao verificar documento. Tente novamente mais tarde.');
+      }
     } finally {
       setLoading(false);
     }
@@ -184,4 +194,4 @@ export default function VerificationForm({ onVerificationResult }) {
       </form>
     </div>
   );
-  }
+              }
