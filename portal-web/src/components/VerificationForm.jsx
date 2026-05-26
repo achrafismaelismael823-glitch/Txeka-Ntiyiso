@@ -17,8 +17,7 @@ export default function VerificationForm({ onVerificationResult }) {
   };
 
   const handleFileChange = (e) => {
-    // Correção Profissional: Aceder corretamente ao primeiro ficheiro do input
-    const selectedFile = e.target.files?.;
+    const selectedFile = e.target.files?.[0];
     
     if (selectedFile) {
       if (selectedFile.size > 50 * 1024 * 1024) {
@@ -56,7 +55,7 @@ export default function VerificationForm({ onVerificationResult }) {
 
       const result = await verifyDocumentByHash(hashToVerify);
 
-      // Armazenar no histórico
+      // Armazenar no histórico de verificações
       const history = JSON.parse(localStorage.getItem('verificationHistory') || '[]');
       history.unshift({
         timestamp: new Date().toISOString(),
@@ -69,15 +68,20 @@ export default function VerificationForm({ onVerificationResult }) {
     } catch (err) {
       console.error('Verification error:', err);
       
-      const errorMessage = err.message || '';
+      // Tratamento profissional de erros
+      const status = err?.status;
+      const errorMessage = (err?.message || '').toLowerCase();
       
-      // Lógica de tratamento de erro profissional
-      if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+      if (status === 404 || errorMessage.includes('not found')) {
         setError('Documento não encontrado na base de dados oficial.');
-      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
+      } else if (status === 503 || errorMessage.includes('unavailable')) {
+        setError('Serviço temporariamente indisponível. Tente novamente em alguns momentos.');
+      } else if (!status || errorMessage.includes('failed to fetch') || errorMessage.includes('network')) {
         setError('Erro de conexão: Verifique se o servidor está online.');
+      } else if (errorMessage.includes('seleccione') || errorMessage.includes('digite') || errorMessage.includes('inválido')) {
+        setError(err.message);
       } else {
-        setError('Erro ao verificar documento. Tente novamente mais tarde.');
+        setError('Ocorreu um erro ao verificar o documento. Tente novamente mais tarde.');
       }
     } finally {
       setLoading(false);
@@ -92,7 +96,7 @@ export default function VerificationForm({ onVerificationResult }) {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Seleção de Método */}
+        {/* Seleção de Método de Verificação */}
         <div>
           <label className="label-field">Método de Verificação</label>
           <div className="grid grid-cols-2 gap-3">
@@ -129,7 +133,7 @@ export default function VerificationForm({ onVerificationResult }) {
           </div>
         </div>
 
-        {/* Campo Hash */}
+        {/* Campo de Entrada: Hash SHA-256 */}
         {method === 'hash' && (
           <div>
             <label className="label-field">Hash SHA-256</label>
@@ -147,7 +151,7 @@ export default function VerificationForm({ onVerificationResult }) {
           </div>
         )}
 
-        {/* Campo Ficheiro */}
+        {/* Campo de Entrada: Ficheiro */}
         {method === 'file' && (
           <div>
             <label className="label-field flex items-center gap-2">
@@ -185,7 +189,7 @@ export default function VerificationForm({ onVerificationResult }) {
           </div>
         )}
 
-        {/* Botão Verificar */}
+        {/* Botão de Submissão */}
         <button
           type="submit"
           className="btn-primary w-full"
@@ -196,4 +200,4 @@ export default function VerificationForm({ onVerificationResult }) {
       </form>
     </div>
   );
-      }
+    }
