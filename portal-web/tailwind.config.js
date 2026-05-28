@@ -7,13 +7,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Azul institucional (Confiança e Autoridade)
-        primary: "#0d47a1", 
-        // Vermelho de destaque (Atenção/Erros/Alertas)
-        secondary: "#e53935", 
+        // Paleta Oficial Txeka Ntiyiso
+        primary: "#0B192C",       // Azul Ntiyiso (Profundo/Autoridade)
+        secondary: "#00D2C4",     // Ciano Txeka (Inovação e Foco)
+        'ntiyiso-bg': "#F8FAFC",  // Branco Puro / Cinza Neutro de Fundo
+        'val-success': "#10B981", // Verde Validação (Autêntico)
+        'val-error': "#EF4444",   // Vermelho Fraude (Inválido)
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'], // Interface e Títulos
+        mono: ['"JetBrains Mono"', 'monospace'],              // Para os 64 caracteres do SHA-256
       },
     },
   },
