@@ -4,6 +4,8 @@ Verify Routes - Endpoints para verificação de documentos
 
 from fastapi import APIRouter, HTTPException, status
 import logging
+import base64
+from src.core import gerar_qr_code
 
 from src.models.schemas import VerifyRequest, VerifyResponse
 from src.services.verification_service import VerificationService
@@ -77,5 +79,20 @@ async def verify_document_get(doc_hash: str) -> VerifyResponse:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Documento com hash {doc_hash} não encontrado"
         )
+    
+    #  NOVO: Gerar QR code se documento foi encontrado
+    if resultado.status == "success" and resultado.dados_publicos:
+        try:
+            qr_bytes = gerar_qr_code(
+                doc_hash=doc_hash,
+                doc_id=resultado.dados_publicos.doc_id
+            )
+            # Converter para base64
+            qr_base64 = base64.b64encode(qr_bytes).decode('utf-8')
+            resultado.qr_code = f"data:image/png;base64,{qr_base64}"
+            logger.info(f"QR code gerado para documento {doc_hash}")
+        except Exception as e:
+            logger.warning(f"Erro ao gerar QR code: {str(e)}")
+            # Continua mesmo sem QR code (não quebra o fluxo)
     
     return resultado
