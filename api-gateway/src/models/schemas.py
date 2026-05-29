@@ -37,9 +37,15 @@ class VerifyResponse(BaseModel):
         None,
         description="Dados públicos do documento se encontrado"
     )
-
-
-class VerifyErrorResponse(BaseModel):
+    qr_code: Optional[str] = Field(
+        None,
+        description="Código QR em base64 (data:image/png;base64,...)"
+    )
+    
+    
+    
+    
+    class VerifyErrorResponse(BaseModel):
     """Schema para resposta de erro"""
     status: str = Field(..., description="Status de erro")
     message: str = Field(..., description="Mensagem de erro legível")
