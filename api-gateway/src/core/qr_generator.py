@@ -1,99 +1,34 @@
 """
-Verify Routes - Endpoints para verificação de documentos
+QR Generator Core - Função utilitária para criação de QR Codes
 """
 
-import logging
-import base64
-from fastapi import APIRouter, HTTPException, status
+import io
+import qrcode
 
-# CORREÇÃO DO IMPORT: Aponta diretamente para o módulo dentro do ecossistema src
-from src.models.schemas import VerifyRequest, VerifyResponse
-from src.services.verification_service import VerificationService
-
-# AJUSTE TÉCNICO: __name__ garante o escopo correto do log institucional
-logger = logging.getLogger(__name__)
-
-router = APIRouter(
-    prefix="/verify",
-    tags=["verification"],
-    responses={404: {"description": "Documento não encontrado"}},
-)
-
-@router.post(
-    "",
-    response_model=VerifyResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Verificar documento pelo hash",
-    description="Verifica a autenticidade de um documento através do seu hash SHA-256"
-)
-async def verify_document(request: VerifyRequest) -> VerifyResponse:
+def gerar_qr_code(doc_hash: str, doc_id: str) -> bytes:
     """
-    Endpoint principal de verificação de documentos.
-    
-    Recebe um hash SHA-256 de um documento e retorna os dados públicos 
-    se o documento estiver registrado no ledger. 
+    Gera um QR Code em formato de imagem (bytes PNG) contendo
+    os dados de validação do documento.
     """
-    try:
-        resultado = VerificationService.verify_document(
-            doc_hash=request.doc_hash,
-            institution_id=request.institution_id
-        )
-        
-        if resultado.status == "not_found":
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Documento com hash {request.doc_hash} não encontrado no ledger"
-            )
-        
-        return resultado
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao verificar documento: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno ao verificar documento"
-        )
-
-@router.get(
-    "/{doc_hash}",
-    response_model=VerifyResponse,
-    summary="Verificar documento pelo hash (GET)",
-    description="Forma alternativa de verificação usando método GET"
-)
-async def verify_document_get(doc_hash: str) -> VerifyResponse:
-    """
-    Endpoint alternativo que permite verificação através de GET request.
-    Útil para QR codes e URLs diretas.
-    """
-    if len(doc_hash) != 64:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Hash SHA-256 deve ter exactamente 64 caracteres hexadecimais"
-        )
+    # Conteúdo que será codificado dentro do QR Code
+    dados_qr = f"Documento ID: {doc_id}\nHash: {doc_hash}"
     
-    resultado = VerificationService.verify_document(doc_hash)
+    # Configuração do gerador de QR Code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
     
-    if resultado.status == "not_found":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Documento com hash {doc_hash} não encontrado"
-        )
+    qr.add_data(dados_qr)
+    qr.make(fit=True)
     
-    # Gerar QR code se o documento foi encontrado com sucesso
-    if resultado.status == "success" and resultado.dados_publicos:
-        try:
-            qr_bytes = gerar_qr_code(
-                doc_hash=doc_hash,
-                doc_id=resultado.dados_publicos.doc_id
-            )
-            # Converter binário para string base64 para consumo seguro no Frontend
-            qr_base64 = base64.b64encode(qr_bytes).decode('utf-8')
-            resultado.qr_code = f"data:image/png;base64,{qr_base64}"
-            logger.info(f"QR code gerado para documento {doc_hash}")
-        except Exception as e:
-            logger.warning(f"Erro ao gerar QR code: {str(e)}")
-            # Mantém a resiliência: o fluxo continua ativo mesmo se a geração do QR Code falhar
-            
-    return resultado
+    # Cria a imagem em memória
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Converte a imagem para bytes para poder ser enviada via API
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format="PNG")
+    
+    return img_bytes.getvalue()
