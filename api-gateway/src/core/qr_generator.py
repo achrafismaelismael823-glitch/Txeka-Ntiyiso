@@ -7,8 +7,6 @@ import base64
 from fastapi import APIRouter, HTTPException, status
 
 # CORREÇÃO DO IMPORT: Aponta diretamente para o módulo dentro do ecossistema src
-from src.core.qr_generator import gerar_qr_code
-
 from src.models.schemas import VerifyRequest, VerifyResponse
 from src.services.verification_service import VerificationService
 
