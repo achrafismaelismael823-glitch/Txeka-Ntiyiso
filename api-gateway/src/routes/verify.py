@@ -2,10 +2,13 @@
 Verify Routes - Endpoints para verificação de documentos
 """
 
-from fastapi import APIRouter, HTTPException, status
 import logging
 import base64
-from src.core import gerar_qr_code
+from fastapi import APIRouter, HTTPException, status
+
+# CORREÇÃO DEFINITIVA DO IMPORT:
+# Como o __init__.py está vazio, precisamos especificar o ficheiro qr_generator
+from src.core.qr_generator import gerar_qr_code
 
 from src.models.schemas import VerifyRequest, VerifyResponse
 from src.services.verification_service import VerificationService
@@ -47,6 +50,9 @@ async def verify_document(request: VerifyRequest) -> VerifyResponse:
         
         return resultado
         
+    except HTTPException:
+        # Re-lança exceções HTTP (como o 404 acima) sem as tratar como erro 500
+        raise
     except Exception as e:
         logger.error(f"Erro ao verificar documento: {str(e)}")
         raise HTTPException(
@@ -80,19 +86,20 @@ async def verify_document_get(doc_hash: str) -> VerifyResponse:
             detail=f"Documento com hash {doc_hash} não encontrado"
         )
     
-    #  NOVO: Gerar QR code se documento foi encontrado
+    # Gerar QR code se o documento foi encontrado
     if resultado.status == "success" and resultado.dados_publicos:
         try:
+            # Chama a função importada corretamente de src.core.qr_generator
             qr_bytes = gerar_qr_code(
                 doc_hash=doc_hash,
                 doc_id=resultado.dados_publicos.doc_id
             )
-            # Converter para base64
+            # Converter para base64 para exibição segura no frontend
             qr_base64 = base64.b64encode(qr_bytes).decode('utf-8')
             resultado.qr_code = f"data:image/png;base64,{qr_base64}"
             logger.info(f"QR code gerado para documento {doc_hash}")
         except Exception as e:
             logger.warning(f"Erro ao gerar QR code: {str(e)}")
-            # Continua mesmo sem QR code (não quebra o fluxo)
+            # O fluxo continua mesmo sem QR code para garantir a verificação dos dados
     
     return resultado
