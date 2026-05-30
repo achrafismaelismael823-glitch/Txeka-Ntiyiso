@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Callable
 
 import jwt
@@ -31,8 +31,8 @@ class AuthConfig:
 def create_access_token(email: str, role: str = "system", expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta is None:
         expires_delta = timedelta(hours=AuthConfig.EXPIRATION_HOURS)
-    expire = datetime.utcnow() + expires_delta
-    payload = {"sub": email, "role": role, "exp": expire, "iat": datetime.utcnow(), "type": "access"}
+    expire = datetime.now(timezone.utc) + expires_delta
+    payload = {"sub": email, "role": role, "exp": expire, "iat": datetime.now(timezone.utc), "type": "access"}
     return jwt.encode(payload, AuthConfig.SECRET_KEY, algorithm=AuthConfig.ALGORITHM)
 
 def decode_token(token: str) -> Dict:
