@@ -30,7 +30,6 @@ app.add_middleware(
 
 API_PREFIX = "/api/v1"
 
-app.include_router(verify.router, prefix=API_PREFIX)
 app.include_router(emit.router, prefix=API_PREFIX)
 
 logger.info(f"Rotas registadas com prefixo: {API_PREFIX}")
