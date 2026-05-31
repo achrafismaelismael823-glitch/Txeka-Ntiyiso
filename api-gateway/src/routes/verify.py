@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from ..models.schemas import VerifyResponse
-from core.services.verification_service import VerificationService
+from ..core.verification_service import VerificationService
 from ..core.security import verify_token
 import base64
 
