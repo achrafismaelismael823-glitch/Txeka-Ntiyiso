@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
-
-from src.routes import verify, emit
+from src.routes import emit
 
 app = FastAPI(
     title="Txeka Ntiyiso API",
