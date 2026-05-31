@@ -4,13 +4,13 @@ import hashlib
 import base64
 from typing import Optional
 
-from ..models.emission import (
-    EmitRequest, EmitResponse, RevokeRequest, 
+from src.models.emission import (
+    EmitRequest, EmitResponse, RevokeRequest,
     EmissionsListResponse, EmittedDocument
 )
-from ..services.emission_service import EmissionService
-from ..core.qr_generator import gerar_qr_code
-from ..core.security import verify_token
+from src.services.emission_service import EmissionService
+from src.core.qr_generator import gerar_qr_code
+from src.core.security import verify_token
 
 router = APIRouter(tags=["emission"])
 
