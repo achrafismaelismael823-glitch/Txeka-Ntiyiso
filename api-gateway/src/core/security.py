@@ -10,7 +10,9 @@ Licença: Todos Direitos Reservados © 2026 Txeka Ntiyiso LDA
 import logging
 import re
 import os
-from typing import Any, Optional
+import hmac
+import hashlib
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
@@ -39,7 +41,7 @@ def validar_hash_sha256(hash_str: str) -> bool:
     """Valida se uma string é um hash SHA-256 válido."""
     if not isinstance(hash_str, str):
         return False
-    if len(hash_str)!= 64:
+    if len(hash_str) != 64:
         logger.warning(f"Hash com comprimento inválido: {len(hash_str)}")
         return False
     if not all(c in '0123456789abcdef' for c in hash_str.lower()):
@@ -70,8 +72,6 @@ def verificar_integridade_dados(dados: dict, campos_obrigatorios: list) -> bool:
 
 def criar_assinatura_segura(dados: str, chave_secreta: str) -> str:
     """Cria uma assinatura HMAC-SHA256 para dados."""
-    import hmac
-    import hashlib
     assinatura = hmac.new(
         chave_secreta.encode(),
         dados.encode(),
@@ -93,6 +93,12 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     Fase 1: HS256 com secret key
     Fase 2: RS256 com certificado RSA institucional
     """
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token ausente"
+        )
+
     token = credentials.credentials
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
@@ -110,4 +116,5 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido"
-    )
+        )
+
