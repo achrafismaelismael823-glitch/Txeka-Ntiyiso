@@ -10,7 +10,7 @@ from ..models.emission import (
 )
 from ..services.emission_service import EmissionService
 from ..core.qr_generator import gerar_qr_code
-from ..security import verify_token
+from core.security import verify_token
 
 router = APIRouter(tags=["emission"])
 
