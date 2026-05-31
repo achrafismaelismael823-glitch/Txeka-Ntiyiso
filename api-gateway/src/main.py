@@ -1,41 +1,79 @@
-import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.routes import verify
+from fastapi.responses import JSONResponse
+import logging
 
-# Configuração de Logs Institucionais
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("src.main")
+from src.routes import verify, emit
 
 app = FastAPI(
     title="Txeka Ntiyiso API",
-    description="API Gateway para Validação Criptográfica de Documentos",
+    description="Plataforma de Validação Digital de Documentos",
     version="1.0.0"
 )
 
-# Configuração de CORS Perimetral
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://txeka-ntiyiso-portal.onrender.com",
+    "https://txeka-ntiyiso-portal-staging.onrender.com"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
-# CORREÇÃO: Rota Raiz oficial para responder com 200 OK no Render (Evita Falsos Alertas de Queda)
-@app.get("/", tags=["Diagnóstico"])
-def root_health_check():
+API_PREFIX = "/api/v1"
+
+app.include_router(verify.router, prefix=API_PREFIX)
+app.include_router(emit.router, prefix=API_PREFIX)
+
+logger.info(f"Rotas registadas com prefixo: {API_PREFIX}")
+
+@app.get("/health")
+async def health_check():
     return {
         "status": "online",
-        "infraestrutura": "Txeka Ntiyiso",
-        "jurisdicao": "Moçambique",
-        "ambiente": "production"
+        "project": "Txeka Ntiyiso",
+        "version": "1.0.0",
+        "environment": "production",
+        "api_prefix": API_PREFIX
     }
 
-# Ativação das Rotas do Ecossistema
-app.include_router(verify.router, prefix="/api/v1")
-logger.info("Registando rotas sob prefixo: /api/v1")
+@app.get("/")
+async def root():
+    return {
+        "message": "Txeka Ntiyiso API",
+        "documentation": "/docs",
+        "health": "/health",
+        "api_prefix": API_PREFIX,
+        "endpoints": {
+            "verification": f"{API_PREFIX}/verify/{{hash}}",
+            "emission": f"{API_PREFIX}/emit",
+            "emissions_list": f"{API_PREFIX}/emissions",
+            "certificate": f"{API_PREFIX}/certificate/{{doc_id}}"
+        }
+    }
 
-@app.on_event("startup")
-def startup_event():
-    logger.info("🚀 Txeka Ntiyiso API Gateway operacional em produção...")
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Erro não tratado: {str(exc)}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno do servidor"}
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "src.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )
