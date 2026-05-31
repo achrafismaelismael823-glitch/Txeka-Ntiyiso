@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from ..models.schemas import VerifyResponse
-from ..core.verification_service import VerificationService
-from ..core.security import verify_token
+from src.models.schemas import VerifyResponse
+from src.services.verification_service import VerificationService 
+from src.core.security import verify_token
 import base64
 
 router = APIRouter(tags=["verification"])
