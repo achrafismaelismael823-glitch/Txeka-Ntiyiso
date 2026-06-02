@@ -12,3 +12,4 @@ aiofiles==23.2.1
 qrcode[pil]==7.4.2 
 pillow==11.0.0 
 PyJWT==2.8.0
+sqlalchemy
