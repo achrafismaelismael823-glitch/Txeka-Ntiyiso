@@ -24,22 +24,21 @@ class VerifyRequest(BaseModel):
 class DadosPublicos(BaseModel):
     """Schema para dados públicos de um documento verificado"""
     doc_id: str = Field(..., description="Identificador único do documento")
-    instituicao: str = Field(..., description="Nome da instituição que validou")
-    estado: str = Field(..., description="Estado atual do documento (ativo, revogado, etc)")
-    revogado: bool = Field(default=False, description="Se o documento foi revogado")
-    data_verificacao: datetime = Field(..., description="Data e hora da verificação")
+    document_type: str = Field(..., description="Tipo de documento")
+    institution_id: str = Field(..., description="ID da instituição que emitiu")
+    created_at: Optional[str] = Field(None, description="Data de emissão")
 
 
 class VerifyResponse(BaseModel):
     """Schema para resposta bem-sucedida de verificação"""
-    status: str = Field(..., description="Status da verificação (success, not_found)")
+    status: str = Field(..., description="Status da verificação")
     dados_publicos: Optional[DadosPublicos] = Field(
         None,
         description="Dados públicos do documento se encontrado"
     )
     qr_code: Optional[str] = Field(
         None,
-        description="Código QR em base64 (data:image/png;base64,...)"
+        description="Código QR em base64"
     )
 
 
