@@ -7,11 +7,11 @@ class EmittedDocument(BaseModel):
     hash_sha256: str
     institution_id: str
     document_type: str
-    file_name: str
-    file_size: int
+    file_name: Optional[str] = None
+    file_size: Optional[int] = None
     status: str = "active"
-    issued_at: datetime
-    issued_by: str
+    issued_at: Optional[datetime] = None
+    issued_by: Optional[str] = None
     revoked_at: Optional[datetime] = None
     revocation_reason: Optional[str] = None
 
