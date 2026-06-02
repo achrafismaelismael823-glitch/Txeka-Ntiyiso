@@ -77,4 +77,3 @@ async def verify_document_post(
         },
         qr_code=doc.qr_code
     )
-
