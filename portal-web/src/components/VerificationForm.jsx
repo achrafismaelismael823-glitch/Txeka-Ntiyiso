@@ -1,4 +1,3 @@
-// src/components/VerificationForm.jsx
 import React, { useState } from 'react';
 import { verifyDocumentByHash } from '../services/api';
 import { validateSHA256Hash, calculateSHA256, formatFileSize } from '../utils/validation';
@@ -18,7 +17,7 @@ export default function VerificationForm({ onVerificationResult }) {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
-    
+
     if (selectedFile) {
       if (selectedFile.size > 50 * 1024 * 1024) {
         setError('Ficheiro muito grande. Máximo 50MB.');
@@ -55,23 +54,22 @@ export default function VerificationForm({ onVerificationResult }) {
 
       const result = await verifyDocumentByHash(hashToVerify);
 
-      // Armazenar no histórico de verificações
       const history = JSON.parse(localStorage.getItem('verificationHistory') || '[]');
       history.unshift({
         timestamp: new Date().toISOString(),
         hash: hashToVerify,
         result: result,
       });
+
       localStorage.setItem('verificationHistory', JSON.stringify(history.slice(0, 50)));
 
       onVerificationResult(result, hashToVerify);
     } catch (err) {
       console.error('Verification error:', err);
-      
-      // Tratamento profissional de erros
+
       const status = err?.status;
       const errorMessage = (err?.message || '').toLowerCase();
-      
+
       if (status === 404 || errorMessage.includes('not found')) {
         setError('Documento não encontrado na base de dados oficial.');
       } else if (status === 503 || errorMessage.includes('unavailable')) {
@@ -96,15 +94,19 @@ export default function VerificationForm({ onVerificationResult }) {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Seleção de Método de Verificação */}
+
+        {/* Método de verificação */}
         <div>
           <label className="label-field">Método de Verificação</label>
+
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex items-center p-3 border-2 rounded-lg cursor-pointer transition"
+            <label
+              className="flex items-center p-3 border-2 rounded-lg cursor-pointer transition"
               style={{
                 borderColor: method === 'hash' ? '#0d47a1' : '#e0e7ff',
                 backgroundColor: method === 'hash' ? '#f0f4ff' : 'white',
-              }}>
+              }}
+            >
               <input
                 type="radio"
                 value="hash"
@@ -115,11 +117,14 @@ export default function VerificationForm({ onVerificationResult }) {
               />
               <span className="font-semibold text-sm">Hash SHA-256</span>
             </label>
-            <label className="flex items-center p-3 border-2 rounded-lg cursor-pointer transition"
+
+            <label
+              className="flex items-center p-3 border-2 rounded-lg cursor-pointer transition"
               style={{
                 borderColor: method === 'file' ? '#0d47a1' : '#e0e7ff',
                 backgroundColor: method === 'file' ? '#f0f4ff' : 'white',
-              }}>
+              }}
+            >
               <input
                 type="radio"
                 value="file"
@@ -133,10 +138,11 @@ export default function VerificationForm({ onVerificationResult }) {
           </div>
         </div>
 
-        {/* Campo de Entrada: Hash SHA-256 */}
+        {/* Input hash */}
         {method === 'hash' && (
           <div>
             <label className="label-field">Hash SHA-256</label>
+
             <input
               type="text"
               value={hash}
@@ -145,19 +151,21 @@ export default function VerificationForm({ onVerificationResult }) {
               placeholder="Cole o hash SHA-256 (64 caracteres)"
               disabled={loading}
             />
+
             <p className="text-gray-500 text-xs mt-2">
               {hash.length}/64 caracteres
             </p>
           </div>
         )}
 
-        {/* Campo de Entrada: Ficheiro */}
+        {/* Input file */}
         {method === 'file' && (
           <div>
             <label className="label-field flex items-center gap-2">
               <Upload size={18} />
               Seleccionar Ficheiro
             </label>
+
             <input
               type="file"
               onChange={handleFileChange}
@@ -165,9 +173,11 @@ export default function VerificationForm({ onVerificationResult }) {
               disabled={loading}
               accept="*/*"
             />
+
             {file && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
                 <CheckCircle size={18} className="text-success" />
+
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-gray-800 truncate">
                     {file.name}
@@ -181,7 +191,7 @@ export default function VerificationForm({ onVerificationResult }) {
           </div>
         )}
 
-        {/* Mensagem de Erro */}
+        {/* Erro */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-3">
             <AlertCircle className="text-danger flex-shrink-0" size={20} />
@@ -189,7 +199,7 @@ export default function VerificationForm({ onVerificationResult }) {
           </div>
         )}
 
-        {/* Botão de Submissão */}
+        {/* Submit */}
         <button
           type="submit"
           className="btn-primary w-full"
@@ -200,4 +210,4 @@ export default function VerificationForm({ onVerificationResult }) {
       </form>
     </div>
   );
-    }
+            }
