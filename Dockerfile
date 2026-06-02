@@ -1,4 +1,4 @@
-# Dockerfile - DocVerify MZ
+# Dockerfile - Txeka Ntiyiso
 # Imagem base com Python 3.10 slim para reduzir tamanho
 FROM python:3.10-slim
 
