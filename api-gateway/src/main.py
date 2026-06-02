@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+from src.models.database import init_db
 from src.routes import emit
 
 app = FastAPI(
@@ -27,6 +28,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+@app.on_event("startup")
+async def startup():
+    init_db()
 
 API_PREFIX = "/api/v1"
 
