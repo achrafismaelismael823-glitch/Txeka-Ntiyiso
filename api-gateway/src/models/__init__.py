@@ -1,7 +1,7 @@
 """
-Models Module - Schemas e contratos de dados
+Models Module - Schemas e modelos de dados
 
-Centraliza a definição de modelos Pydantic para validação de requisições e respostas.
+Centraliza schemas Pydantic e modelos SQLAlchemy.
 """
 
 from .schemas import (
@@ -10,10 +10,12 @@ from .schemas import (
     DadosPublicos,
     VerifyErrorResponse,
 )
+from .models import Base
 
 __all__ = [
     "VerifyRequest",
     "VerifyResponse",
     "DadosPublicos",
     "VerifyErrorResponse",
+    "Base",
 ]
