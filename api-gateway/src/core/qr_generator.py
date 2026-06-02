@@ -4,6 +4,7 @@ QR Generator Core - Função utilitária para criação de QR Codes
 
 import io
 import qrcode
+from PIL import Image  
 
 def gerar_qr_code(doc_hash: str, doc_id: str) -> bytes:
     """
@@ -24,11 +25,12 @@ def gerar_qr_code(doc_hash: str, doc_id: str) -> bytes:
     qr.add_data(dados_qr)
     qr.make(fit=True)
     
-    # Cria a imagem em memória
-    img = qr.make_image(fill_color="black", back_color="white")
+    # Cria a imagem com Pillow 
+    img = qr.make_image(fill_color="black", back_color="white", image_factory=qrcode.image.pil.PilImage)
     
     # Converte a imagem para bytes para poder ser enviada via API
     img_bytes = io.BytesIO()
-    img.save(img_bytes, format="PNG")
+    img.save(img_bytes, format="PNG")  
+    img_bytes.seek(0)
     
     return img_bytes.getvalue()
