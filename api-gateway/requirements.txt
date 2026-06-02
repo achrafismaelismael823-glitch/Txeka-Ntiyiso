@@ -9,5 +9,6 @@ passlib[bcrypt]==1.7.4
 cryptography==42.0.5
 requests==2.31.0
 aiofiles==23.2.1
-qrcode==7.4.2
+qrcode[pil]==7.4.2 
+pillow==11.0.0 
 PyJWT==2.8.0
