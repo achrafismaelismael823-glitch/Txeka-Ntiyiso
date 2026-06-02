@@ -15,4 +15,3 @@ class Document(Base):
     certificate_url = Column(String(255))
     qr_code = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
-
