@@ -1,49 +1,59 @@
 """
-Data Schemas - Pydantic models para validação de requisições e respostas
+Verification Service - Lógica de negócio para verificação de documentos
+Padrão: Repository Pattern + Injeção de Dependência
 """
 
-from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from typing import Optional
+import logging
 
+from src.models.schemas import DadosPublicos, VerifyResponse
+from src.models.verification_repository import VerificationRepository
 
-class VerifyRequest(BaseModel):
-    """Schema para requisição de verificação de documento"""
-    doc_hash: str = Field(
-        ..., 
-        min_length=64, 
-        max_length=64,
-        description="Hash SHA-256 do documento (64 caracteres hexadecimais)"
-    )
-    institution_id: Optional[str] = Field(
-        None,
-        description="ID opcional da instituição verificadora"
-    )
+logger = logging.getLogger(__name__)
 
+class VerificationService:
+    """Serviço centralizado de verificação com acesso ao DB real"""
 
-class DadosPublicos(BaseModel):
-    """Schema para dados públicos de um documento verificado"""
-    doc_id: str = Field(..., description="Identificador único do documento")
-    document_type: str = Field(..., description="Tipo de documento")
-    institution_id: str = Field(..., description="ID da instituição que emitiu")
-    created_at: Optional[str] = Field(None, description="Data de emissão")
+    def __init__(self, repo: VerificationRepository):
+        self.repo = repo
 
+    def verify_document(self, doc_hash: str, institution_id: Optional[str] = None) -> VerifyResponse:
+        """
+        Verifica documento no banco real e retorna status correto.
+        Retorna: verified | revoked | not_found
+        """
+        logger.info(f"[VERIFY] Hash: {doc_hash[:8]}...")
 
-class VerifyResponse(BaseModel):
-    """Schema para resposta bem-sucedida de verificação"""
-    status: str = Field(..., description="Status da verificação")
-    dados_publicos: Optional[DadosPublicos] = Field(
-        None,
-        description="Dados públicos do documento se encontrado"
-    )
-    qr_code: Optional[str] = Field(
-        None,
-        description="Código QR em base64"
-    )
+        doc = self.repo.get_by_hash(doc_hash)
 
+        if not doc:
+            logger.warning(f"[VERIFY] Documento não encontrado: {doc_hash[:8]}")
+            return VerifyResponse(status="not_found", dados_publicos=None)
 
-class VerifyErrorResponse(BaseModel):
-    """Schema para resposta de erro"""
-    status: str = Field(..., description="Status de erro")
-    message: str = Field(..., description="Mensagem de erro legível")
-    detail: Optional[str] = Field(None, description="Detalhes técnicos do erro")
+        # Txeka ntiyiso: checa revogação primeiro
+        if doc.revoked:
+            logger.info(f"[VERIFY] Documento revogado: {doc.doc_id} | Motivo: {doc.revoked_reason}")
+            return VerifyResponse(
+                status="revoked",
+                dados_publicos=DadosPublicos(
+                    doc_id=doc.doc_id,
+                    document_type=doc.document_type,
+                    institution_id=doc.institution_id,
+                    created_at=doc.created_at,
+                    revoked_at=doc.revoked_at,
+                    revoked_reason=doc.revoked_reason
+                )
+            )
+
+        # Documento válido
+        logger.info(f"[VERIFY] Documento verificado: {doc.doc_id}")
+        return VerifyResponse(
+            status="verified",
+            dados_publicos=DadosPublicos(
+                doc_id=doc.doc_id,
+                document_type=doc.document_type,
+                institution_id=doc.institution_id,
+                created_at=doc.created_at
+            )
+        )
