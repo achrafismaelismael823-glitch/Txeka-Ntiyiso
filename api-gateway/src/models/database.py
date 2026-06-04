@@ -7,7 +7,7 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./txeka.db")
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL) 
-)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
