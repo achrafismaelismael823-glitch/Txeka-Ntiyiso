@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Optional
 import logging
 
-from src.models.schemas import DadosPublicos, VerifyResponse
 from src.models.verification_repository import VerificationRepository
 
 logger = logging.getLogger(__name__)
