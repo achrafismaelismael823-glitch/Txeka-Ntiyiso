@@ -6,6 +6,7 @@ from src.models.schemas import VerifyResponse
 from src.core.security import verify_token, validar_hash_sha256
 from src.models.verification_repository import VerificationRepository
 import logging
+from src.models import Document
 
 router = APIRouter(tags=["verification"])
 logger = logging.getLogger(__name__)
