@@ -1,12 +1,8 @@
-"""
-Verification Repository - Acesso ao banco de dados real
-"""
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import logging
 from datetime import datetime
-
 from src.models import Document
 
 logger = logging.getLogger(__name__)
@@ -35,15 +31,13 @@ class VerificationRepository:
         self.db = db
 
     def get_by_hash(self, doc_hash: str) -> Optional[DocumentEntity]:
-        logger.info(f" Buscando hash: {doc_hash[:8]}...")
+        logger.info(f"Buscando hash: {doc_hash[:8]}...")
         try:
             stmt = select(Document).where(Document.doc_hash == doc_hash)
             result = self.db.execute(stmt).scalar_one_or_none()
-
             if not result:
-                logger.warning(f" Hash não encontrado: {doc_hash[:8]}")
+                logger.warning(f"Hash não encontrado: {doc_hash[:8]}")
                 return None
-
             return DocumentEntity(
                 doc_id=result.doc_id,
                 document_type=result.document_type,
@@ -54,5 +48,5 @@ class VerificationRepository:
                 revoked_reason=getattr(result, 'revoked_reason', None)
             )
         except Exception as e:
-            logger.error(f" Erro ao buscar hash: {e}")
+            logger.error(f"Erro ao buscar hash: {e}")
             return None
