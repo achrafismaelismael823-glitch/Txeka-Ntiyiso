@@ -87,9 +87,12 @@ async def revoke_emission(
             "doc_id": document.doc_id,
             "revoked_at": document.revoked_at.isoformat() if document.revoked_at else None,
             "message": f"Documento já estava revogado. Motivo: {document.revoked_reason}"
-        }
-
-       document.revoked = True
+    }
+   
+    
+    
+   
+    document.revoked = True
     document.revoked_at = datetime.utcnow()
     document.revoked_reason = request.reason
 
