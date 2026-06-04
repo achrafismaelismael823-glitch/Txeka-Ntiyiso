@@ -23,17 +23,23 @@ async def emit_document(
 ) -> EmitResponse:
     
     if not file:
-        raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
-    
-    document_bytes = await file.read()
-    
-    if len(document_bytes) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Ficheiro excede 50MB")
-    
-    allowed_types = ["application/pdf", "image/jpeg", "image/png", "image/gif"]
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Tipo de ficheiro não permitido")
-    
+    raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
+
+document_bytes = await file.read()
+
+if len(document_bytes) > 50 * 1024 * 1024:
+    raise HTTPException(status_code=400, detail="Ficheiro excede 50MB")
+
+filename = file.filename.lower() if file.filename else ""
+
+allowed_extensions = [".pdf", ".jpg", ".jpeg", ".png", ".gif"]
+if not any(filename.endswith(ext) for ext in allowed_extensions):
+    raise HTTPException(status_code=400, detail="Extensão não permitida. Use: pdf, jpg, png, gif")
+
+allowed_mimes = ["application/pdf", "image/jpeg", "image/png", "image/gif", "application/octet-stream"]
+if file.content_type not in allowed_mimes:
+    raise HTTPException(status_code=400, detail="Tipo de ficheiro não permitido")
+
     hash_sha256 = hashlib.sha256(document_bytes).hexdigest()
     
     existing = db.query(Document).filter(Document.doc_hash == hash_sha256).first()
