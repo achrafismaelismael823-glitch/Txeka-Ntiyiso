@@ -7,7 +7,7 @@ from sqlalchemy import select
 import logging
 from datetime import datetime
 
-from api_gateway.src.models import Document
+from src.models import Document
 
 logger = logging.getLogger(__name__)
 
