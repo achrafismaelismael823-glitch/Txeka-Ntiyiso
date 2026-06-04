@@ -12,7 +12,6 @@ from src.core.security import verify_token
 
 router = APIRouter(tags=["emission"])
 
-
 @router.post("/emit", response_model=EmitResponse)
 async def emit_document(
     file: UploadFile = File(...),
@@ -23,22 +22,23 @@ async def emit_document(
 ) -> EmitResponse:
     
     if not file:
-    raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
+        raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
 
-document_bytes = await file.read()
+    document_bytes = await file.read()
 
-if len(document_bytes) > 50 * 1024 * 1024:
-    raise HTTPException(status_code=400, detail="Ficheiro excede 50MB")
+    if len(document_bytes) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Ficheiro excede 50MB")
 
-filename = file.filename.lower() if file.filename else ""
+    filename = file.filename.lower() if file.filename else ""
 
-allowed_extensions = [".pdf", ".jpg", ".jpeg", ".png"]
-if not any(filename.endswith(ext) for ext in allowed_extensions):
-    raise HTTPException(status_code=400, detail="Extensão não permitida. Use: pdf, jpg, png, gif")
+    # PDF pra certificados + JPG/PNG pra BI
+    allowed_extensions = [".pdf", ".jpg", ".jpeg", ".png"]
+    if not any(filename.endswith(ext) for ext in allowed_extensions):
+        raise HTTPException(status_code=400, detail="Extensão não permitida. Use: pdf, jpg, jpeg ou png")
 
-allowed_mimes = ["application/pdf", "image/jpeg", "image/png","application/octet-stream"]
-if file.content_type not in allowed_mimes:
-    raise HTTPException(status_code=400, detail="Tipo de ficheiro não permitido")
+    allowed_mimes = ["application/pdf", "image/jpeg", "image/png", "application/octet-stream"]
+    if file.content_type not in allowed_mimes:
+        raise HTTPException(status_code=400, detail="Tipo de ficheiro não permitido")
 
     hash_sha256 = hashlib.sha256(document_bytes).hexdigest()
     
