@@ -20,12 +20,17 @@ async def emit_document(
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ) -> EmitResponse:
+
     
     if not file:
         raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
 
     document_bytes = await file.read()
 
+
+
+
+    
     if len(document_bytes) > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Ficheiro excede 50MB")
 
