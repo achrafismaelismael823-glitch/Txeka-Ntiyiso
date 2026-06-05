@@ -13,13 +13,6 @@ class DadosPublicos(BaseModel):
 class VerifyResponse(BaseModel):
     status: str
     dados_publicos: Optional[DadosPublicos] = None
-from pydantic import BaseModel
-from typing import Optional
 
 class VerifyRequest(BaseModel):
     hash: str
-
-class VerifyResponse(BaseModel):
-    status: str
-    reason: Optional[str] = None
-    data: Optional[dict] = None
