@@ -4,15 +4,13 @@ pydantic>=2.10.3
 pydantic-settings==2.2.1
 python-multipart==0.0.9
 python-dotenv==1.0.1
-
 passlib[bcrypt]==1.7.4
 cryptography==42.0.5
 requests==2.31.0
 aiofiles==23.2.1
 qrcode[pil]==7.4.2 
 pillow==11.0.0 
-
 sqlalchemy
 psycopg2-binary==2.9.9
-
+PyJWT==2.8.0
 
