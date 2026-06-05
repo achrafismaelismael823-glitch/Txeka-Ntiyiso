@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from src.core.qr_generator import gerar_qr_code
 from src.security import verify_token
 from src.models.schemas import VerifyRequest, VerifyResponse
-from src.servives.verification_service import VerificationService
+from src.services.verification_service import VerificationService
 from src.models.verification_repository import VerificationRepository
 from src.database import get_db
 
