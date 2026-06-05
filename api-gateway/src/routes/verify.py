@@ -20,7 +20,7 @@ from src.security import verify_token
 from src.models.schemas import VerifyRequest, VerifyResponse
 from src.services.verification_service import VerificationService
 from src.models.verification_repository import VerificationRepository
-from src.database import get_db
+from src.models.database import get_db
 
 router = APIRouter(tags=["verification"])
 logger = logging.getLogger(__name__)
