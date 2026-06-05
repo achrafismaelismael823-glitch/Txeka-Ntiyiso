@@ -7,6 +7,20 @@ from src.core.security import verify_token, validar_hash_sha256
 from src.models.verification_repository import VerificationRepository
 import logging
 from src.models import Document
+"""
+Verify Routes - Endpoints para verificação de documentos
+"""
+import logging
+import base64
+from fastapi import APIRouter, HTTPException, status, Depends
+from sqlalchemy.orm import Session
+
+from src.core.qr_generator import gerar_qr_code
+from src.security import verify_token
+from src.models.schemas import VerifyRequest, VerifyResponse
+from src.models.verification_service import VerificationService
+from src.models.verification_repository import VerificationRepository
+from src.database import get_db
 
 router = APIRouter(tags=["verification"])
 logger = logging.getLogger(__name__)
