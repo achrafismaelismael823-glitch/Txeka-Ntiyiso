@@ -1,36 +1,36 @@
-# Dockerfile - DocVerify MZ
-# Imagem base com Python 3.10 slim para reduzir tamanho
+# TXEKA NTIYISO - API container
+
 FROM python:3.10-slim
 
-# Definir metadados
+# Metadados da imagem
 LABEL maintainer="DocVerify Team <agy@docverify.mz>"
-LABEL description="API Gateway para Custódia e Validação Criptográfica de Documentos"
+LABEL description="API Gateway para validação criptográfica de documentos"
 
-# Definir directório de trabalho
+# Diretório da aplicação
 WORKDIR /app
 
-# Instalar dependências do sistema necessárias para bibliotecas Python
+# Instala dependências do sistema
 RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar ficheiros de dependências
+# Copia ficheiros de dependências
 COPY pyproject.toml poetry.lock* ./
 
-# Instalar Poetry e dependências
+# Instala dependências Python
 RUN pip install --no-cache-dir poetry && \
     poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi
 
-# Copiar código da aplicação
+# Copia código da aplicação
 COPY . .
 
-# Expor porta padrão da API
+# Porta da API
 EXPOSE 8000
 
-# Variáveis de ambiente padrão
+# Variáveis de ambiente
 ENV PYTHONUNBUFFERED=1
 ENV ENVIRONMENT=production
 
-# Comando para iniciar a aplicação
+# Inicializa API
 CMD ["uvicorn", "api-gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

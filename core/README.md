@@ -1,6 +1,6 @@
-# DocVerify MZ — Core Module
+# Txeka Ntiyiso — Core Module
 
-Módulo central de criptografia e segurança para a plataforma DocVerify MZ.
+Módulo central de criptografia e segurança para a plataforma Txeka Ntiyiso.
 
 ## Descrição
 
@@ -64,9 +64,9 @@ poetry run pytest core/tests/ -v
 Roadmap
 Melhorias futuras incluem suporte para assinaturas digitais baseadas em certificados X.509, integração com armazenamento distribuído (IPFS), e otimizações de desempenho para processamento em lote de documentos.
 Segurança
-Este módulo implementa práticas de segurança estabelecidas. Contudo, qualquer descoberta de vulnerabilidades deve ser reportada responsavelmente através do email security@docverify.mz.
+Este módulo implementa práticas de segurança estabelecidas. Contudo, qualquer descoberta de vulnerabilidades deve ser reportada responsavelmente através do email security@txekantiyiso.mz.
 Licença
-MIT License - Veja LICENSE para detalhes
+properitary licença- Veja LICENSE para detalhes
 **Commit:** "Add core module README with comprehensive documentation"
 
 ---

@@ -1,10 +1,6 @@
-# docker-compose.yml - DocVerify MZ
-# Orquestração de serviços para desenvolvimento e teste local
-
 version: '3.9'
 
 services:
-  # Serviço principal da API Gateway
   api:
     build:
       context: .
@@ -18,7 +14,6 @@ services:
       PYTHONUNBUFFERED: "1"
       LOG_LEVEL: INFO
     volumes:
-      # Mount do código-fonte para recarregamento automático em desenvolvimento
       - .:/app
     command: >
       sh -c "poetry install &&
@@ -32,12 +27,10 @@ services:
       retries: 3
       start_period: 20s
 
-# Rede compartilhada para comunicação entre serviços
 networks:
   docverify-network:
     driver: bridge
 
-# Volume para persistência (preparado para integrações futuras)
 volumes:
   docverify-data:
     driver: local

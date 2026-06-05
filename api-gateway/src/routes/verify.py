@@ -1,3 +1,12 @@
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+from src.models.database import get_db
+from src.models.schemas import VerifyResponse
+from src.core.security import verify_token, validar_hash_sha256
+from src.models.verification_repository import VerificationRepository
+import logging
+from src.models import Document
 """
 Verify Routes - Endpoints para verificação de documentos
 """
@@ -13,87 +22,92 @@ from src.models.verification_service import VerificationService
 from src.models.verification_repository import VerificationRepository
 from src.database import get_db
 
+router = APIRouter(tags=["verification"])
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    tags=["verification"],
-    responses={404: {"description": "Documento não encontrado"}},
-)
+class VerifyRequest(BaseModel):
+    doc_hash: str = Field(..., min_length=64, max_length=64, pattern=r'^[0-9a-fA-F]{64}$')
+    institution_id: str | None = None
 
-@router.get("/verify/{doc_hash}", response_model=VerifyResponse, status_code=status.HTTP_200_OK)
-async def verify_document_get(
-    doc_hash: str,
-    user: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
-) -> VerifyResponse:
-    
-    if len(doc_hash) != 64:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Hash SHA-256 deve ter exactamente 64 caracteres hexadecimais"
+def build_response(doc_entity, qr_code: str | None = None):
+    """Constrói response conforme status do documento"""
+    if doc_entity.revoked:
+        return VerifyResponse(
+            status="revoked",
+            dados_publicos={
+                "doc_id": doc_entity.doc_id,
+                "document_type": doc_entity.document_type,
+                "institution_id": doc_entity.institution_id,
+                "created_at": doc_entity.created_at.isoformat() if doc_entity.created_at else None,
+                "revoked_at": doc_entity.revoked_at.isoformat() if doc_entity.revoked_at else None,
+                "revoked_reason": doc_entity.revoked_reason
+            },
+            qr_code=qr_code,
+            message="Este certificado foi revogado"
         )
     
-    if not all(c in '0123456789abcdefABCDEF' for c in doc_hash):
+    return VerifyResponse(
+        status="verified",
+        dados_publicos={
+            "doc_id": doc_entity.doc_id,
+            "document_type": doc_entity.document_type,
+            "institution_id": doc_entity.institution_id,
+            "created_at": doc_entity.created_at.isoformat() if doc_entity.created_at else None,
+            "revoked_at": None,
+            "revoked_reason": None
+        },
+        qr_code=qr_code,
+        message="Certificado válido"
+    )
+
+@router.get("/verify/{doc_hash}", response_model=VerifyResponse)
+async def verify_document(
+    doc_hash: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_token)
+) -> VerifyResponse:
+    """Verifica documento via hash na URL."""
+    if not validar_hash_sha256(doc_hash):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Hash deve conter apenas caracteres hexadecimais (0-9, a-f)"
+            status_code=400,
+            detail="Hash SHA-256 inválido. Deve ter 64 caracteres hexadecimais."
         )
     
     doc_hash = doc_hash.lower()
-    logger.info(f"Verificação solicitada: {doc_hash[:16]}... por {user.get('email')}")
-    
-    # Txeka ntiyiso: Injeção de dependência profissional
-    repo = VerificationRepository(db)
-    service = VerificationService(repo)
-    result = service.verify_document(doc_hash)
-    
-    if result.status == "not_found":
-        logger.warning(f"Documento não encontrado: {doc_hash[:16]}...")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Documento com hash {doc_hash[:16]}... não encontrado"
-        )
-    
-    qr_code_bytes = gerar_qr_code(doc_hash, result.dados_publicos.doc_id if result.dados_publicos else "UNKNOWN")
-    qr_code_base64 = f"data:image/png;base64,{base64.b64encode(qr_code_bytes).decode()}"
-    
-    logger.info(f"Documento verificado: {result.status} | {result.dados_publicos.doc_id if result.dados_publicos else 'N/A'}")
-    
-    return VerifyResponse(
-        status=result.status,  # agora retorna "verified" ou "revoked"
-        dados_publicos=result.dados_publicos,
-        qr_code=qr_code_base64
-    )
+    logger.info(f"Verificação GET por {current_user.get('institution')} — hash {doc_hash[:16]}...")
 
-@router.post("/verify", response_model=VerifyResponse, status_code=status.HTTP_200_OK)
-async def verify_document(
-    request: VerifyRequest,
-    user: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
-) -> VerifyResponse:
-    
-    doc_hash = request.doc_hash.lower()
-    logger.info(f"Verificação POST: {doc_hash[:16]}... por {user.get('email')}")
-    
-    # Txeka ntiyiso: Injeção de dependência profissional
     repo = VerificationRepository(db)
-    service = VerificationService(repo)
-    result = service.verify_document(doc_hash, request.institution_id)
-    
-    if result.status == "not_found":
-        logger.warning(f"Documento POST não encontrado: {doc_hash[:16]}...")
+    doc_entity = repo.get_by_hash(doc_hash)
+
+    if not doc_entity:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail=f"Documento com hash {doc_hash[:16]}... não encontrado"
         )
+
     
-    qr_code_bytes = gerar_qr_code(doc_hash, result.dados_publicos.doc_id if result.dados_publicos else "UNKNOWN")
-    qr_code_base64 = f"data:image/png;base64,{base64.b64encode(qr_code_bytes).decode()}"
-    
-    logger.info(f"Documento POST verificado: {result.status}")
-    
-    return VerifyResponse(
-        status=result.status,
-        dados_publicos=result.dados_publicos,
-        qr_code=qr_code_base64
-    )
+    doc = db.query(Document).filter(Document.doc_hash == doc_hash).first()
+    qr = doc.qr_code if doc else None
+
+    return build_response(doc_entity, qr)
+
+@router.post("/verify", response_model=VerifyResponse)
+async def verify_document_post(
+    request: VerifyRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_token)
+):
+    """Verifica documento via body JSON (uso B2B/B2G)."""
+    doc_hash = request.doc_hash.lower()
+    logger.info(f"Verificação POST por {current_user.get('institution')} — hash {doc_hash[:16]}...")
+
+    repo = VerificationRepository(db)
+    doc_entity = repo.get_by_hash(doc_hash)
+
+    if not doc_entity:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+    doc = db.query(Document).filter(Document.doc_hash == doc_hash).first()
+    qr = doc.qr_code if doc else None
+
+    return build_response(doc_entity, qr)

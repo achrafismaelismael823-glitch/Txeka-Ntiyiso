@@ -1,12 +1,3 @@
-// src/services/api.js
-/**
- * API Service - DocVerify MZ
- * 
- * Gerencia todas as comunicações com a API FastAPI.
- * Implementa interceptadores para autenticação, tratamento de erros,
- * e logging estruturado para auditoria.
- */
-
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
@@ -14,7 +5,7 @@ const API_TIMEOUT = parseInt(process.env.REACT_APP_API_TIMEOUT) || 30000;
 
 console.log(`[API Service] Inicializando com URL: ${API_BASE_URL}`);
 
-// Criar instância do axios com configuração profissional
+// Instância axios
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
@@ -23,18 +14,16 @@ const api = axios.create({
   },
 });
 
-// ========================================
-// INTERCEPTADOR DE REQUISIÇÃO
-// ========================================
+// Intercepta requisições
 api.interceptors.request.use(
   (config) => {
-    // Adicionar token de autenticação se disponível
+    // Adiciona token
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Log estruturado de requisição
+    // Log de requisição
     console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`, {
       timestamp: new Date().toISOString(),
       method: config.method,
@@ -49,12 +38,10 @@ api.interceptors.request.use(
   }
 );
 
-// ========================================
-// INTERCEPTADOR DE RESPOSTA
-// ========================================
+// Intercepta respostas
 api.interceptors.response.use(
   (response) => {
-    // Log estruturado de resposta bem-sucedida
+    // Log de resposta
     console.log(`[API Response] ${response.status} ${response.config.url}`, {
       timestamp: new Date().toISOString(),
       status: response.status,
@@ -64,9 +51,8 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Tratamento centralizado de erros
+    // Trata erros da API
     if (error.response) {
-      // Erro retornado pela API
       const status = error.response.status;
       const data = error.response.data;
 
@@ -77,7 +63,7 @@ api.interceptors.response.use(
         data: data,
       });
 
-      // Se autenticação expirou, redirecionar para login
+      // Redireciona se não autorizado
       if (status === 401) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('username');
@@ -86,7 +72,7 @@ api.interceptors.response.use(
 
       return Promise.reject(data);
     } else if (error.request) {
-      // Requisição foi feita mas sem resposta
+      // Sem resposta do servidor
       console.error('[API Error] Sem resposta do servidor', {
         timestamp: new Date().toISOString(),
         url: error.config?.url,
@@ -96,7 +82,7 @@ api.interceptors.response.use(
         message: 'Sem resposta do servidor. Verifique a conexão.',
       });
     } else {
-      // Erro ao configurar a requisição
+      // Erro de configuração
       console.error('[API Error] Erro de configuração', error.message);
 
       return Promise.reject({
@@ -106,15 +92,7 @@ api.interceptors.response.use(
   }
 );
 
-// ========================================
-// FUNÇÕES DE VERIFICAÇÃO DE DOCUMENTOS
-// ========================================
-
-/**
- * Verifica um documento usando hash SHA-256 via GET request
- * @param {string} docHash - Hash SHA-256 do documento (64 caracteres)
- * @returns {Promise} Resposta com dados públicos se encontrado
- */
+// Verifica documento via GET
 export const verifyDocumentByHash = async (docHash) => {
   try {
     if (!docHash || typeof docHash !== 'string') {
@@ -134,12 +112,7 @@ export const verifyDocumentByHash = async (docHash) => {
   }
 };
 
-/**
- * Verifica um documento usando hash SHA-256 via POST request
- * @param {string} docHash - Hash SHA-256 do documento
- * @param {string|null} institutionId - ID opcional da instituição
- * @returns {Promise} Resposta com dados públicos se encontrado
- */
+// Verifica documento via POST
 export const verifyDocument = async (docHash, institutionId = null) => {
   try {
     const payload = {
@@ -159,18 +132,11 @@ export const verifyDocument = async (docHash, institutionId = null) => {
   }
 };
 
-// ========================================
-// FUNÇÕES DE HEALTH CHECK
-// ========================================
-
-/**
- * Verifica se a API está disponível
- * @returns {Promise<boolean>} True se API está operacional
- */
+// Verifica estado da API
 export const checkApiHealth = async () => {
   try {
     const response = await api.get('/health', {
-      timeout: 5000, // Timeout reduzido para health check
+      timeout: 5000,
     });
     return response.data?.status === 'online';
   } catch (error) {

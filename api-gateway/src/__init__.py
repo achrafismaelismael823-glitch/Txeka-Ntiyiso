@@ -1,5 +1,5 @@
 """
-API Gateway Module - DocVerify MZ
+API Gateway Module - Txeka Ntiyiso
 
 Módulo principal da camada de API.
 """

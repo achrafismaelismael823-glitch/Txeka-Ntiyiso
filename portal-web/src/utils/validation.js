@@ -1,22 +1,10 @@
-// src/utils/validation.js
-/**
- * Validation Utilities - DocVerify MZ
- * 
- * Funções de validação para hashes, ficheiros e inputs de utilizador.
- * Implementa algoritmo SHA-256 no navegador para máxima segurança.
- */
-
-/**
- * Valida se uma string é um hash SHA-256 válido
- * @param {string} hash - String a validar
- * @returns {boolean} True se válido
- */
+// Validação de hash SHA-256
 export const validateSHA256Hash = (hash) => {
   if (!hash || typeof hash !== 'string') {
     return false;
   }
 
-  // SHA-256 é sempre 64 caracteres hexadecimais
+  // Verifica formato SHA-256 (64 hex)
   const sha256Regex = /^[a-f0-9]{64}$/i;
   const isValid = sha256Regex.test(hash);
 
@@ -30,11 +18,7 @@ export const validateSHA256Hash = (hash) => {
   return isValid;
 };
 
-/**
- * Calcula hash SHA-256 de um ficheiro no navegador
- * @param {File} file - Ficheiro a hashificar
- * @returns {Promise<string>} Hash SHA-256 em hexadecimal
- */
+// Calcula SHA-256 de ficheiro
 export const calculateSHA256 = async (file) => {
   try {
     if (!file) {
@@ -43,19 +27,19 @@ export const calculateSHA256 = async (file) => {
 
     console.log(`[Validation] Calculando SHA-256 de: ${file.name} (${file.size} bytes)`);
 
-    // Converter ficheiro para ArrayBuffer
+    // Converte ficheiro para buffer
     const arrayBuffer = await file.arrayBuffer();
 
-    // Usar Web Crypto API para calcular SHA-256
+    // Calcula hash com Web Crypto
     const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
 
-    // Converter buffer para hexadecimal
+    // Converte para hexadecimal
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
 
-    console.log(`[Validation] SHA-256 calculado com sucesso: ${hashHex.substring(0, 10)}...`);
+    console.log(`[Validation] SHA-256 calculado: ${hashHex.substring(0, 10)}...`);
 
     return hashHex;
   } catch (error) {
@@ -64,11 +48,7 @@ export const calculateSHA256 = async (file) => {
   }
 };
 
-/**
- * Formata data ISO para formato legível em português
- * @param {string} dateString - Data em formato ISO
- * @returns {string} Data formatada
- */
+// Formata data para pt-MZ
 export const formatDate = (dateString) => {
   try {
     const options = {
@@ -88,40 +68,30 @@ export const formatDate = (dateString) => {
   }
 };
 
-/**
- * Sanitiza input de utilizador removendo caracteres perigosos
- * @param {string} input - Input a sanitizar
- * @param {number} maxLength - Comprimento máximo
- * @returns {string} Input sanitizado
- */
+// Sanitiza input
 export const sanitizeInput = (input, maxLength = 1000) => {
   if (typeof input !== 'string') {
     return '';
   }
 
-  // Remover espaços extras e converter para minúsculas
+  // Normaliza texto
   let sanitized = input.trim().toLowerCase();
 
-  // Limitar comprimento
+  // Limita tamanho
   sanitized = sanitized.substring(0, maxLength);
 
-  // Remover caracteres de controle (para hash, apenas hex é permitido)
+  // Permite apenas hex (hash)
   if (/^[a-f0-9]*$/.test(sanitized)) {
     return sanitized;
   }
 
-  // Para inputs normais, remover caracteres especiais perigosos
+  // Remove caracteres perigosos
   sanitized = sanitized.replace(/[^a-z0-9\s@._-]/gi, '');
 
   return sanitized;
 };
 
-/**
- * Valida tamanho de ficheiro
- * @param {File} file - Ficheiro a validar
- * @param {number} maxSizeMB - Tamanho máximo em MB
- * @returns {boolean} True se válido
- */
+// Valida tamanho de ficheiro
 export const validateFileSize = (file, maxSizeMB = 50) => {
   const maxBytes = maxSizeMB * 1024 * 1024;
 
@@ -133,11 +103,7 @@ export const validateFileSize = (file, maxSizeMB = 50) => {
   return true;
 };
 
-/**
- * Formata tamanho de ficheiro para formato legível
- * @param {number} bytes - Tamanho em bytes
- * @returns {string} Tamanho formatado
- */
+// Formata tamanho de ficheiro
 export const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 Bytes';
 

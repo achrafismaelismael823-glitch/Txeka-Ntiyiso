@@ -1,20 +1,7 @@
-// src/services/auth.js
-/**
- * Authentication Service - DocVerify MZ
- * 
- * Gerencia autenticação de utilizadores, tokens e sessões.
- * Implementa padrões seguros de armazenamento de credenciais.
- */
-
-/**
- * Realiza login do utilizador
- * @param {string} username - Nome de utilizador
- * @param {string} password - Senha do utilizador
- * @returns {Promise<Object>} Dados de utilizador autenticado
- */
+// Autenticação de utilizador
 export const login = async (username, password) => {
   try {
-    // Validação básica
+    // Valida credenciais básicas
     if (!username || !password) {
       throw new Error('Nome de utilizador e senha são obrigatórios');
     }
@@ -27,9 +14,10 @@ export const login = async (username, password) => {
       throw new Error('Senha deve ter mínimo 6 caracteres');
     }
 
-    // Simulação de autenticação
-    // Em produção, isto seria uma chamada à API de autenticação
+    // Gera token simples
     const token = btoa(`${username}:${password}`);
+
+    // Cria sessão do utilizador
     const user = {
       username: username,
       role: 'user',
@@ -37,7 +25,7 @@ export const login = async (username, password) => {
       loginTime: new Date().toISOString(),
     };
 
-    // Armazenar credenciais de forma segura
+    // Guarda dados de sessão
     localStorage.setItem('authToken', token);
     localStorage.setItem('username', username);
     localStorage.setItem('userRole', user.role);
@@ -52,14 +40,12 @@ export const login = async (username, password) => {
   }
 };
 
-/**
- * Realiza logout do utilizador
- */
+// Termina sessão
 export const logout = () => {
   try {
     const username = localStorage.getItem('username');
     
-    // Limpar todos os dados de autenticação
+    // Limpa dados de sessão
     localStorage.removeItem('authToken');
     localStorage.removeItem('username');
     localStorage.removeItem('userRole');
@@ -72,20 +58,14 @@ export const logout = () => {
   }
 };
 
-/**
- * Verifica se utilizador está autenticado
- * @returns {boolean} True se autenticado
- */
+// Verifica autenticação
 export const isAuthenticated = () => {
   const token = localStorage.getItem('authToken');
   const username = localStorage.getItem('username');
   return !!(token && username);
 };
 
-/**
- * Obtém informações do utilizador autenticado
- * @returns {Object|null} Dados do utilizador ou null
- */
+// Obtém utilizador atual
 export const getCurrentUser = () => {
   if (!isAuthenticated()) {
     return null;
@@ -98,10 +78,7 @@ export const getCurrentUser = () => {
   };
 };
 
-/**
- * Obtém token de autenticação
- * @returns {string|null} Token JWT ou null
- */
+// Obtém token
 export const getAuthToken = () => {
   return localStorage.getItem('authToken');
 };

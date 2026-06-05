@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "docverify-api-gateway"
+name = "txeka-ntiyiso-api"
 version = "0.1.0"
-description = "API Gateway - FastAPI para DocVerify MZ"
-authors = ["DocVerify Team <agy@docverify.mz>"]
+description = "API Gateway - FastAPI para TXEKA NTIYISO"
+authors = ["Achrafismaelismael"]
 packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
@@ -18,7 +18,7 @@ passlib = { version = "^1.7.4", extras = ["bcrypt"] }
 cryptography = "^41.0.0"
 requests = "^2.31.0"
 aiofiles = "^23.2.1"
-docverify-core = { path = "../core", develop = true }
+txeka-core = { path = "../core", develop = true }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
@@ -29,7 +29,7 @@ black = "^23.0.0"
 flake8 = "^6.0.0"
 
 [tool.poetry.scripts]
-docverify-api = "src.main:app"
+txeka-api = "src.main:app"
 
 [build-system]
 requires = ["poetry-core"]
