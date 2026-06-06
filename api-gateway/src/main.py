@@ -3,9 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 from src.models.database import init_db
-from src.routes import emission_routes, verify  
 from src.routes import emission_routes, verify, revocation
-app.include_router(revocation.router, prefix=API_PREFIX)
 
 app = FastAPI(
     title="Txeka Ntiyiso API",
@@ -27,8 +25,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
+    allow_methods=["GET", "POST"],  
+    allow_headers=["Authorization", "Content-Type"]
 )
 
 @app.on_event("startup")
@@ -37,8 +35,10 @@ async def startup():
 
 API_PREFIX = "/api/v1"
 
+# Regista rotas SÓ depois de definir app e API_PREFIX
 app.include_router(emission_routes.router, prefix=API_PREFIX)  
 app.include_router(verify.router, prefix=API_PREFIX)
+app.include_router(revocation.router, prefix=API_PREFIX)
 
 logger.info(f"Rotas registadas com prefixo: {API_PREFIX}")
 
@@ -63,6 +63,7 @@ async def root():
             "verification": f"{API_PREFIX}/verify/{{hash}}",
             "emission": f"{API_PREFIX}/certify",  
             "emissions_list": f"{API_PREFIX}/emissions",
+            "revoke": f"{API_PREFIX}/emissions/{{doc_id}}/revoke",  
             "certificate": f"{API_PREFIX}/certificate/{{doc_id}}"
         }
     }
@@ -81,5 +82,5 @@ if __name__ == "__main__":
         "src.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True
+        reload=False  
     )
