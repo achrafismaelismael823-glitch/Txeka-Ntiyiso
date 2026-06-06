@@ -2,19 +2,25 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
-from src.models.database import init_db
-from src.routes import emission_routes, verify, revocation
 import os
 from alembic.config import Config
 from alembic import command
+from src.models.database import init_db
+from src.routes import emission_routes, verify, revocation
+
+# 1. Configura logging 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("uvicorn")
+
 def run_migrations():
     """Aplica migrações Alembic automaticamente no startup"""
     try:
         alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
         command.upgrade(alembic_cfg, "head")
-        print("✅ Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
+        logger.info("✅ Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
     except Exception as e:
         logger.error(f"❌ Erro ao migrar banco: {e}")
+        raise  
 
 run_migrations()
 
@@ -23,9 +29,6 @@ app = FastAPI(
     description="Plataforma de Validação Digital de Documentos",
     version="1.0.0"
 )
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -48,7 +51,6 @@ async def startup():
 
 API_PREFIX = "/api/v1"
 
-# Regista rotas SÓ depois de definir app e API_PREFIX
 app.include_router(emission_routes.router, prefix=API_PREFIX)  
 app.include_router(verify.router, prefix=API_PREFIX)
 app.include_router(revocation.router, prefix=API_PREFIX)
