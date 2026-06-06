@@ -14,6 +14,37 @@ from src.core.security import verify_token
 
 router = APIRouter(tags=["emission"])
 
+MAX_FILE_SIZE = 50 * 1024 * 1024 # 50MB
+PDF_MAGIC = b"%PDF-"
+
+def validate_pdf(file: UploadFile, content: bytes) -> None:
+    """Validação estrita PDF: extensão, MIME e magic number"""
+    filename = file.filename.lower() if file.filename else ""
+
+    if not filename.endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Extensão inválida. Aceita apenas.pdf"
+        )
+
+    if file.content_type!= "application/pdf":
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Tipo MIME inválido. Deve ser application/pdf"
+        )
+
+    if not content.startswith(PDF_MAGIC):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Falsificação de formato. Conteúdo não é PDF válido"
+        )
+
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Ficheiro excede 50MB"
+        )
+
 @router.post("/certify", response_model=EmitResponse)
 async def emit_document(
     file: UploadFile = File(...),
@@ -28,19 +59,8 @@ async def emit_document(
 
     document_bytes = await file.read()
 
-    if len(document_bytes) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Ficheiro excede 50MB")
-
-    filename = file.filename.lower() if file.filename else ""
-
-    # PDF pra certificados + JPG/PNG pra BI
-    allowed_extensions = [".pdf", ".jpg", ".jpeg", ".png"]
-    if not any(filename.endswith(ext) for ext in allowed_extensions):
-        raise HTTPException(status_code=400, detail="Extensão não permitida. Use: pdf, jpg, jpeg ou png")
-
-    allowed_mimes = ["application/pdf", "image/jpeg", "image/png", "application/octet-stream"]
-    if file.content_type not in allowed_mimes:
-        raise HTTPException(status_code=400, detail="Tipo de ficheiro não permitido")
+    # Validação estrita PDF
+    validate_pdf(file, document_bytes)
 
     hash_sha256 = hashlib.sha256(document_bytes).hexdigest()
 
@@ -79,7 +99,6 @@ async def emit_document(
     )
 
 def doc_to_schema(d: Document, issued_by: str) -> EmittedDocument:
-    """Converte model SQLAlchemy pra schema Pydantic"""
     status_str = "revoked" if d.revoked else "active"
     return EmittedDocument(
         doc_id=d.doc_id,
