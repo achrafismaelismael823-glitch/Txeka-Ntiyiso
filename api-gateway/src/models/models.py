@@ -16,5 +16,21 @@ class Document(Base):
     qr_code = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     revoked = Column(Boolean, default=False, nullable=False)
-    revoked_at = Column(DateTime, nullable=True)
+    revoked_at = DateTime, nullable=True)
     revoked_reason = Column(String(255), nullable=True)
+
+class Institution(Base):
+    __tablename__ = "institutions"
+
+    id = Column(String(100), primary_key=True, index=True)  # UEM, INAGE, etc
+    name = Column(String(255), nullable=False)
+    contact_email = Column(String(255), nullable=True)
+    
+    # Campos de subscrição - pra cobrar assinatura
+    subscription_active = Column(Boolean, default=False, nullable=False)
+    subscription_plan = Column(String(50), default="free")  
+    subscription_expires_at = Column(DateTime, nullable=True)
+    docs_emitted_month = Column(Integer, default=0)  
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
