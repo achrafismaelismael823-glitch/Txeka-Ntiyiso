@@ -134,7 +134,7 @@ async def get_emission(
     issued_by = current_user.get("institution", "system")
     return doc_to_schema(document, issued_by).dict()
 
-@router.delete("/emissions/{doc_id}", status_code=status.HTTP_200_OK)
+@router.post("/emissions/{doc_id}/revoke", status_code=status.HTTP_200_OK)
 async def revoke_emission(
     doc_id: str,
     request: RevokeRequest,
