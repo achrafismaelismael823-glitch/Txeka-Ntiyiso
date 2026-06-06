@@ -1,18 +1,20 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
+from typing import Optional
+from urllib.parse import unquote
 import hashlib
 import base64
 
 from src.models import Document
 from src.models.database import get_db
-from src.models.emission import EmitResponse
+from src.models.emission import EmitResponse, EmissionsListResponse, EmittedDocument, RevokeRequest
 from src.core.qr_generator import gerar_qr_code
 from src.core.security import verify_token
 
 router = APIRouter(tags=["emission"])
 
-@router.post("/emit", response_model=EmitResponse)
+@router.post("/certify", response_model=EmitResponse)
 async def emit_document(
     file: UploadFile = File(...),
     document_type: str = "DUAT",
@@ -21,16 +23,11 @@ async def emit_document(
     current_user: dict = Depends(verify_token)
 ) -> EmitResponse:
 
-    
     if not file:
         raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
 
     document_bytes = await file.read()
 
-
-
-
-    
     if len(document_bytes) > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Ficheiro excede 50MB")
 
@@ -46,19 +43,19 @@ async def emit_document(
         raise HTTPException(status_code=400, detail="Tipo de ficheiro não permitido")
 
     hash_sha256 = hashlib.sha256(document_bytes).hexdigest()
-    
+
     existing = db.query(Document).filter(Document.doc_hash == hash_sha256).first()
     if existing:
         raise HTTPException(status_code=409, detail=f"Documento já emitido: {existing.doc_id}")
-    
+
     timestamp = datetime.utcnow().strftime("%Y%m%d")
     doc_id = f"{document_type}-{institution_id}-{timestamp}-{hash_sha256[:8].upper()}"
-    
+
     qr_code_bytes = gerar_qr_code(hash_sha256, doc_id)
     qr_code_base64 = f"data:image/png;base64,{base64.b64encode(qr_code_bytes).decode()}"
-    
+
     certificate_url = f"/certificate/{doc_id}"
-    
+
     doc_record = Document(
         doc_id=doc_id,
         doc_hash=hash_sha256,
@@ -70,7 +67,7 @@ async def emit_document(
     db.add(doc_record)
     db.commit()
     db.refresh(doc_record)
-    
+
     return EmitResponse(
         status="emitted",
         doc_id=doc_id,
@@ -81,21 +78,6 @@ async def emit_document(
         message=f"Documento {doc_id} emitido com sucesso"
     )
 
-
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import Optional
-from urllib.parse import unquote
-from datetime import datetime
-
-from src.models.database import get_db
-from src.models import Document
-from src.models.emission import EmissionsListResponse, EmittedDocument, RevokeRequest
-from src.core.security import verify_token
-
-router = APIRouter(tags=["emission"])
-
 def doc_to_schema(d: Document, issued_by: str) -> EmittedDocument:
     """Converte model SQLAlchemy pra schema Pydantic"""
     status_str = "revoked" if d.revoked else "active"
@@ -104,19 +86,19 @@ def doc_to_schema(d: Document, issued_by: str) -> EmittedDocument:
         document_type=d.document_type,
         institution_id=d.institution_id,
         hash_sha256=d.doc_hash,
-        file_name=None, 
+        file_name=None,
         file_size=None,
         status=status_str,
         issued_at=d.created_at,
         issued_by=issued_by,
         revoked_at=d.revoked_at,
-        revocation_reason=d.revoked_reason 
+        revocation_reason=d.revoked_reason
     )
 
 @router.get("/emissions", response_model=EmissionsListResponse)
 async def list_emissions(
     institution_id: Optional[str] = None,
-    status_filter: Optional[str] = None, 
+    status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ) -> EmissionsListResponse:
@@ -165,18 +147,14 @@ async def revoke_emission(
     if not document:
         raise HTTPException(status_code=404, detail=f"Documento {doc_id} não encontrado")
 
-    
     if document.revoked:
         return {
             "status": "already_revoked",
             "doc_id": document.doc_id,
             "revoked_at": document.revoked_at.isoformat() if document.revoked_at else None,
             "message": f"Documento já estava revogado. Motivo: {document.revoked_reason}"
-    }
-   
-    
-    
-   
+        }
+
     document.revoked = True
     document.revoked_at = datetime.utcnow()
     document.revoked_reason = request.reason
@@ -216,4 +194,4 @@ async def get_certificate(
         "status": "REVOGADO" if document.revoked else "VÁLIDO",
         "revoked_at": document.revoked_at.isoformat() if document.revoked_at else None,
         "revocation_reason": document.revoked_reason
-}
+    }
