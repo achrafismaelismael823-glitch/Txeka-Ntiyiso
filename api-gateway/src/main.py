@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 from src.models.database import init_db
-from src.routes import emit, verify, emissions
+from src.routes import emission_routes, verify  
 
 app = FastAPI(
     title="Txeka Ntiyiso API",
@@ -35,9 +35,8 @@ async def startup():
 
 API_PREFIX = "/api/v1"
 
-app.include_router(emit.router, prefix=API_PREFIX)
+app.include_router(emission_routes.router, prefix=API_PREFIX)  
 app.include_router(verify.router, prefix=API_PREFIX)
-app.include_router(emissions.router, prefix=API_PREFIX)
 
 logger.info(f"Rotas registadas com prefixo: {API_PREFIX}")
 
@@ -60,7 +59,7 @@ async def root():
         "api_prefix": API_PREFIX,
         "endpoints": {
             "verification": f"{API_PREFIX}/verify/{{hash}}",
-            "emission": f"{API_PREFIX}/emit",
+            "emission": f"{API_PREFIX}/certify",  
             "emissions_list": f"{API_PREFIX}/emissions",
             "certificate": f"{API_PREFIX}/certificate/{{doc_id}}"
         }
