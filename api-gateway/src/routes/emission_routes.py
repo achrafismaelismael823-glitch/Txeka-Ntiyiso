@@ -153,44 +153,7 @@ async def get_emission(
     issued_by = current_user.get("institution", "system")
     return doc_to_schema(document, issued_by).dict()
 
-@router.post("/emissions/{doc_id}/revoke", status_code=status.HTTP_200_OK)
-async def revoke_emission(
-    doc_id: str,
-    request: RevokeRequest,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
-):
-    doc_id = unquote(doc_id)
-    document = db.query(Document).filter(Document.doc_id == doc_id).first()
 
-    if not document:
-        raise HTTPException(status_code=404, detail=f"Documento {doc_id} não encontrado")
-
-    if document.revoked:
-        return {
-            "status": "already_revoked",
-            "doc_id": document.doc_id,
-            "revoked_at": document.revoked_at.isoformat() if document.revoked_at else None,
-            "message": f"Documento já estava revogado. Motivo: {document.revoked_reason}"
-        }
-
-    document.revoked = True
-    document.revoked_at = datetime.utcnow()
-    document.revoked_reason = request.reason
-
-    try:
-        db.commit()
-        db.refresh(document)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao revogar: {str(e)}")
-
-    return {
-        "status": "revoked",
-        "doc_id": document.doc_id,
-        "revoked_at": document.revoked_at.isoformat(),
-        "message": f"Documento revogado: {request.reason}"
-    }
 
 @router.get("/certificate/{doc_id}")
 async def get_certificate(
