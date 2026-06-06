@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 import logging
 from src.models.database import init_db
 from src.routes import emission_routes, verify  
+from src.routes import emission_routes, verify, revocation
+app.include_router(revocation.router, prefix=API_PREFIX)
 
 app = FastAPI(
     title="Txeka Ntiyiso API",
