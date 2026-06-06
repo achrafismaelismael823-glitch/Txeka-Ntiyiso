@@ -12,7 +12,7 @@ def run_migrations():
     try:
         alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
         command.upgrade(alembic_cfg, "head")
-        logger.info("✅ Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
+        print("✅ Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
     except Exception as e:
         logger.error(f"❌ Erro ao migrar banco: {e}")
 
