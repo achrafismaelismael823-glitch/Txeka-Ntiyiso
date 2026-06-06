@@ -4,6 +4,19 @@ from fastapi.responses import JSONResponse
 import logging
 from src.models.database import init_db
 from src.routes import emission_routes, verify, revocation
+import os
+from alembic.config import Config
+from alembic import command
+def run_migrations():
+    """Aplica migrações Alembic automaticamente no startup"""
+    try:
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+        command.upgrade(alembic_cfg, "head")
+        logger.info("✅ Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
+    except Exception as e:
+        logger.error(f"❌ Erro ao migrar banco: {e}")
+
+run_migrations()
 
 app = FastAPI(
     title="Txeka Ntiyiso API",
