@@ -1,11 +1,31 @@
 version: '3.9'
 
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: txeka-ntiyiso-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: txeka_ntiyiso
+    ports:
+      - "5432:5432"
+    volumes:
+      - txeka-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d txeka_ntiyiso"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: docverify-api
+    container_name: txeka-ntiyiso-api
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -13,24 +33,32 @@ services:
       DEBUG: "true"
       PYTHONUNBUFFERED: "1"
       LOG_LEVEL: INFO
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/txeka_ntiyiso
+      SECRET_KEY: dev-secret-key-change-in-prod
+      ALLOW_ANONYMOUS: "true"
+      BASE_URL: http://localhost:8000
     volumes:
       - .:/app
     command: >
-      sh -c "poetry install &&
+      sh -c "poetry install --no-root &&
+             alembic upgrade head &&
              uvicorn api-gateway.src.main:app --host 0.0.0.0 --port 8000 --reload"
     networks:
-      - docverify-network
+      - txeka-network
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 30s
 
 networks:
-  docverify-network:
+  txeka-network:
     driver: bridge
 
 volumes:
-  docverify-data:
+  txeka-data:
     driver: local
