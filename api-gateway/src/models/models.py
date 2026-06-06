@@ -16,7 +16,7 @@ class Document(Base):
     qr_code = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     revoked = Column(Boolean, default=False, nullable=False)
-    revoked_at = DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
     revoked_reason = Column(String(255), nullable=True)
 
 class Institution(Base):
