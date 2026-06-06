@@ -20,8 +20,6 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-pip-log.txt
-pip-delete-this-directory.txt
 
 # Ambientes virtuais
 .venv/
@@ -50,12 +48,15 @@ htmlcov/
 .hypothesis/
 *.cover
 
-# Ficheiros de configuração sensíveis
+# Ficheiros de configuração sensíveis - NUNCA commitar
 .env
 .env.local
 .env.*.local
+*.key
+*.pem
+*.crt
 
-# Base de dados e caches
+# Base de dados e caches - SQLite local só
 *.db
 *.sqlite
 *.sqlite3
@@ -70,8 +71,8 @@ logs/
 *.tar.gz
 *.zip
 
-# Dependências locais
-poetry.lock
+# Dependências - poetry.lock TEM que ir pro git em produção
+# poetry.lock
 
 # Ficheiros temporários
 tmp/
@@ -89,3 +90,9 @@ yarn-error.log
 # Render.com específico
 .render/
 render.yaml
+
+# TXEKA NTIYISO específico
+alembic/versions/*.pyc
+alembic.ini.local
+*.pdf # PDFs de teste não vão pro git
+txeka.db
