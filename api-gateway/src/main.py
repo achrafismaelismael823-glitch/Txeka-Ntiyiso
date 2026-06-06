@@ -15,7 +15,13 @@ logger = logging.getLogger("uvicorn")
 def run_migrations():
     """Aplica migrações Alembic automaticamente no startup"""
     try:
-        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+        
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_ini_path = os.path.join(base_dir, "alembic.ini")
+        
+        logger.info(f"🔍 Procurando alembic.ini em: {alembic_ini_path}")
+        
+        alembic_cfg = Config(alembic_ini_path)
         command.upgrade(alembic_cfg, "head")
         logger.info("✅ Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
     except Exception as e:
@@ -98,4 +104,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=False  
-    )
+        )
