@@ -35,10 +35,10 @@ class EmissionService:
         if institution.status!= "active":
             raise HTTPException(status_code=403, detail="Instituição suspensa")
 
-
-                    if institution.credits <= 0:
-            if institution.subscription_plan == "free":
-                raise HTTPException(
+         if institution.credits <= 0:           
+  
+              if institution.subscription_plan == "free":
+                 raise HTTPException(
                     status_code=402,
                     detail={
                         "error": "Demo expirada",
@@ -48,7 +48,7 @@ class EmissionService:
                 
             else:
                 raise HTTPException(
-                    status_code=402,
+                      status_code=402,
                     detail=f"Pacote {institution.subscription_plan} esgotado. Recarregue"
                 )
                 
