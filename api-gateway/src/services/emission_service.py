@@ -37,7 +37,9 @@ class EmissionService:
 
         
             if institution.credits <= 0:
+          
             if institution.subscription_plan == "free":
+
                 raise HTTPException(
                     status_code=402,
                     detail={
@@ -45,7 +47,10 @@ class EmissionService:
                         "message": "Créditos demo zerados. Contrate Starter 100 créditos MT 2.000"
                     }
                 )
-            raise HTTPException(
+                
+              else:
+            
+                    raise HTTPException(
                 status_code=402,
                 detail=f"Pacote {institution.subscription_plan} esgotado. Recarregue"
             )
@@ -54,6 +59,7 @@ class EmissionService:
         hash_sha256 = hashlib.sha256(content.encode()).hexdigest()
         existing = self.db.query(Document).filter(Document.doc_hash == hash_sha256).first()
         if existing:
+            
             raise HTTPException(status_code=409, detail="Documento já certificado")
 
         # Gerar ID + Debitar crédito
