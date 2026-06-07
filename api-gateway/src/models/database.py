@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.models import Base
-
+import asyncpg  # eliminar depois dos taste
 import os
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 if not SQLALCHEMY_DATABASE_URL:
@@ -19,11 +19,10 @@ def get_db():
     finally:
         db.close()
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
 
 db = None  # pool global pra usar no /dev/create-demo
 
 async def init_db():
     global db
+    Base.metadata.create_all(bind=engine)
     db = await asyncpg.create_pool(DATABASE_URL)
