@@ -24,5 +24,7 @@ db = None  # pool global pra usar no /dev/create-demo
 
 async def init_db():
     global db
-    Base.metadata.create_all(bind=engine)
-    db = await asyncpg.create_pool(DATABASE_URL)
+    db = await asyncpg.create_pool(
+        dsn=SQLALCHEMY_DATABASE_URL,
+        ssl="require"  # Supabase pooler precisa disso
+    )
