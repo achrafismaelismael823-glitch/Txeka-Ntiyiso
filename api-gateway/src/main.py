@@ -81,4 +81,4 @@ async def root():
         "health": "/health",
         "api_prefix": API_PREFIX,
         "endpoints": {
-            "verification": f"{API_PREFIX}/verify/{{hash}}
+            "verification": f"{API_PREFIX}/verify/{{hash}}"
