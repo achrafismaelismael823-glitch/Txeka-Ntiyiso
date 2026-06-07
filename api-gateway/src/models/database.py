@@ -21,3 +21,9 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+
+db = None  # pool global pra usar no /dev/create-demo
+
+async def init_db():
+    global db
+    db = await asyncpg.create_pool(DATABASE_URL)
