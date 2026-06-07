@@ -22,15 +22,20 @@ class Document(Base):
 class Institution(Base):
     __tablename__ = "institutions"
 
-    id = Column(String(100), primary_key=True, index=True)  # UEM, INAGE, etc
+    id = Column(String(100), primary_key=True, index=True)  
     name = Column(String(255), nullable=False)
     contact_email = Column(String(255), nullable=True)
     
-    # Campos de subscrição - pra cobrar assinatura
+    # Subscrição 
     subscription_active = Column(Boolean, default=False, nullable=False)
     subscription_plan = Column(String(50), default="free")  
     subscription_expires_at = Column(DateTime, nullable=True)
     docs_emitted_month = Column(Integer, default=0)  
     
+    # Motor de Lucro - regra de equidade
+    credits = Column(Integer, default=80, nullable=False)  
+    status = Column(String(20), default="active", nullable=False) 
+    
+    # Auditoria
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
