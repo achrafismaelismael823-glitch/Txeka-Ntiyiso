@@ -82,3 +82,4 @@ async def root():
         "api_prefix": API_PREFIX,
         "endpoints": {
             "verification": f"{API_PREFIX}/verify/{{hash}}"
+        }
