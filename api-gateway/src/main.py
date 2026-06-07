@@ -15,11 +15,11 @@ logger = logging.getLogger("uvicorn")
 def run_migrations():
     """Aplica migrações Alembic automaticamente no startup"""
     try:
-        
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        alembic_ini_path = os.path.join(base_dir, "alembic.ini")
+        alembic_ini_path = os.path.join(base_dir, "..", "alembic.ini")
+        alembic_ini_path = os.path.abspath(alembic_ini_path)
         
-        logger.info(f" Procurando alembic.ini em: {alembic_ini_path}")
+        logger.info(f"Procurando alembic.ini em: {alembic_ini_path}")
         
         alembic_cfg = Config(alembic_ini_path)
         command.upgrade(alembic_cfg, "head")
@@ -83,4 +83,4 @@ async def root():
         "endpoints": {
             "verification": f"{API_PREFIX}/verify/{{hash}}"
         }
-}
+    }
