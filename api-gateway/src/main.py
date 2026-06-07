@@ -54,7 +54,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    init_db()
+    await init_db()
 
 API_PREFIX = "/api/v1"
 
