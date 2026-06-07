@@ -35,11 +35,9 @@ class EmissionService:
         if institution.status!= "active":
             raise HTTPException(status_code=403, detail="Instituição suspensa")
 
-        
-            if institution.credits <= 0:
-          
-            if institution.subscription_plan == "free":
 
+                    if institution.credits <= 0:
+            if institution.subscription_plan == "free":
                 raise HTTPException(
                     status_code=402,
                     detail={
@@ -48,13 +46,12 @@ class EmissionService:
                     }
                 )
                 
-              else:
-            
-                    raise HTTPException(
-                status_code=402,
-                detail=f"Pacote {institution.subscription_plan} esgotado. Recarregue"
-            )
-
+            else:
+                raise HTTPException(
+                    status_code=402,
+                    detail=f"Pacote {institution.subscription_plan} esgotado. Recarregue"
+                )
+                
         #  Verifica hash duplicado
         hash_sha256 = hashlib.sha256(content.encode()).hexdigest()
         existing = self.db.query(Document).filter(Document.doc_hash == hash_sha256).first()
