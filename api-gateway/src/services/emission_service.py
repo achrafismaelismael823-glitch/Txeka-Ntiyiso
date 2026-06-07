@@ -9,7 +9,7 @@ from..models.models import Document, Institution
 class EmissionService:
 
     def __init__(self, db: Session):
-        self.db = db 
+        self.db = db
 
     def generate_doc_id(self, institution_id: str, document_type: str) -> str:
         timestamp = datetime.utcnow().strftime('%Y%m%d')
@@ -24,7 +24,7 @@ class EmissionService:
         content: str,
         issued_by: str
     ) -> dict:
-        
+
         institution = self.db.query(Institution).filter(
             Institution.id == institution_id
         ).first()
@@ -35,28 +35,25 @@ class EmissionService:
         if institution.status!= "active":
             raise HTTPException(status_code=403, detail="Instituição suspensa")
 
-         if institution.credits <= 0:           
-  
-              if institution.subscription_plan == "free":
-                 raise HTTPException(
+        if institution.credits <= 0:
+            if institution.subscription_plan == "free":
+                raise HTTPException(
                     status_code=402,
                     detail={
                         "error": "Demo expirada",
                         "message": "Créditos demo zerados. Contrate Starter 100 créditos MT 2.000"
                     }
                 )
-                
             else:
                 raise HTTPException(
-                   status_code=402,
+                    status_code=402,
                     detail=f"Pacote {institution.subscription_plan} esgotado. Recarregue"
                 )
-                
-        #  Verifica hash duplicado
+
+        # Verifica hash duplicado
         hash_sha256 = hashlib.sha256(content.encode()).hexdigest()
         existing = self.db.query(Document).filter(Document.doc_hash == hash_sha256).first()
         if existing:
-            
             raise HTTPException(status_code=409, detail="Documento já certificado")
 
         # Gerar ID + Debitar crédito
@@ -64,7 +61,7 @@ class EmissionService:
         institution.credits -= 1
         institution.docs_emitted_month += 1
 
-        # Salva no DB 
+        # Salva no DB
         document = Document(
             doc_id=doc_id,
             doc_hash=hash_sha256,
