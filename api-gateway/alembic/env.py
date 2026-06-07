@@ -13,16 +13,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-# Importa Base e todos os models pra Alembic detectar as tabelas
+# Importa Base e models.py que contém Institution e User
 from src.models.database import Base
-from src.models.document import Document
-from src.models.institution import Institution
-from src.models.user import User
+from src.models import models # models.py tem todas as classes
 
 # Configuração do Alembic
 config = context.config
 
-# Setup do logging se alembic.ini tiver config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
