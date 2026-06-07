@@ -84,3 +84,13 @@ async def root():
             "verification": f"{API_PREFIX}/verify/{{hash}}"
         }
     }
+
+@app.post("/dev/create-demo")
+async def create_demo():
+    async with db.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO institutions (name, plan, credits, created_at) 
+            VALUES ('Teste Local', 'free', 1, NOW())
+            RETURNING id
+        """)
+    return {"institution_id": str(row['id'])}
