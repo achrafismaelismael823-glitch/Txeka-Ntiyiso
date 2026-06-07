@@ -6,15 +6,16 @@ from urllib.parse import unquote
 import hashlib
 import base64
 
-from src.models import Document
-from src.models.database import get_db
-from src.models.emission import EmitResponse, EmissionsListResponse, EmittedDocument, RevokeRequest
-from src.core.qr_generator import gerar_qr_code
-from src.core.security import verify_token
+from..models.models import Document, Institution 
+from..models.database import get_db
+from..models.emission import EmitResponse, EmissionsListResponse, EmittedDocument, RevokeRequest
+from..core.qr_generator import gerar_qr_code
+from..core.security import verify_token
+from..services.emission_service import EmissionService 
 
 router = APIRouter(tags=["emission"])
 
-MAX_FILE_SIZE = 50 * 1024 * 1024 # 50MB
+MAX_FILE_SIZE = 50 * 1024 * 1024 
 PDF_MAGIC = b"%PDF-"
 
 def validate_pdf(file: UploadFile, content: bytes) -> None:
@@ -22,28 +23,16 @@ def validate_pdf(file: UploadFile, content: bytes) -> None:
     filename = file.filename.lower() if file.filename else ""
 
     if not filename.endswith(".pdf"):
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Extensão inválida. Aceita apenas.pdf"
-        )
+        raise HTTPException(status_code=415, detail="Extensão inválida. Aceita apenas.pdf")
 
     if file.content_type!= "application/pdf":
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Tipo MIME inválido. Deve ser application/pdf"
-        )
+        raise HTTPException(status_code=415, detail="Tipo MIME inválido. Deve ser application/pdf")
 
     if not content.startswith(PDF_MAGIC):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Falsificação de formato. Conteúdo não é PDF válido"
-        )
+        raise HTTPException(status_code=400, detail="Falsificação de formato. Conteúdo não é PDF válido")
 
     if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Ficheiro excede 50MB"
-        )
+        raise HTTPException(status_code=413, detail="Ficheiro excede 50MB")
 
 @router.post("/certify", response_model=EmitResponse)
 async def emit_document(
@@ -58,44 +47,39 @@ async def emit_document(
         raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
 
     document_bytes = await file.read()
-
-    # Validação estrita PDF
     validate_pdf(file, document_bytes)
 
-    hash_sha256 = hashlib.sha256(document_bytes).hexdigest()
+    # Service faz validação + cadeado + emissão
+    service = EmissionService(db)
 
-    existing = db.query(Document).filter(Document.doc_hash == hash_sha256).first()
-    if existing:
-        raise HTTPException(status_code=409, detail=f"Documento já emitido: {existing.doc_id}")
+    try:
+        result = service.certify_document(
+            institution_id=institution_id,
+            document_type=document_type,
+            file_name=file.filename,
+            content=document_bytes.decode('latin-1'), # hash precisa do conteúdo
+            issued_by=current_user.get("institution", "system")
+        )
+    except HTTPException as e:
+        # Repassa HTTP 402 do cadeado Demo 80
+        raise e
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d")
-    doc_id = f"{document_type}-{institution_id}-{timestamp}-{hash_sha256[:8].upper()}"
-
-    qr_code_bytes = gerar_qr_code(hash_sha256, doc_id)
+    # Gerar QR Code com hash real do DB
+    doc_record = db.query(Document).filter(Document.doc_id == result["doc_id"]).first()
+    qr_code_bytes = gerar_qr_code(doc_record.doc_hash, doc_record.doc_id)
     qr_code_base64 = f"data:image/png;base64,{base64.b64encode(qr_code_bytes).decode()}"
 
-    certificate_url = f"/certificate/{doc_id}"
-
-    doc_record = Document(
-        doc_id=doc_id,
-        doc_hash=hash_sha256,
-        document_type=document_type,
-        institution_id=institution_id,
-        certificate_url=certificate_url,
-        qr_code=qr_code_base64
-    )
-    db.add(doc_record)
+    doc_record.qr_code = qr_code_base64
     db.commit()
-    db.refresh(doc_record)
 
     return EmitResponse(
         status="emitted",
-        doc_id=doc_id,
-        hash_sha256=hash_sha256,
+        doc_id=doc_record.doc_id,
+        hash_sha256=doc_record.doc_hash,
         qr_code=qr_code_base64,
-        certificate_url=certificate_url,
+        certificate_url=doc_record.certificate_url,
         timestamp=doc_record.created_at.isoformat(),
-        message=f"Documento {doc_id} emitido com sucesso"
+        message=f"Documento {doc_record.doc_id} emitido. Créditos restantes: {result['credits_remaining']}"
     )
 
 def doc_to_schema(d: Document, issued_by: str) -> EmittedDocument:
@@ -121,52 +105,35 @@ async def list_emissions(
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ) -> EmissionsListResponse:
-
     query = db.query(Document)
     if institution_id:
         query = query.filter(Document.institution_id == institution_id)
-    if status_filter:
-        if status_filter == "revoked":
-            query = query.filter(Document.revoked == True)
-        elif status_filter == "active":
-            query = query.filter(Document.revoked == False)
+    if status_filter == "revoked":
+        query = query.filter(Document.revoked == True)
+    elif status_filter == "active":
+        query = query.filter(Document.revoked == False)
 
     docs = query.order_by(Document.created_at.desc()).all()
     issued_by = current_user.get("institution", "system")
-
     documents = [doc_to_schema(d, issued_by) for d in docs]
 
     return EmissionsListResponse(total=len(documents), documents=documents)
 
 @router.get("/emissions/{doc_id}")
-async def get_emission(
-    doc_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
-):
+async def get_emission(doc_id: str, db: Session = Depends(get_db), current_user: dict = Depends(verify_token)):
     doc_id = unquote(doc_id)
     document = db.query(Document).filter(Document.doc_id == doc_id).first()
-
     if not document:
         raise HTTPException(status_code=404, detail=f"Documento {doc_id} não encontrado")
-
     issued_by = current_user.get("institution", "system")
-    return doc_to_schema(document, issued_by).dict()
-
-
+    return doc_to_schema(document, issued_by)
 
 @router.get("/certificate/{doc_id}")
-async def get_certificate(
-    doc_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
-):
+async def get_certificate(doc_id: str, db: Session = Depends(get_db), current_user: dict = Depends(verify_token)):
     doc_id = unquote(doc_id)
     document = db.query(Document).filter(Document.doc_id == doc_id).first()
-
     if not document:
-        raise HTTPException(status_code=404, detail=f"Certificado não encontrado")
-
+        raise HTTPException(status_code=404, detail="Certificado não encontrado")
     return {
         "certificate_id": doc_id,
         "document_type": document.document_type,
@@ -175,5 +142,6 @@ async def get_certificate(
         "issued_by": current_user.get("institution", "system"),
         "status": "REVOGADO" if document.revoked else "VÁLIDO",
         "revoked_at": document.revoked_at.isoformat() if document.revoked_at else None,
-        "revocation_reason": document.revoked_reason
+        "revocation_reason": document.revoked_reason,
+        "qr_code": document.qr_code
     }
