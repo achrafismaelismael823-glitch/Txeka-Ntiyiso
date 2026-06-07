@@ -16,16 +16,16 @@ def run_migrations():
     """Aplica migrações Alembic automaticamente no startup"""
     try:
         
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_dir = os.path.dirname(os.path.abspath(__file__))
         alembic_ini_path = os.path.join(base_dir, "alembic.ini")
         
-        logger.info(f"🔍 Procurando alembic.ini em: {alembic_ini_path}")
+        logger.info(f" Procurando alembic.ini em: {alembic_ini_path}")
         
         alembic_cfg = Config(alembic_ini_path)
         command.upgrade(alembic_cfg, "head")
-        logger.info("✅ Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
+        logger.info("Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
     except Exception as e:
-        logger.error(f"❌ Erro ao migrar banco: {e}")
+        logger.error(f"Erro ao migrar banco: {e}")
         raise  
 
 run_migrations()
@@ -81,27 +81,4 @@ async def root():
         "health": "/health",
         "api_prefix": API_PREFIX,
         "endpoints": {
-            "verification": f"{API_PREFIX}/verify/{{hash}}",
-            "emission": f"{API_PREFIX}/certify",  
-            "emissions_list": f"{API_PREFIX}/emissions",
-            "revoke": f"{API_PREFIX}/emissions/{{doc_id}}/revoke",  
-            "certificate": f"{API_PREFIX}/certificate/{{doc_id}}"
-        }
-    }
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    logger.error(f"Erro não tratado: {str(exc)}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Erro interno do servidor"}
-    )
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "src.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=False  
-        )
+            "verification": f"{API_PREFIX}/verify/{{hash}}
