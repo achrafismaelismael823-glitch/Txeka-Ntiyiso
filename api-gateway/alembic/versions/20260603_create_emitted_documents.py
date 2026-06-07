@@ -7,7 +7,7 @@ Data de Criação: 2026-06-03 10:25:00.000
 from alembic import op
 import sqlalchemy as sa
 
-revision = '20260603_create_emitted_documents'
+revision = '20260603'
 down_revision = '001'
 branch_labels = None
 depends_on = None
