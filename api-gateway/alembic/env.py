@@ -9,12 +9,15 @@ import os
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# Adiciona src/ ao PYTHONPATH para importar models
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 # Importa Base e todos os models pra Alembic detectar as tabelas
-from models.database import Base
-from models import Document 
+from src.models.database import Base
+from src.models.document import Document
+from src.models.institution import Institution
+from src.models.user import User
 
 # Configuração do Alembic
 config = context.config
@@ -23,7 +26,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Metadata das tabelas 
+# Metadata das tabelas
 target_metadata = Base.metadata
 
 def get_database_url() -> str:
@@ -46,7 +49,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
-        compare_server_default=True, 
+        compare_server_default=True,
     )
 
     with context.begin_transaction():
@@ -73,7 +76,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
-            render_as_batch=True, 
+            render_as_batch=True,
         )
 
         with context.begin_transaction():
