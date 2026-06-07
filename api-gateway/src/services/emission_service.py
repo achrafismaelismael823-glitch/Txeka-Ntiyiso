@@ -48,7 +48,7 @@ class EmissionService:
                 
             else:
                 raise HTTPException(
-                      status_code=402,
+                   status_code=402,
                     detail=f"Pacote {institution.subscription_plan} esgotado. Recarregue"
                 )
                 
