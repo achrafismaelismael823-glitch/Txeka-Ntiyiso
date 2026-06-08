@@ -25,7 +25,7 @@ class AuthConfig:
         "system": ["verify", "emit", "revoke"],
         "admin": ["verify", "emit", "revoke", "manage_institutions"],
         "institution": ["emit", "verify"],
-        "citizen": ["verify"]
+        "citizen": ["verify"]  
     }
 
 def create_access_token(email: str, role: str = "system", expires_delta: Optional[timedelta] = None) -> str:
@@ -46,14 +46,20 @@ def decode_token(token: str) -> Dict:
 async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict:
     if credentials is None:
         if ALLOW_ANONYMOUS:
-            return {"email": "system@txeka.co.mz", "role": "system", "authenticated": False}
+            
+            return {"email": "anonymous@txeka.co.mz", "role": "citizen", "authenticated": False}
         raise HTTPException(status_code=401, detail="Autenticação obrigatória")
+    
     token = credentials.credentials
     payload = decode_token(token)
     return {"email": payload.get("sub"), "role": payload.get("role", "citizen"), "authenticated": True}
 
 def verify_role(required_role: str) -> Callable:
     async def role_checker(user: Dict = Depends(verify_token)) -> Dict:
+       
+        if not user["authenticated"] and required_role != "citizen":
+            raise HTTPException(status_code=401, detail="Autenticação necessária para esta operação")
+            
         if user["role"] not in [required_role, "admin"]:
             raise HTTPException(status_code=403, detail="Acesso negado")
         return user
@@ -61,6 +67,10 @@ def verify_role(required_role: str) -> Callable:
 
 def verify_scopes(required_scopes: list[str]) -> Callable:
     async def scope_checker(user: Dict = Depends(verify_token)) -> Dict:
+        
+        if not user["authenticated"] and any(s != "verify" for s in required_scopes):
+            raise HTTPException(status_code=401, detail="Token de segurança ausente ou inválido")
+            
         user_scopes = AuthConfig.ROLES.get(user["role"], [])
         for scope in required_scopes:
             if scope not in user_scopes:
@@ -72,7 +82,7 @@ def is_authenticated(user: Dict) -> bool:
     return user.get("authenticated", False)
 
 def get_user_email(user: Dict) -> str:
-    return user.get("email", "system@txeka.co.mz")
+    return user.get("email", "anonymous@txeka.co.mz")
 
 def get_user_role(user: Dict) -> str:
     return user.get("role", "citizen")
