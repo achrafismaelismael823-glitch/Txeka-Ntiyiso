@@ -14,4 +14,3 @@ sqlalchemy
 psycopg2-binary==2.9.9
 PyJWT==2.8.0
 alembic==1.12.1
-asyncpg==0.29.0 # remover com urgência depois do teste
