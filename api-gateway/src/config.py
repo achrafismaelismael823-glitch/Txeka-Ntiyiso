@@ -47,4 +47,4 @@ if __name__ == "__main__":
     with open("output.py", "w", encoding="utf-8") as f:
         f.write(cleaned)
 
-    print("✔ TXEKA NTIYISO Config Cleaner aplicado (safe mode)")
+    print("Done TXEKA NTIYISO Config Cleaner aplicado (safe mode)")
