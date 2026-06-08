@@ -2,7 +2,7 @@
 Security Module - Utilitários de segurança e proteção + JWT
 
 Implementa camadas de validação, sanitização e autenticação JWT
-para garantir a integridade e segurança dos dados do DocVerify.
+para garantir a integridade e segurança dos dados do Txeka Ntiyiso.
 Versão: 1.0.0 - Fase 1 | Fase 2: Migração para RSA 2048
 Licença: Todos Direitos Reservados © 2026 Txeka Ntiyiso LDA
 """
