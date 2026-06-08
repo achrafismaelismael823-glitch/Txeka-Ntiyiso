@@ -6,7 +6,6 @@ import os
 from alembic.config import Config
 from alembic import command
 from src.models.database import init_db
-from src.models.database import db #-depois do taste eliminar com urgência
 from src.routes import emission_routes, verify, revocation
 
 # 1. Configura logging 
@@ -86,16 +85,3 @@ async def root():
         }
     }
 
-# elimitar depois do taste
-@app.post("/dev/create-demo")
-async def create_demo():
-    try:
-        async with await db.acquire() as conn:  # <- adiciona await aqui
-            row = await conn.fetchrow("""
-                INSERT INTO institutions (name, plan, credits, created_at) 
-                VALUES ('Demo 80', 'free', 1, NOW())
-                RETURNING id
-            """)
-        return {"institution_id": str(row['id']), "credits": 1}
-    except Exception as e:
-        return {"error": str(e)}
