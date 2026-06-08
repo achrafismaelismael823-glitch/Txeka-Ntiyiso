@@ -8,12 +8,12 @@ from alembic import command
 from src.models.database import init_db
 from src.routes import emission_routes, verify, revocation
 
-# 1. Configura logging 
+# 1. Configura logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn")
 
 def run_migrations():
-    """Aplica migrações Alembic automaticamente no startup"""
+    """Aplica migrações Alembic automaticamente de forma segura"""
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         alembic_ini_path = os.path.join(base_dir, "..", "alembic.ini")
@@ -23,19 +23,21 @@ def run_migrations():
         
         alembic_cfg = Config(alembic_ini_path)
         command.upgrade(alembic_cfg, "head")
-        logger.info("Migrações Alembic aplicadas com sucesso - Tabela Institution criada")
+        logger.info("Migrações Alembic aplicadas com sucesso - Estrutura atualizada")
     except Exception as e:
-        logger.error(f"Erro ao migrar banco: {e}")
-        raise  
+        logger.error(f"Erro ao migrar banco de dados: {e}")
+        
+        if os.getenv("ENVIRONMENT") == "production":
+            raise  
 
-run_migrations()
-
+# 2. Instanciação da API
 app = FastAPI(
     title="Txeka Ntiyiso API",
     description="Plataforma de Validação Digital de Documentos",
     version="1.0.0"
 )
 
+# 3. Configuração do CORS 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
@@ -47,14 +49,23 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],  
-    allow_headers=["Authorization", "Content-Type"]
+    
+    allow_methods=["GET", "POST", "OPTIONS"],  
+    
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "Accept"]
 )
 
+# 4. Ciclo de Vida da Aplicação (Startup)
 @app.on_event("startup")
 async def startup():
+    logger.info("Iniciando ciclo de vida da aplicação...")
+  
+    run_migrations() 
+    
     await init_db()
+    logger.info("Base de dados conectada e pronta.")
 
+# 5. Registo de Rotas
 API_PREFIX = "/api/v1"
 
 app.include_router(emission_routes.router, prefix=API_PREFIX)  
@@ -63,13 +74,14 @@ app.include_router(revocation.router, prefix=API_PREFIX)
 
 logger.info(f"Rotas registadas com prefixo: {API_PREFIX}")
 
+# 6. Endpoints de Monitorização
 @app.get("/health")
 async def health_check():
     return {
         "status": "online",
         "project": "Txeka Ntiyiso",
         "version": "1.0.0",
-        "environment": "production",
+        "environment": os.getenv("ENVIRONMENT", "production"),
         "api_prefix": API_PREFIX
     }
 
@@ -84,4 +96,3 @@ async def root():
             "verification": f"{API_PREFIX}/verify/{{hash}}"
         }
     }
-
