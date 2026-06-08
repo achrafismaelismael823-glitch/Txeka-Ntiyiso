@@ -1,3 +1,9 @@
-from .models import Base, Document
+"""
+Models package - Core ORM definitions for the document management system.
 
-__all__ = ["Base", "Document"]
+Exports the primary database models and base declarative class.
+"""
+
+from .models import Base, Document, Institution
+
+__all__ = ["Base", "Document", "Institution"]
