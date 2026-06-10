@@ -44,4 +44,4 @@ class Settings(BaseSettings):
         return self.ENVIRONMENT == "production"
 
 
-     settings = Settings()
+    settings = Settings()
