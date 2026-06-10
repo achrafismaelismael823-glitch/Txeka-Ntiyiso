@@ -1,17 +1,33 @@
+# Framework & Servidor
 fastapi==0.110.0
 uvicorn[standard]==0.28.0
-pydantic>=2.10.3
+
+#  Configuração & Validação
+pydantic==2.10.3
 pydantic-settings==2.2.1
-python-multipart==0.0.9
 python-dotenv==1.0.1
+python-multipart==0.0.9
+
+#  Banco de Dados & ORM
+sqlalchemy==2.0.29
+alembic==1.12.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+
+#  Segurança & Autenticação
+PyJWT==2.8.0
 passlib[bcrypt]==1.7.4
 cryptography==42.0.5
-requests==2.31.0
+
+#  Observabilidade & Rate Limiting (Enterprise Additions)
+structlog==24.1.0
+slowapi==0.1.9
+
+#  Processamento de Arquivos & I/O
+PyPDF2==3.0.1
 aiofiles==23.2.1
-qrcode[pil]==7.4.2 
-pillow==11.0.0 
-sqlalchemy
-psycopg2-binary==2.9.9
-PyJWT==2.8.0
-alembic==1.12.1
-asyncpg==0.29.0
+requests==2.31.0
+
+#  Geração de QR Code
+qrcode[pil]==7.4.2
+pillow==11.0.0
