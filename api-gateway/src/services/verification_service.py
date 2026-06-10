@@ -1,16 +1,16 @@
 """
-Module: verification_service.py
-Description: Business logic for document authentication and verification.
+Verification Service - Business logic for document authentication and verification.
+Refatorado para integração de Logging Estruturado.
 Pattern: Repository Pattern with Dependency Injection.
 """
 
-import logging
 from typing import Final
+from src.logger import get_logger
 from src.models.schemas import DadosPublicos, VerifyResponse
 from src.models.verification_repository import VerificationRepository
 
-logger = logging.getLogger("uvicorn")
-
+# Integrando o Logger Estruturado Global
+logger = get_logger(__name__)
 
 class VerificationService:
     """
@@ -18,39 +18,24 @@ class VerificationService:
     """
 
     def __init__(self, repo: VerificationRepository) -> None:
-        """
-        Initializes the service with an injected repository instance.
-        """
         self.repo: Final[VerificationRepository] = repo
 
     async def verify_document(self, doc_hash: str) -> VerifyResponse:
         """
         Validates a document signature against the database registry.
-
-        Args:
-            doc_hash (str): The SHA-256 signature of the target document.
-
-        Returns:
-            VerifyResponse: Object containing the resolution status and public metadata.
         """
-        logger.info(
-            f"[INFO] TXEKA NTIYISO: Iniciando processamento de verificacao. Hash={doc_hash[:8]}"
-        )
+        logger.info("Iniciando processamento de verificacao", doc_hash=doc_hash[:8])
 
-        # A execucao assincrona impede o bloqueio da event loop no gateway
+        # Execução assíncrona para não bloquear o Event Loop
         doc = await self.repo.get_by_hash(doc_hash)
 
         if not doc:
-            logger.warning(
-                f"[WARN] TXEKA NTIYISO: Documento nao localizado no registro ativo. Hash={doc_hash[:8]}"
-            )
+            logger.warning("Documento nao localizado no registro ativo", doc_hash=doc_hash[:8])
             return VerifyResponse(status="not_found", dados_publicos=None)
 
-        # Prioridade arquitetural: Validar a revogacao antes do estado ativo
+        # Prioridade arquitetural: Validar a revogação antes do estado ativo
         if doc.revoked:
-            logger.info(
-                f"[INFO] TXEKA NTIYISO: Documento identificado como revogado. ID={doc.doc_id}"
-            )
+            logger.info("Documento identificado como revogado", doc_id=doc.doc_id)
             return VerifyResponse(
                 status="revoked",
                 dados_publicos=DadosPublicos(
@@ -63,9 +48,7 @@ class VerificationService:
                 )
             )
 
-        logger.info(
-            f"[INFO] TXEKA NTIYISO: Documento autenticado com sucesso. ID={doc.doc_id}"
-        )
+        logger.info("Documento autenticado com sucesso", doc_id=doc.doc_id)
         return VerifyResponse(
             status="verified",
             dados_publicos=DadosPublicos(
