@@ -1,48 +1,49 @@
 """
 Verification Service - Business logic for document authentication and verification.
-Refatorado para integração de Logging Estruturado.
-Pattern: Repository Pattern with Dependency Injection.
+Refatorado para alta performance assíncrona e Structured Logging.
 """
 
-from typing import Final
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from src.logger import get_logger
 from src.models.schemas import DadosPublicos, VerifyResponse
-from src.models.verification_repository import VerificationRepository
+from src.models.models import Document
 
-# Integrando o Logger Estruturado Global
 logger = get_logger(__name__)
 
 class VerificationService:
     """
-    Coordinates core document validation workflows against the persistence layer.
+    Coordena os fluxos de validação de documentos diretamente na camada de persistência.
     """
 
-    def __init__(self, repo: VerificationRepository) -> None:
-        self.repo: Final[VerificationRepository] = repo
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
 
     async def verify_document(self, doc_hash: str) -> VerifyResponse:
         """
-        Validates a document signature against the database registry.
+        Valida a assinatura (hash SHA-256) de um documento contra o banco de dados.
         """
         logger.info("Iniciando processamento de verificacao", doc_hash=doc_hash[:8])
 
-        # Execução assíncrona para não bloquear o Event Loop
-        doc = await self.repo.get_by_hash(doc_hash)
+        # Consulta assíncrona utilizando a engine configurado
+        result = await self.db.execute(select(Document).where(Document.doc_hash == doc_hash))
+        doc = result.scalar_one_or_none()
 
         if not doc:
             logger.warning("Documento nao localizado no registro ativo", doc_hash=doc_hash[:8])
-            return VerifyResponse(status="not_found", dados_publicos=None)
+            return VerifyResponse(status="INVALID", dados_publicos=None)
 
-        # Prioridade arquitetural: Validar a revogação antes do estado ativo
+        # Regra de Negócio: Validar a revogação antes do estado ativo
         if doc.revoked:
             logger.info("Documento identificado como revogado", doc_id=doc.doc_id)
             return VerifyResponse(
-                status="revoked",
+                status="REVOKED",
                 dados_publicos=DadosPublicos(
                     doc_id=doc.doc_id,
                     document_type=doc.document_type,
                     institution_id=doc.institution_id,
                     created_at=doc.created_at,
+                    revoked=True,
                     revoked_at=doc.revoked_at,
                     revoked_reason=doc.revoked_reason
                 )
@@ -50,11 +51,14 @@ class VerificationService:
 
         logger.info("Documento autenticado com sucesso", doc_id=doc.doc_id)
         return VerifyResponse(
-            status="verified",
+            status="VALID",
             dados_publicos=DadosPublicos(
                 doc_id=doc.doc_id,
                 document_type=doc.document_type,
                 institution_id=doc.institution_id,
-                created_at=doc.created_at
+                created_at=doc.created_at,
+                revoked=False,
+                revoked_at=None,
+                revoked_reason=None
             )
         )
