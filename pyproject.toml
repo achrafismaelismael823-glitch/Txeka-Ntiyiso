@@ -1,17 +1,21 @@
 [tool.poetry]
-name = "docverify-mz"
+name = "txeka-ntiyiso"
 version = "0.1.0"
 description = "Plataforma de custódia e validação de documentos para Moçambique"
-authors = ["DocVerify Team <agy@docverify.mz>"]
+authors = ["Txeka Ntiyiso Team <admin@txekantiyiso.mz>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/achrafismaelismaeli823-glitch/DocVerify-MZ"
-keywords = ["moçambique", "documentos", "criptografia", "segurança", "ocr"]
+keywords = ["moçambique", "documentos", "criptografia", "segurança", "ocr", "txeka ntiyiso"]
 
-# Dependências compartilhadas entre workspaces
+# Dependências essenciais para o Render e projeto
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11" 
 python-dotenv = "^1.0.0"
+fastapi = "^0.100.0"
+uvicorn = "^0.23.0"
+sqlalchemy = "^2.0.0"
+asyncpg = "^0.29.0" 
 
 # Dev dependencies compartilhadas
 [tool.poetry.group.dev.dependencies]
@@ -24,9 +28,10 @@ isort = "^5.12.0"
 bandit = "^1.7.5"
 safety = "^2.3.0"
 
-# Workspaces (monorepo structure)
-[tool.poetry.packages]
-{ include = "docverify_mz", from = "." }
+
+[[tool.poetry.packages]]
+include = "src"
+from = "api-gateway"
 
 [tool.poetry-monorepo]
 packages = [
@@ -37,21 +42,15 @@ packages = [
 # Tool configurations
 [tool.black]
 line-length = 100
-target-version = ['py310']
+target-version = ['py311']
 include = '\.pyi?$'
 exclude = '''
 /(
     \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
   | \.venv
-  | _build
-  | buck-out
   | build
   | dist
-)/
-'''
+)/'''
 
 [tool.isort]
 profile = "black"
@@ -61,23 +60,7 @@ skip_gitignore = true
 [tool.pytest.ini_options]
 testpaths = ["core/tests", "api-gateway/tests"]
 python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
 asyncio_mode = "auto"
-
-[tool.coverage.run]
-source = ["core/src", "api-gateway/src"]
-omit = ["*/tests/*", "*/venv/*"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
