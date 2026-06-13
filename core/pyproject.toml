@@ -1,16 +1,17 @@
 [tool.poetry]
-name = "txeka-core"  
+name = "txeka-core"
 version = "0.1.0"
 description = "Core Module - Motor criptográfico e segurança - Txeka Ntiyiso"
 authors = ["Txeka Team <dev@txeka.com>"]
-packages = [{ include = "src" }]
+
+
+packages = [{ include = "core", from = ".." }]
 
 [tool.poetry.dependencies]
 python = "^3.11"  
-
 pillow = "^11.0.0"
 qrcode = "^7.4.2"
-cryptography = "^42.0.5"
+cryptography = "^42.0.5" 
 pydantic = "^2.5.2"
 
 [tool.poetry.group.dev.dependencies]
