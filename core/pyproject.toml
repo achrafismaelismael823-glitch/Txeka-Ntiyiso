@@ -1,12 +1,13 @@
 [tool.poetry]
-name = "docverify-core"
+name = "txeka-core"  
 version = "0.1.0"
-description = "Core Module - Motor criptográfico e segurança"
-authors = ["DocVerify Team <agy@docverify.mz>"]
+description = "Core Module - Motor criptográfico e segurança - Txeka Ntiyiso"
+authors = ["Txeka Team <dev@txeka.com>"]
 packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"  
+
 pillow = "^10.0.0"
 qrcode = "^7.4.2"
 cryptography = "^41.0.0"
