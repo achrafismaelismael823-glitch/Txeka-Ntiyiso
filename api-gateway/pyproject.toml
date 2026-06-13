@@ -1,16 +1,51 @@
+[tool.poetry]
+name = "api-gateway"
+version = "0.1.0"
+description = "API Gateway para o Projeto Txeka Ntiyiso"
+authors = ["Dev <dev@txeka.com>"]
+package-mode = false  
+
 [tool.poetry.dependencies]
-python = "^3.10"
-fastapi = "^0.104.1"
-uvicorn = { version = "^0.24.0", extras = ["standard"] }
-pydantic = "^2.5.2"
-pydantic-settings = "^2.0.0"
-python-multipart = "^0.0.6"
-python-dotenv = "^1.0.0"
-python-jose = { version = "^3.3.0", extras = ["cryptography"] }
-passlib = { version = "^1.7.4", extras = ["bcrypt"] }
-cryptography = "^41.0.0"
-requests = "^2.31.0"
-aiofiles = "^23.2.1"
-asyncpg = "^0.29.0"  
+python = "^3.11"
+
+# Framework & Servidor
+fastapi = "0.110.0"
+uvicorn = { version = "0.28.0", extras = ["standard"] }
+
+# Configuração & Validação
+pydantic = "2.10.3"
+pydantic-settings = "2.2.1"
+python-dotenv = "1.0.1"
+python-multipart = "0.0.9"
 email-validator = "^2.1.0"
+
+# Banco de Dados & ORM
+sqlalchemy = "2.0.29"
+alembic = "1.12.1"
+psycopg2-binary = "2.9.9"
+asyncpg = "0.29.0"
+
+# Segurança & Autenticação
+pyjwt = "2.8.0"
+passlib = { version = "1.7.4", extras = ["bcrypt"] }
+cryptography = "42.0.5"
+
+# Observabilidade & Rate Limiting
+structlog = "24.1.0"
+slowapi = "0.1.9"
+
+# Processamento de Arquivos & I/O
+pypdf2 = "3.0.1"
+aiofiles = "23.2.1"
+requests = "2.31.0"
+
+# Geração de QR Code
+qrcode = { version = "7.4.2", extras = ["pil"] }
+pillow = "11.0.0"
+
+# Dependência Local do Monorepo
 txeka-core = { path = "../core", develop = true }
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
