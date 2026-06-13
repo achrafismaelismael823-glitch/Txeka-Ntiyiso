@@ -13,7 +13,7 @@ from sqlalchemy.future import select
 from urllib.parse import unquote
 
 from src.models.models import Document
-from src.models.database import get_async_db
+from src.database import get_db
 from src.models.emission import EmitResponse, EmissionsListResponse, EmittedDocument
 from src.core.qr_generator import gerar_qr_code
 from src.security import verify_token
@@ -53,7 +53,7 @@ async def emit_document(
     file: UploadFile = File(...),
     document_type: str = "DUAT",
     institution_id: str = "INAGE",
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),  
     current_user: dict = Depends(verify_token)
 ) -> EmitResponse:
     """Certifica um único documento de forma assíncrona."""
@@ -74,7 +74,7 @@ async def emit_document(
             issued_by=current_user.get("institution", "system")
         )
         
-        # Atualização assíncrona do QR Code real no banco
+        # Atualização assíncrona do QR Code  no banco
         db_result = await db.execute(select(Document).where(Document.doc_id == result["doc_id"]))
         doc_record = db_result.scalar_one_or_none()
         
@@ -100,7 +100,7 @@ async def emit_document(
 @router.post("/certify/bulk", status_code=status.HTTP_201_CREATED)
 async def emit_document_bulk(
     payload: BulkEmissionInput,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(verify_token)
 ):
     """[B2B/B2G] Endpoint para certificação em lote com proteção transacional ACID."""
