@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
-from src.models.base import AuditBase
+
+from .database import AuditBase
 
 class Document(AuditBase):
     """
