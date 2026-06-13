@@ -5,7 +5,7 @@ import logging
 import os
 from alembic.config import Config
 from alembic import command
-from src.models.database import init_db
+from src.database import init_db
 from src.routes import emission_routes, verify, revocation
 
 # 1. Configura logging
@@ -95,4 +95,4 @@ async def root():
         "endpoints": {
             "verification": f"{API_PREFIX}/verify/{{hash}}"
         }
-    }
+}
