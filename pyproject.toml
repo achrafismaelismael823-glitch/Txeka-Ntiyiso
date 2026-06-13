@@ -3,9 +3,9 @@ name = "txeka-ntiyiso"
 version = "0.1.0"
 description = "Plataforma de custódia e validação de documentos para Moçambique"
 authors = ["Txeka Ntiyiso Team <admin@txekantiyiso.mz>"]
-license = "MIT"
+license = "Proprietary" 
 readme = "README.md"
-repository = "https://github.com/achrafismaelismaeli823-glitch/DocVerify-MZ"
+repository = "https://github.com/achrafismaelismaeli823-glitch/Txeka-Ntiyiso"
 keywords = ["moçambique", "documentos", "criptografia", "segurança", "ocr", "txeka ntiyiso"]
 
 # Dependências essenciais para o Render e projeto
