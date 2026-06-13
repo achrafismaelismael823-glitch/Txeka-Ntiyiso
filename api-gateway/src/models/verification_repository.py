@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession  
 from sqlalchemy import select
 import logging
 from datetime import datetime
@@ -27,17 +27,22 @@ class DocumentEntity:
         self.revoked_reason = revoked_reason
 
 class VerificationRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession): 
         self.db = db
 
-    def get_by_hash(self, doc_hash: str) -> Optional[DocumentEntity]:
+    
+    async def get_by_hash(self, doc_hash: str) -> Optional[DocumentEntity]:
         logger.info(f"Buscando hash: {doc_hash[:8]}...")
         try:
             stmt = select(Document).where(Document.doc_hash == doc_hash)
-            result = self.db.execute(stmt).scalar_one_or_none()
+            # Executado de forma assíncrona com await
+            execute_result = await self.db.execute(stmt)
+            result = execute_result.scalar_one_or_none()
+            
             if not result:
                 logger.warning(f"Hash não encontrado: {doc_hash[:8]}")
                 return None
+                
             return DocumentEntity(
                 doc_id=result.doc_id,
                 document_type=result.document_type,
