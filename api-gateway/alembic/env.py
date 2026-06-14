@@ -13,9 +13,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-# Importa Base e models.py que contém Institution e User
-from src.models.database import Base
-from src.models import models # models.py tem todas as classes
+from src.database import Base
+from src.models import models 
 
 # Configuração do Alembic
 config = context.config
