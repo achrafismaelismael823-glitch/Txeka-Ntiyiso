@@ -1,7 +1,7 @@
 import os
 import logging
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, text  # Adicione o 'text' aqui
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -12,8 +12,13 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
-# 2. Criação do Engine e Gerador de Sessões
-engine = create_async_engine(DATABASE_URL, echo=False)
+# 2. Criação do Engine com Correção para PgBouncer
+# Desativamos o cache de statements para evitar o erro DuplicatePreparedStatementError
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False,
+    connect_args={"statement_cache_size": 0} 
+)
 
 AsyncSessionLocal = sessionmaker(
     bind=engine,
@@ -50,11 +55,12 @@ async def get_db():
         finally:
             await session.close()
 
-# 5. Função de Verificação de Conexão  main.py
+# 5. Função de Verificação de Conexão com correção para SQLAlchemy 2.0
 async def init_db():
     try:
         async with engine.connect() as conn:
-            await conn.execute("SELECT 1")
+            # Envolver a query no objeto text() é obrigatório no SQLAlchemy 2.0
+            await conn.execute(text("SELECT 1"))
         logger.info("Base de dados conectada com sucesso (Conexão Assíncrona OK).")
     except Exception as e:
         logger.error(f"Erro crítico ao testar ligação à Base de Dados: {e}")
