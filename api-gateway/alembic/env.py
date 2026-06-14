@@ -1,5 +1,6 @@
 """
 Alembic environment configuration for Txeka API Gateway.
+Configuração profissional otimizada para o Render e PgBouncer.
 """
 import os
 import sys
@@ -8,16 +9,15 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-# Configuração do caminho para importar o pacote 'src'
-# Assumindo que o ficheiro está em alembic/env.py, o pai do pai é a raiz do projeto
+# 1. Configuração do PYTHONPATH para importar os módulos da pasta 'src'
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Importações após configuração do path
+# 2. Importação dos Modelos e Base
 from src.database import Base
 from src.models import models
 
-# Configuração do Alembic
+# 3. Configuração do Alembic
 config = context.config
 
 if config.config_file_name is not None:
@@ -27,7 +27,7 @@ target_metadata = Base.metadata
 
 def get_database_url() -> str:
     """
-    Recupera a URL do banco de dados priorizando variáveis de ambiente.
+    Recupera a URL do banco de dados priorizando variáveis de ambiente (Render).
     """
     return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
 
@@ -51,6 +51,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """
     Executa migrações no modo online (conexão direta).
+    Configurado com proteção contra cache de statements para compatibilidade com PgBouncer.
     """
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_database_url()
@@ -60,6 +61,7 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         future=True,
+        connect_args={"statement_cache_size": 0}  
     )
 
     with connectable.connect() as connection:
