@@ -8,11 +8,12 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-# 1. Correção do PYTHONPATH
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# Configuração do caminho para importar o pacote 'src'
+# Assumindo que o ficheiro está em alembic/env.py, o pai do pai é a raiz do projeto
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# 2. Importações após configuração do path
+# Importações após configuração do path
 from src.database import Base
 from src.models import models
 
