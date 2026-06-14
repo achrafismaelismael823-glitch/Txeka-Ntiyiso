@@ -3,32 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 import os
-from alembic.config import Config
-from alembic import command
 from src.database import init_db
 from src.routes import emission_routes, verify, revocation
 
 # 1. Configura logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn")
-
-def run_migrations():
-    """Aplica migrações Alembic automaticamente de forma segura"""
-    try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        alembic_ini_path = os.path.join(base_dir, "..", "alembic.ini")
-        alembic_ini_path = os.path.abspath(alembic_ini_path)
-        
-        logger.info(f"Procurando alembic.ini em: {alembic_ini_path}")
-        
-        alembic_cfg = Config(alembic_ini_path)
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Migrações Alembic aplicadas com sucesso - Estrutura atualizada")
-    except Exception as e:
-        logger.error(f"Erro ao migrar banco de dados: {e}")
-        
-        if os.getenv("ENVIRONMENT") == "production":
-            raise  
 
 # 2. Instanciação da API
 app = FastAPI(
@@ -49,9 +29,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    
     allow_methods=["GET", "POST", "OPTIONS"],  
-    
     allow_headers=["Authorization", "Content-Type", "X-API-Key", "Accept"]
 )
 
@@ -59,8 +37,8 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     logger.info("Iniciando ciclo de vida da aplicação...")
-  
-    run_migrations() 
+    
+    #  O Render já a faz no Start Command.
     
     await init_db()
     logger.info("Base de dados conectada e pronta.")
@@ -95,4 +73,4 @@ async def root():
         "endpoints": {
             "verification": f"{API_PREFIX}/verify/{{hash}}"
         }
-}
+    }
