@@ -1,6 +1,6 @@
 """
 Alembic environment configuration for Txeka API Gateway.
-Configuração profissional otimizada para o Render e PgBouncer.
+Configuração profissional otimizada para o Render.
 """
 import os
 import sys
@@ -51,7 +51,6 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """
     Executa migrações no modo online (conexão direta).
-    Configurado com proteção contra cache de statements para compatibilidade com PgBouncer.
     """
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_database_url()
@@ -61,7 +60,6 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         future=True,
-        connect_args={"statement_cache_size": 0}  
     )
 
     with connectable.connect() as connection:
