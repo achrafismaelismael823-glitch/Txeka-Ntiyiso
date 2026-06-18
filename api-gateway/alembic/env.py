@@ -1,80 +1,67 @@
 """
-Alembic environment configuration for Txeka API Gateway.
-Configuração profissional otimizada para o Render.
+TXEKA NTIYISO API - ALEMBIC ENV
+Configuração que obtém URL diretamente, sem importar src.database.
 """
+
 import os
 import sys
 from pathlib import Path
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+
+from sqlalchemy import create_engine, pool
+
 from alembic import context
 
-# 1. Configuração do PYTHONPATH para importar os módulos da pasta 'src'
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# 2. Importação dos Modelos e Base
-from src.database import Base
-from src.models import models
-
-# 3. Configuração do Alembic
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata
+    def get_database_url() -> str:
+        url = os.getenv("DATABASE_URL", "")
+            if not url:
+                    from src.settings import settings
+                            url = settings.database_url_sync
+                                if "asyncpg" in url:
+                                        url = url.replace("postgresql+asyncpg://", "postgresql://")
+                                            return url
 
-def get_database_url() -> str:
-    """
-    Recupera a URL do banco de dados priorizando variáveis de ambiente (Render).
-    """
-    return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+                                            from src.database import Base
+                                            from src.models import Document, Institution
 
-def run_migrations_offline() -> None:
-    """
-    Executa migrações no modo offline.
-    """
-    url = get_database_url()
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        compare_type=True,
-        compare_server_default=True,
-    )
+                                            target_metadata = Base.metadata
 
-    with context.begin_transaction():
-        context.run_migrations()
+                                            def run_migrations_offline() -> None:
+                                                url = get_database_url()
+                                                    context.configure(
+                                                            url=url,
+                                                                    target_metadata=target_metadata,
+                                                                            literal_binds=True,
+                                                                                    dialect_opts={"paramstyle": "named"},
+                                                                                            compare_type=True,
+                                                                                                    compare_server_default=True,
+                                                                                                        )
+                                                                                                            with context.begin_transaction():
+                                                                                                                    context.run_migrations()
 
-def run_migrations_online() -> None:
-    """
-    Executa migrações no modo online (conexão direta).
-    """
-    configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = get_database_url()
+                                                                                                                    def run_migrations_online() -> None:
+                                                                                                                        url = get_database_url()
+                                                                                                                            connectable = create_engine(url, poolclass=pool.NullPool)
+                                                                                                                                with connectable.connect() as connection:
+                                                                                                                                        context.configure(
+                                                                                                                                                    connection=connection,
+                                                                                                                                                                target_metadata=target_metadata,
+                                                                                                                                                                            compare_type=True,
+                                                                                                                                                                                        compare_server_default=True,
+                                                                                                                                                                                                )
+                                                                                                                                                                                                        with context.begin_transaction():
+                                                                                                                                                                                                                    context.run_migrations()
 
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-        future=True,
-    )
-
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-            compare_server_default=True,
-            render_as_batch=True,
-        )
-
-        with context.begin_transaction():
-            context.run_migrations()
-
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+                                                                                                                                                                                                                    if context.is_offline_mode():
+                                                                                                                                                                                                                        run_migrations_offline()
+                                                                                                                                                                                                                        else:
+                                                                                                                                                                                                                            run_migrations_online()
+                                                                                                                                                                                                                            
