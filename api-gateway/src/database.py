@@ -1,32 +1,39 @@
-import os
+"""
+TXEKA NTIYISO API - DATABASE
+Engine async com validação de URL e graceful fallback.
+"""
+
 import logging
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, text  # Adicione o 'text' aqui
+from sqlalchemy import Column, DateTime, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+from src.settings import settings
+
 logger = logging.getLogger("uvicorn")
 
-# 1. Configuração da Connection String Assíncrona
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-if DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+def _create_engine_safe():
+    db_url = settings.database_url_async
+    if not db_url or db_url == "postgresql+asyncpg://":
+        logger.warning("DATABASE_URL não configurada. Engine não inicializado.")
+        return None
+    return create_async_engine(
+        db_url,
+        echo=False,
+        connect_args={"statement_cache_size": 0},
+        pool_pre_ping=True,
+        pool_recycle=3600,
+    )
 
-# 2. Criação do Engine com Correção para PgBouncer
-# Desativamos o cache de statements para evitar o erro DuplicatePreparedStatementError
-engine = create_async_engine(
-    DATABASE_URL, 
-    echo=False,
-    connect_args={"statement_cache_size": 0} 
-)
+engine = _create_engine_safe()
 
 AsyncSessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False
-)
+) if engine else None
 
-# 3. Definição do Base ORM
 Base = declarative_base()
 
 class AuditBase(Base):
@@ -43,8 +50,9 @@ class AuditBase(Base):
         nullable=False
     )
 
-# 4. Dependency Injection para as rotas da API
 async def get_db():
+    if AsyncSessionLocal is None:
+        raise RuntimeError("Database não configurado. Verifique DATABASE_URL.")
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -55,13 +63,14 @@ async def get_db():
         finally:
             await session.close()
 
-# 5. Função de Verificação de Conexão com correção para SQLAlchemy 2.0
 async def init_db():
+    if engine is None:
+        logger.warning("init_db() chamado mas engine não está disponível.")
+        return
     try:
         async with engine.connect() as conn:
-            # Envolver a query no objeto text() é obrigatório no SQLAlchemy 2.0
             await conn.execute(text("SELECT 1"))
-        logger.info("Base de dados conectada com sucesso (Conexão Assíncrona OK).")
+        logger.info("Base de dados conectada com sucesso.")
     except Exception as e:
         logger.error(f"Erro crítico ao testar ligação à Base de Dados: {e}")
         raise
