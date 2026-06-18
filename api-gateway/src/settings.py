@@ -1,6 +1,5 @@
 """
 TXEKA NTIYISO API - SETTINGS
-Configuração centralizada com validação e fallbacks seguros.
 """
 
 from typing import List
@@ -12,13 +11,13 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore" 
+        extra="ignore"
     )
 
     PROJECT_NAME: str = "TXEKA NTIYISO API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
-    ENVIRONMENT: str = "development" 
+    ENVIRONMENT: str = "development"
 
     DATABASE_URL: PostgresDsn = "postgresql+asyncpg://postgres:postgres@localhost:5432/txeka_ntiyiso"
 

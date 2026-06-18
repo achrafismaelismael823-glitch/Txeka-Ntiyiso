@@ -1,6 +1,5 @@
 """
 TXEKA NTIYISO API - DATABASE
-Engine async com validação de URL e graceful fallback.
 """
 
 import logging
@@ -16,7 +15,7 @@ logger = logging.getLogger("uvicorn")
 def _create_engine_safe():
     db_url = settings.database_url_async
     if not db_url or db_url == "postgresql+asyncpg://":
-        logger.warning("DATABASE_URL não configurada. Engine não inicializado.")
+        logger.warning("DATABASE_URL nao configurada. Engine nao inicializado.")
         return None
     return create_async_engine(
         db_url,
@@ -39,20 +38,20 @@ Base = declarative_base()
 class AuditBase(Base):
     __abstract__ = True
     created_at = Column(
-        DateTime(timezone=True), 
-        default=lambda: datetime.now(timezone.utc), 
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False
     )
     updated_at = Column(
-        DateTime(timezone=True), 
-        default=lambda: datetime.now(timezone.utc), 
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False
     )
 
 async def get_db():
     if AsyncSessionLocal is None:
-        raise RuntimeError("Database não configurado. Verifique DATABASE_URL.")
+        raise RuntimeError("Database nao configurado. Verifique DATABASE_URL.")
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -65,12 +64,12 @@ async def get_db():
 
 async def init_db():
     if engine is None:
-        logger.warning("init_db() chamado mas engine não está disponível.")
+        logger.warning("init_db() chamado mas engine nao esta disponivel.")
         return
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         logger.info("Base de dados conectada com sucesso.")
     except Exception as e:
-        logger.error(f"Erro crítico ao testar ligação à Base de Dados: {e}")
+        logger.error(f"Erro critico ao testar ligacao a Base de Dados: {e}")
         raise
