@@ -1,11 +1,7 @@
 """
 TXEKA NTIYISO API - INITIAL SCHEMA
-Migration unica, idempotente e enterprise-grade.
-PK String(100) em institutions, consistente com models.py.
-
+PK String(100) em institutions.
 Revision ID: 001
-Revises: 
-Create Date: 2026-06-18
 """
 
 from alembic import op
@@ -18,11 +14,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Cria schema completo com PK String, constraints e indices otimizados."""
 
-    # =================================================================
-    # TABELA: institutions
-    # =================================================================
     op.create_table(
         'institutions',
         sa.Column('id', sa.String(100), nullable=False),
@@ -39,7 +31,6 @@ def upgrade() -> None:
         sa.Column('revocation_reason', sa.String(255), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-
         sa.PrimaryKeyConstraint('id', name=op.f('pk_institutions')),
         sa.UniqueConstraint('name', name=op.f('uq_institutions_name')),
         sa.CheckConstraint("status IN ('active', 'inactive', 'suspended', 'revoked')", name='ck_institutions_status'),
@@ -52,9 +43,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_institutions_created_at'), 'institutions', ['created_at'], unique=False)
     op.create_index('ix_institutions_name_status', 'institutions', ['name', 'status'], unique=False)
 
-    # =================================================================
-    # TABELA: documents
-    # =================================================================
     op.create_table(
         'documents',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -73,7 +61,6 @@ def upgrade() -> None:
         sa.Column('revoked_by', sa.String(100), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-
         sa.PrimaryKeyConstraint('id', name=op.f('pk_documents')),
         sa.UniqueConstraint('doc_id', name=op.f('uq_documents_doc_id')),
         sa.UniqueConstraint('doc_hash', name=op.f('uq_documents_doc_hash')),
@@ -91,6 +78,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Remove schema na ordem correta."""
     op.drop_table('documents')
     op.drop_table('institutions')
