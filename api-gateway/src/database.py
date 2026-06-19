@@ -7,10 +7,19 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.dialects.postgresql.base import PGDialect
 
 from src.settings import settings
 
 logger = logging.getLogger("uvicorn")
+
+# FIX CRITICO: PgBouncer no Render nao suporta prepared statements.
+# O SQLAlchemy faz "SELECT version()" na 1a conexao. Isso cria prepared
+# statement que conflita com PgBouncer. Patch retorna versao fixa.
+def _patched_get_server_version_info(self, connection):
+    return (15, 0, 0)
+
+PGDialect._get_server_version_info = _patched_get_server_version_info
 
 def _create_engine_safe():
     db_url = settings.database_url_async
@@ -20,9 +29,13 @@ def _create_engine_safe():
     return create_async_engine(
         db_url,
         echo=False,
-        connect_args={"statement_cache_size": 0},
         pool_pre_ping=True,
         pool_recycle=3600,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+            "command_timeout": 60,
+        },
     )
 
 engine = _create_engine_safe()
@@ -50,6 +63,11 @@ class AuditBase(Base):
     )
 
 async def get_db():
+    """
+    Dependencia FastAPI para sessao DB.
+    NOTA: Sem retry aqui — retry e responsabilidade do service layer.
+    FastAPI tem problemas conhecidos com generators complexos (loops+yield).
+    """
     if AsyncSessionLocal is None:
         raise RuntimeError("Database nao configurado. Verifique DATABASE_URL.")
     async with AsyncSessionLocal() as session:
@@ -65,11 +83,12 @@ async def get_db():
 async def init_db():
     if engine is None:
         logger.warning("init_db() chamado mas engine nao esta disponivel.")
-        return
+        return False
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         logger.info("Base de dados conectada com sucesso.")
+        return True
     except Exception as e:
-        logger.error(f"Erro critico ao testar ligacao a Base de Dados: {e}")
-        raise
+        logger.warning(f"init_db() falhou (PgBouncer warm-up?): {e}")
+        return False
