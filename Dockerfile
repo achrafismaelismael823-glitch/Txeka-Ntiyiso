@@ -1,5 +1,5 @@
 # TXEKA NTIYISO - API container
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Metadados da imagem
 LABEL maintainer="Txeka Ntiyiso Team <contato@txekantiyiso.mz>"
