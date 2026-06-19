@@ -21,7 +21,7 @@ COPY pyproject.toml poetry.lock* ./
 # Instala dependências Python
 RUN pip install --no-cache-dir poetry && \
     poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --no-dev
+    poetry install --no-interaction --no-ansi --only main
 
 
 COPY . .
@@ -34,7 +34,7 @@ ENV PYTHONUNBUFFERED=1
 ENV ENVIRONMENT=production
 ENV PATH="/root/.local/bin:$PATH"
 
-# Healthcheck igual docker-compose
+# Healthcheck igual docker-composeAe da
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=30s \
     CMD curl -f http://localhost:8000/health || exit 1
 
