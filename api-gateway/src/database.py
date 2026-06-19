@@ -8,10 +8,19 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.dialects.postgresql.base import PGDialect
 
 from src.settings import settings
 
 logger = logging.getLogger("uvicorn")
+
+# FIX CRITICO: PgBouncer no Render nao suporta prepared statements.
+# O SQLAlchemy faz "SELECT version()" na 1a conexao. Isso cria prepared
+# statement que conflita com PgBouncer. Patch retorna versao fixa.
+def _patched_get_server_version_info(self, connection):
+    return (15, 0, 0)
+
+PGDialect._get_server_version_info = _patched_get_server_version_info
 
 def _create_engine_safe():
     db_url = settings.database_url_async
@@ -55,6 +64,11 @@ class AuditBase(Base):
     )
 
 async def get_db():
+    """
+    Dependencia FastAPI para sessao DB.
+    NOTA: Sem retry aqui — retry e responsabilidade do service layer.
+    FastAPI tem problemas conhecidos com generators complexos (loops+yield).
+    """
     if AsyncSessionLocal is None:
         raise RuntimeError("Database nao configurado. Verifique DATABASE_URL.")
     max_retries = 3
