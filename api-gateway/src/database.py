@@ -2,6 +2,7 @@
 TXEKA NTIYISO API - DATABASE
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, text
@@ -20,9 +21,13 @@ def _create_engine_safe():
     return create_async_engine(
         db_url,
         echo=False,
-        connect_args={"statement_cache_size": 0},
         pool_pre_ping=True,
         pool_recycle=3600,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+            "command_timeout": 60,
+        },
     )
 
 engine = _create_engine_safe()
@@ -52,24 +57,33 @@ class AuditBase(Base):
 async def get_db():
     if AsyncSessionLocal is None:
         raise RuntimeError("Database nao configurado. Verifique DATABASE_URL.")
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+    max_retries = 3
+    for attempt in range(max_retries):
+        async with AsyncSessionLocal() as session:
+            try:
+                yield session
+                await session.commit()
+                return
+            except Exception as e:
+                await session.rollback()
+                if attempt < max_retries - 1:
+                    wait = 2 ** attempt
+                    logger.warning(f"DB retry {attempt+1}/{max_retries} em {wait}s: {e}")
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+            finally:
+                await session.close()
 
 async def init_db():
     if engine is None:
         logger.warning("init_db() chamado mas engine nao esta disponivel.")
-        return
+        return False
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         logger.info("Base de dados conectada com sucesso.")
+        return True
     except Exception as e:
-        logger.error(f"Erro critico ao testar ligacao a Base de Dados: {e}")
-        raise
+        logger.warning(f"init_db() falhou (PgBouncer warm-up?): {e}")
+        return False
