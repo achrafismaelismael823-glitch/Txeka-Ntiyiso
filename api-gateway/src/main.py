@@ -72,6 +72,3 @@ async def root():
         }
     }
 
-# TEMPORARIO: Endpoint de reset do banco
-from src.admin_reset import router as admin_router
-app.include_router(admin_router)
