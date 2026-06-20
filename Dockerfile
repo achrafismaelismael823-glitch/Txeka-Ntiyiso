@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir poetry && \
 COPY . .
 
 # Porta da API
+
 EXPOSE 8000
 
 # Variáveis de ambiente
