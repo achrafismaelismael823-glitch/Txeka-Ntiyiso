@@ -2,6 +2,7 @@
 TXEKA NTIYISO API - DATABASE
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, text
@@ -70,15 +71,23 @@ async def get_db():
     """
     if AsyncSessionLocal is None:
         raise RuntimeError("Database nao configurado. Verifique DATABASE_URL.")
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+    max_retries = 3
+    for attempt in range(max_retries):
+        async with AsyncSessionLocal() as session:
+            try:
+                yield session
+                await session.commit()
+                return
+            except Exception as e:
+                await session.rollback()
+                if attempt < max_retries - 1:
+                    wait = 2 ** attempt
+                    logger.warning(f"DB retry {attempt+1}/{max_retries} em {wait}s: {e}")
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+            finally:
+                await session.close()
 
 async def init_db():
     if engine is None:
