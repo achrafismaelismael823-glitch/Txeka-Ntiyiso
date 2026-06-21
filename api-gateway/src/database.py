@@ -15,8 +15,6 @@ from src.settings import settings
 logger = logging.getLogger("uvicorn")
 
 # FIX CRITICO: PgBouncer no Render nao suporta prepared statements.
-# O SQLAlchemy faz "SELECT version()" na 1a conexao. Isso cria prepared
-# statement que conflita com PgBouncer. Patch retorna versao fixa.
 def _patched_get_server_version_info(self, connection):
     return (15, 0, 0)
 
@@ -66,28 +64,20 @@ class AuditBase(Base):
 async def get_db():
     """
     Dependencia FastAPI para sessao DB.
-    NOTA: Sem retry aqui — retry e responsabilidade do service layer.
-    FastAPI tem problemas conhecidos com generators complexos (loops+yield).
+    NOTA: Retry e responsabilidade do service layer.
     """
     if AsyncSessionLocal is None:
         raise RuntimeError("Database nao configurado. Verifique DATABASE_URL.")
-    max_retries = 3
-    for attempt in range(max_retries):
-        async with AsyncSessionLocal() as session:
-            try:
-                yield session
-                await session.commit()
-                return
-            except Exception as e:
-                await session.rollback()
-                if attempt < max_retries - 1:
-                    wait = 2 ** attempt
-                    logger.warning(f"DB retry {attempt+1}/{max_retries} em {wait}s: {e}")
-                    await asyncio.sleep(wait)
-                else:
-                    raise
-            finally:
-                await session.close()
+    
+    session = AsyncSessionLocal()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 async def init_db():
     if engine is None:
