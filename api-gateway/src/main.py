@@ -8,9 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
 
-from src.database import init_db
 from src.database import init_db, engine
-from src.routes import emission_routes, verify, revocation
+from src.routes import emission_routes, verify, revocation, audit_routes
 from src.exceptions import TxekaNtiyisoException, txeka_exception_handler
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -46,31 +45,32 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-API-Key", "Accept"]
 )
 
+
 @app.on_event("startup")
 async def startup():
-    logger.info("Iniciando ciclo de vida da aplicação...")
-   
+    logger.info("Application startup initiated")
+    
     db_ok = await init_db()
     if db_ok:
-        logger.info("Base de dados conectada e pronta.")
+        logger.info("Database connected and ready")
     else:
-        logger.warning("Base de dados indisponivel no startup. Health check vai monitorar.")
+        logger.warning("Database unavailable at startup. Health check will monitor.")
+
 
 API_PREFIX = "/api/v1"
 
 app.include_router(emission_routes.router, prefix=API_PREFIX)
 app.include_router(verify.router, prefix=API_PREFIX)
 app.include_router(revocation.router, prefix=API_PREFIX)
+app.include_router(audit_routes.router, prefix=API_PREFIX)
 
 logger.info(f"Routes registered with prefix: {API_PREFIX}")
 
 
 @app.get("/health")
 async def health_check():
-    db_status = "connected" if engine else "disconnected"
     return {
         "status": "online",
-        "database": db_status,
         "project": "Txeka Ntiyiso",
         "version": "1.0.0",
         "environment": os.getenv("ENVIRONMENT", "production"),
