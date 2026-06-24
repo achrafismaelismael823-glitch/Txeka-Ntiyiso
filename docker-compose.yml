@@ -1,3 +1,9 @@
+# ============================================================
+# TXEKA NTIYISO - Docker Compose
+# Ambiente de Desenvolvimento e Produção
+# Fuso horário: CAT (UTC+2) - Moçambique
+# ============================================================
+
 version: '3.9'
 
 services:
@@ -5,20 +11,35 @@ services:
     image: postgres:15-alpine
     container_name: txeka-ntiyiso-db
     restart: unless-stopped
+    
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: txeka_ntiyiso
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-txeka_ntiyiso}
+      TZ: Africa/Maputo
+      PGTZ: Africa/Maputo
+    
     ports:
       - "5432:5432"
+    
     volumes:
       - txeka-data:/var/lib/postgresql/data
+    
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d txeka_ntiyiso"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-txeka_ntiyiso}"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    
+    networks:
+      - txeka-network
 
   api:
     build:
@@ -26,39 +47,65 @@ services:
       dockerfile: Dockerfile
     container_name: txeka-ntiyiso-api
     restart: unless-stopped
+    
     ports:
       - "8000:8000"
+    
     environment:
-      ENVIRONMENT: development
-      DEBUG: "true"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-true}
       PYTHONUNBUFFERED: "1"
-      LOG_LEVEL: INFO
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/txeka_ntiyiso
-      SECRET_KEY: dev-secret-key-change-in-prod
-      ALLOW_ANONYMOUS: "true"
-      BASE_URL: http://localhost:8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: Africa/Maputo
+      LANG: pt_MZ.UTF-8
+      LC_ALL: pt_MZ.UTF-8
+      
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/txeka_ntiyiso}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-prod}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-TXEKA-NTIYISO-2026-k3ab9sGze6Igc1u8Q5@i+j0#0KX0rBzj}
+      ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS:-false}
+      BASE_URL: ${BASE_URL:-http://localhost:8000}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
+      RATE_LIMIT_PERIOD_SECONDS: ${RATE_LIMIT_PERIOD_SECONDS:-60}
+    
     volumes:
-      - .:/app
+      - .:/app:ro
+      - txeka-logs:/app/logs
+    
     command: >
-      sh -c "poetry install --no-root &&
-             alembic upgrade head &&
-             uvicorn api-gateway.src.main:app --host 0.0.0.0 --port 8000 --reload"
+      sh -c "cd /app/api-gateway &&
+             poetry run alembic upgrade head &&
+             poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    
     networks:
       - txeka-network
+    
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
 
 networks:
   txeka-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
   txeka-data:
+    driver: local
+  txeka-logs:
     driver: local
