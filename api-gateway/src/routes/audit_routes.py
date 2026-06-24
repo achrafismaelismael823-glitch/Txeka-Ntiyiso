@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
-from src.security import verify_scopes
+from src.security import verify_role
 from src.services.audit_service import AuditService
 
 router = APIRouter(
@@ -23,7 +23,7 @@ router = APIRouter(
 )
 
 
-@router.get("/logs", dependencies=[Depends(verify_scopes(["admin"]))])
+@router.get("/logs", dependencies=[Depends(verify_role("admin"))])
 async def get_audit_logs(
     action: Optional[str] = Query(None, description="Filtrar por acao: EMIT, VERIFY, REVOKE, LOGIN, EXPORT"),
     resource_type: Optional[str] = Query(None, description="Filtrar por tipo: DOCUMENT, CERTIFICATE, INSTITUTION"),
@@ -67,7 +67,7 @@ async def get_audit_logs(
     }
 
 
-@router.get("/document/{doc_hash}/history", dependencies=[Depends(verify_scopes(["admin"]))])
+@router.get("/document/{doc_hash}/history", dependencies=[Depends(verify_role("admin"))])
 async def get_document_audit_history(
     doc_hash: str,
     db: AsyncSession = Depends(get_db),
@@ -96,7 +96,7 @@ async def get_document_audit_history(
     }
 
 
-@router.get("/stats", dependencies=[Depends(verify_scopes(["admin"]))])
+@router.get("/stats", dependencies=[Depends(verify_role("admin"))])
 async def get_audit_stats(
     institution_id: Optional[str] = Query(None, description="Filtrar por instituicao"),
     start_date: Optional[str] = Query(None, description="Data inicio (ISO 8601)"),
