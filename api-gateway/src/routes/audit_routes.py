@@ -1,7 +1,6 @@
 """
-TXEKA NTIYISO API - AUDIT ROUTES
-Endpoints para consulta de logs de auditoria (conformidade legal).
-Acesso restrito a administradores e autoridades.
+Audit Routes — Consulta de logs de auditoria.
+🇲🇿 Txeka Ntiyiso: acesso restrito a administradores.
 """
 
 from typing import Optional
@@ -35,16 +34,7 @@ async def get_audit_logs(
     offset: int = Query(0, ge=0, description="Offset para paginacao"),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Consulta logs de auditoria com filtros.
-    
-    **Acesso restrito a administradores.**
-    
-    Conformidade: Decreto 59/2019 — autoridades podem requisitar registros
-    de auditoria para investigacao.
-    
-    Timestamps em CAT (UTC+2) - horario de Mocambique.
-    """
+    """Consulta logs de auditoria com filtros. Acesso admin."""
     logs = await AuditService.get_logs(
         session=db,
         action=action,
@@ -72,16 +62,7 @@ async def get_document_audit_history(
     doc_hash: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Retorna historico completo de auditoria de um documento.
-    
-    **Acesso restrito a administradores.**
-    
-    Conformidade: Lei 3/2017 — rastreabilidade completa do ciclo de vida
-    do documento digital.
-    
-    Timestamps em CAT (UTC+2) - horario de Mocambique.
-    """
+    """Histórico completo de auditoria de um documento. Acesso admin."""
     logs = await AuditService.get_document_history(
         session=db,
         doc_hash=doc_hash,
@@ -103,13 +84,7 @@ async def get_audit_stats(
     end_date: Optional[str] = Query(None, description="Data fim (ISO 8601)"),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Estatisticas de auditoria para dashboards administrativos.
-    
-    **Acesso restrito a administradores.**
-    
-    Timestamps em CAT (UTC+2) - horario de Mocambique.
-    """
+    """Estatísticas de auditoria para dashboards. Acesso admin."""
     return {
         "success": True,
         "period": {
