@@ -1,14 +1,6 @@
 """
-Verification Routes - Endpoints públicos para autenticação de documentos via Hash.
-
-  Contexto Txeka Ntiyiso:
-    Qualquer cidadão pode verificar a autenticidade de um documento
-    sem necessidade de autenticação. Este é um dos pilares da
-    transparência e confiança no sistema nacional de certificação.
-
-  Endpoints:
-    - GET /verify/{doc_hash}: Verificação via URL (QR code, links)
-    - POST /verify: Verificação via JSON (integrações B2B/B2G)
+Verification Routes — Verificação pública de documentos via hash.
+🇲🇿 Txeka Ntiyiso: GET para QR code/links, POST para B2B/B2G.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -27,24 +19,14 @@ async def verify_document_get(
     req: Request,
     db: AsyncSession = Depends(get_db),
 ) -> VerifyResponse:
-    """
-    Verifica a autenticidade de um documento via URL (público).
-    
-     Casos de uso:
-        - Cidadão escaneia QR code no documento físico
-        - Link compartilhado via WhatsApp/email
-        - Verificação em portal público do Txeka Ntiyis
-    """
-    #  Validação do hash — deve ter exatamente 64 caracteres hex
+    """Verificação pública via URL (QR code, WhatsApp, etc.)."""
     if len(doc_hash) != 64:
         raise HTTPException(status_code=400, detail="Hash SHA-256 deve ter 64 caracteres.")
     
-    #  Verificação no serviço de negócio
     service = VerificationService(db)
     result = await service.verify_document(doc_hash.lower())
     
-    # REGISTRAR AUDITORIA — Verificação pública GET
-    # Nota: Acesso anónimo por design (transparência governamental)
+    # Audit log
     await AuditService.log_verify(
         session=db,
         user_email="anonymous",
@@ -65,19 +47,11 @@ async def verify_document_post(
     req: Request,
     db: AsyncSession = Depends(get_db),
 ) -> VerifyResponse:
-    """
-    Verifica a autenticidade de um documento via JSON (B2B/B2G).
-    
-     Casos de uso:
-        - Integração com sistemas bancários (KYC)
-        - Validação em portais governamentais
-        - APIs de terceiros autorizados
-        
-    """
+    """Verificação B2B/B2G via JSON (bancos, portais gov, APIs)."""
     service = VerificationService(db)
     result = await service.verify_document(request.hash.lower())
     
-    #  REGISTRAR AUDITORIA — Verificação B2B/B2G POST
+    # Audit log
     await AuditService.log_verify(
         session=db,
         user_email="anonymous",
