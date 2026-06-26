@@ -9,6 +9,7 @@ from sqlalchemy.future import select
 from src.models.models import Document
 from src.database import get_db
 from src.models.emission import EmitResponse
+from src.models.audit_log import now_cat
 from src.core.qr_generator import gerar_qr_code
 from src.security import verify_token
 from src.services.emission_service import EmissionService
@@ -92,6 +93,7 @@ async def emit_document(
             hash_sha256=doc_record.doc_hash,
             qr_code=qr_code_base64,
             certificate_url=result["certificate_url"],
+            timestamp=now_cat().isoformat(),
             message=f"Documento emitido com sucesso. Creditos restantes: {result['credits_remaining']}"
         )
     except TxekaNtiyisoException as e:
