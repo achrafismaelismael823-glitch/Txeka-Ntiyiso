@@ -1,15 +1,6 @@
 """
-Revocation Routes - Endpoints para revogação de documentos com audit logging.
-
-  Contexto Txeka Ntiyiso:
-    Sistema nacional de certificação digital moçambicano.
-    Cada revogação gera um rastro de auditoria imutável conforme
-    requisitos do INAGE e legislação de documentos digitais.
-
-  Segurança:
-    - Apenas admin ou instituição proprietária pode revogar
-    - Audit logs registram IP, User-Agent e timestamp CAT
-    - Documentos revogados NUNCA são eliminados (soft delete proibido)
+Revocation Routes — Revoga documentos com audit logging imutável.
+🇲🇿 Txeka Ntiyiso: apenas admin ou instituição proprietária pode revogar.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -73,7 +64,7 @@ async def revoke_emission(
         return {
             "status": "already_revoked",
             "doc_id": document.doc_id,
-            "message": f"Documento já se encontrava revogado. Motivo: {document.revoked_reason}"
+            "message": f"Documento já se encontra revogado. Motivo: {document.revoked_reason}"
         }
 
     # Validação RBAC: admin pode tudo, instituição só os seus documentos
