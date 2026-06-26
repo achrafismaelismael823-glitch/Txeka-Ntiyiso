@@ -46,7 +46,7 @@ async def verify_document_post(
     req: Request,
     db: AsyncSession = Depends(get_db),
 ) -> VerifyResponse:
-    """Verifica a autenticidade via JSON (público)."""
+    """Verifica a autenticidade via JSON (B2B/B2G - integrações empresariais e governo)."""
     service = VerificationService(db)
     result = await service.verify_document(request.hash.lower())
     
