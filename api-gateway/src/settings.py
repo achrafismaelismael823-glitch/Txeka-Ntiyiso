@@ -1,10 +1,9 @@
-"""
-TXEKA NTIYISO API - SETTINGS
-"""
+"""Settings — configuração centralizada da API."""
 
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import PostgresDsn, SecretStr
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -41,6 +40,7 @@ class Settings(BaseSettings):
 
     @property
     def database_url_async(self) -> str:
+        """Converte URL para asyncpg."""
         url = str(self.DATABASE_URL)
         if url.startswith("postgresql://") and "asyncpg" not in url:
             url = url.replace("postgresql://", "postgresql+asyncpg://")
@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     @property
     def database_url_sync(self) -> str:
+        """Converte URL para driver síncrono."""
         url = str(self.DATABASE_URL)
         if "asyncpg" in url:
             url = url.replace("postgresql+asyncpg://", "postgresql://")
