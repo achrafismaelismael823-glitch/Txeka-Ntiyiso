@@ -45,22 +45,8 @@ async def revoke_emission(
         Um documento revogado mantém-se na base de dados como
         "revoked=true" para preservar o histórico legal.
         NUNCA é eliminado fisicamente (soft delete proibido).
-    
-    Args:
-        doc_id: Identificador único do documento (ex: DUAT-INAGE-20260626-XXXXXX)
-        request: Payload com motivo da revogação (máx 255 chars)
-        req: Request object para extrair metadados (IP, User-Agent)
-        db: AsyncSession do SQLAlchemy
-        current_user: Dict com claims do JWT (email, role, id, institution)
-    
-    Returns:
-        Dict com status "revoked" ou "already_revoked", doc_id e timestamp CAT
-    
-    Raises:
-        HTTPException 404: Documento não encontrado na base de dados
-        HTTPException 403: Utilizador sem permissão (instituição diferente e não-admin)
-    
-      Nota técnica:
+  
+     Nota técnica:
         O email é extraído do claim "email" do JWT, com fallback para "sub"
         caso o token seja legado ou de integração B2B/B2G.
     """
@@ -109,7 +95,7 @@ async def revoke_emission(
     document.revoked = True
     document.revoked_at = datetime.now(CAT)
     document.revoked_reason = request.reason
-    document.revoked_by = current_user.get("id")  # UUID do utilizador do JWT
+    document.revoked_by = current_user.get("id")  
 
     await db.commit()
     
