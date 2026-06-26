@@ -37,10 +37,10 @@ async def revoke_emission(
         raise HTTPException(status_code=404, detail=f"Documento {doc_id_decoded} não encontrado")
 
     if document.revoked:
-        # Registrar tentativa de revogação de documento já revogado
+        # Registra tentativas de revogação de documentos já revogado
         await AuditService.log_revoke(
             session=db,
-            user_email=current_user.get("sub", "unknown"),
+            user_email=current_user.get("email", "unknown"),  # ← CORRIGIDO: "sub" → "email"
             doc_hash=document.doc_hash,
             institution_id=document.institution_id,
             request=req,
@@ -54,12 +54,12 @@ async def revoke_emission(
             "message": f"Documento já se encontrava revogado. Motivo: {document.revoked_reason}"
         }
 
-    # Validação de permissões da Instituição ou Admin
+    # Valida permissões de Instituição ou Admin
     if current_user.get("institution") != document.institution_id and current_user.get("role") != "admin":
         # Registrar tentativa de revogação não autorizada
         await AuditService.log_revoke(
             session=db,
-            user_email=current_user.get("sub", "unknown"),
+            user_email=current_user.get("email", "unknown"),  
             doc_hash=document.doc_hash,
             institution_id=document.institution_id,
             request=req,
@@ -76,10 +76,10 @@ async def revoke_emission(
 
     await db.commit()
     
-    # ✅ REGISTRAR AUDITORIA — Revogação bem-sucedida
+    # REGISTRAR AUDITORIA 
     await AuditService.log_revoke(
         session=db,
-        user_email=current_user.get("sub", "unknown"),
+        user_email=current_user.get("email", "unknown"), 
         doc_hash=document.doc_hash,
         institution_id=document.institution_id,
         request=req,
