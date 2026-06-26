@@ -72,7 +72,7 @@ async def emit_document(
         # ✅ REGISTRAR AUDITORIA — Emissão bem-sucedida
         await AuditService.log_emit(
             session=db,
-            user_email=current_user.get("sub", "unknown"),
+            user_email=current_user.get("email", "unknown"),
             doc_hash=doc_record.doc_hash,
             institution_id=institution_id,
             request=req,
@@ -98,7 +98,7 @@ async def emit_document(
         # Registrar falha de emissão na auditoria
         await AuditService.log_emit(
             session=db,
-            user_email=current_user.get("sub", "unknown"),
+            user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
             institution_id=institution_id,
             request=req,
@@ -128,7 +128,7 @@ async def emit_document_bulk(
         for doc in result.get("documents", []):
             await AuditService.log_emit(
                 session=db,
-                user_email=current_user.get("sub", "unknown"),
+                user_email=current_user.get("email", "unknown"),
                 doc_hash=doc.get("hash_sha256", "unknown"),
                 institution_id=payload.institution_id,
                 request=req,
@@ -146,7 +146,7 @@ async def emit_document_bulk(
         # Registrar falha de bulk emission na auditoria
         await AuditService.log_emit(
             session=db,
-            user_email=current_user.get("sub", "unknown"),
+            user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
             institution_id=payload.institution_id,
             request=req,

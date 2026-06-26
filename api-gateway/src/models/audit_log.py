@@ -54,6 +54,17 @@ class AuditLog(Base):
     )
     
     def to_dict(self) -> dict:
+        def to_cat(dt):
+            """Converte datetime para CAT (UTC+2) com formato ISO."""
+            if dt is None:
+                return None
+            # Se nao tem timezone, assume UTC (como PostgreSQL guarda)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            # Converte para CAT (UTC+2)
+            cat_dt = dt.astimezone(CAT)
+            return cat_dt.isoformat()
+        
         return {
             "id": str(self.id),
             "user_email": self.user_email,
@@ -67,6 +78,6 @@ class AuditLog(Base):
             "status_code": self.status_code,
             "success": self.success,
             "details": self.details,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "timestamp": to_cat(self.timestamp),
+            "created_at": to_cat(self.created_at),
         }
