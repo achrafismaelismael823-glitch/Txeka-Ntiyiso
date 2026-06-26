@@ -33,18 +33,7 @@ async def verify_document_get(
      Casos de uso:
         - Cidadão escaneia QR code no documento físico
         - Link compartilhado via WhatsApp/email
-        - Verificação em portal público do INAGE
-    
-    Args:
-        doc_hash: Hash SHA-256 do documento (64 caracteres hex)
-        req: Request object para metadados (IP, User-Agent)
-        db: Sessão async do SQLAlchemy
-    
-    Returns:
-        VerifyResponse com status (VALID/INVALID/REVOKED) e dados públicos
-    
-    Raises:
-        HTTPException 400: Hash com formato inválido
+        - Verificação em portal público do Txeka Ntiyis
     """
     #  Validação do hash — deve ter exatamente 64 caracteres hex
     if len(doc_hash) != 64:
@@ -83,14 +72,7 @@ async def verify_document_post(
         - Integração com sistemas bancários (KYC)
         - Validação em portais governamentais
         - APIs de terceiros autorizados
-    
-    Args:
-        request: Payload JSON com o hash do documento
-        req: Request object para metadados
-        db: Sessão async do SQLAlchemy
-    
-    Returns:
-        VerifyResponse com status e dados públicos do documento
+        
     """
     service = VerificationService(db)
     result = await service.verify_document(request.hash.lower())
