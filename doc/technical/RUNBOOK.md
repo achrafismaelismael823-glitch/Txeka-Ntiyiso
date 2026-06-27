@@ -2,155 +2,313 @@
 
 ## Runbook de Operações — Txeka Ntiyiso
 
-Procedimentos operacionais, troubleshooting e resposta a incidentes para a equipa DevOps.
+**Procedimentos Operacionais, Troubleshooting e Resposta a Incidentes**
 
 ---
 
-## 1. Checklist Diário (5 minutos)
+## Índice
+
+1. [Checklist Diário](#checklist-diário)
+2. [Checklist Semanal](#checklist-semanal)
+3. [Checklist Mensal](#checklist-mensal)
+4. [Procedimentos Comuns](#procedimentos-comuns)
+5. [Troubleshooting](#troubleshooting)
+6. [Manutenção Programada](#manutenção-programada)
+7. [Resposta a Incidentes](#resposta-a-incidentes)
+8. [Contactos de Emergência](#contactos-de-emergência)
+9. [Comandos de Referência Rápida](#comandos-de-referência-rápida)
+
+---
+
+## Checklist Diário
+
+### Verificação de Saúde (5 minutos)
+
+Execute no terminal ou via script automatizado:
 
 ```bash
 #!/bin/bash
-# /opt/txeka/daily-check.sh
+# /opt/txeka/scripts/daily-health-check.sh
 
-echo "=== TXEKA NTIYISO — Checklist Diário $(date) ==="
+echo "=== Txeka Ntiyiso — Health Check Diário ==="
+echo "Data: $(date)"
+echo ""
 
-# 1. Health Check API
-curl -s https://txeka-ntiyiso-api.onrender.com/health | jq .
+# 1. Health check da API
+echo "[1/5] Verificando API..."
+HEALTH=$(curl -s http://localhost:8000/health)
+echo "  Status: $(echo $HEALTH | jq -r '.status')"
+echo "  Versão: $(echo $HEALTH | jq -r '.version')"
+echo "  Ambiente: $(echo $HEALTH | jq -r '.environment')"
+echo ""
 
-# 2. Status dos containers (se on-premise)
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+# 2. Status dos containers
+echo "[2/5] Containers..."
+docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+echo ""
 
-# 3. Uso de disco
+# 3. Logs recentes (últimas 24h)
+echo "[3/5] Logs recentes..."
+docker logs --since 24h txeka-ntiyiso-api 2>&1 | grep -i "error\\|critical" | tail -5
+echo ""
+
+# 4. Verificação de backup
+echo "[4/5] Backup..."
+if [ -f "/var/backups/txeka/db_$(date +%Y%m%d)*.sql.gz" ]; then
+    echo "  ✅ Backup de hoje encontrado"
+else
+    echo "  ⚠️  Backup de hoje NÃO encontrado"
+fi
+echo ""
+
+# 5. Espaço em disco
+echo "[5/5] Espaço em disco..."
 df -h | grep -E "(Filesystem|/dev/)"
+echo ""
 
-# 4. Logs de erro nas últimas 24h
-docker logs --since 24h txeka-ntiyiso-api 2>&1 | grep -i "error\|critical" | tail -5
-
-# 5. Conexões ativas à BD
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT count(*) FROM pg_stat_activity;"
-
-echo "=== Checklist concluído ==="
+echo "=== Health Check Concluído ==="
 ```
 
-| # | Item | Comando | Threshold |
-|---|------|---------|-----------|
-| 1 | Health Check API | `curl /health` | Status = `online` |
-| 2 | Containers ativos | `docker ps` | `txeka-ntiyiso-api` + `txeka-ntiyiso-db` = `Up` |
-| 3 | Uso de disco | `df -h` | < 80% |
-| 4 | Erros nas últimas 24h | `docker logs --since 24h` | 0 erros críticos |
-| 5 | Conexões BD | `pg_stat_activity` | < 80% do máximo |
+**Indicadores Esperados:**
 
----
+| Métrica | Valor Esperado | Ação se Fora do Esperado |
+|---------|---------------|--------------------------|
+| Health status | `online` | Investigar imediatamente |
+| Containers | `txeka-ntiyiso-api` + `txeka-ntiyiso-db` = `Up` | `docker-compose restart` |
+| Latência média | < 100ms | Verificar carga do sistema |
+| Taxa de erro | < 0.1% | Analisar logs de erro |
+| Espaço em disco | > 20% livre | Limpar logs/backups antigos |
+| Backup | Arquivo existe | Executar backup manual |
 
-## 2. Checklist Semanal (30 minutos)
-
-| # | Item | Comando | Nota |
-|---|------|---------|------|
-| 1 | Backup automático | `ls -la /var/backups/txeka/` | Verificar ficheiros gerados |
-| 2 | Rotação de logs | `docker system df` | Limpar se > 5GB |
-| 3 | Atualizações de segurança | `apt list --upgradable` | Aplicar patches críticos |
-| 4 | Certificado SSL | `echo | openssl s_client -servername api.txeka.co.mz -connect api.txeka.co.mz:443 2>/dev/null | openssl x509 -noout -dates` | Validade > 30 dias |
-| 5 | Métricas de performance | `docker stats --no-stream` | CPU < 80%, MEM < 80% |
-| 6 | Teste de restore | Restaurar BD de backup em ambiente de teste | Validação mensal |
-| 7 | Revisão de acessos | `docker exec txeka-ntiyiso-db psql -U postgres -c "\du"` | Verificar roles |
-| 8 | Documentação de incidentes | Revisar ficheiro `/var/log/txeka-incidents.log` | Atualizar se necessário |
-
----
-
-## 3. Checklist Mensal (2 horas)
-
-| # | Item | Ação |
-|---|------|------|
-| 1 | Manutenção PostgreSQL | `VACUUM ANALYZE` + rebuild índices |
-| 2 | Revisão de firewall | `ufw status verbose` — confirmar portas |
-| 3 | Teste de disaster recovery | Simular falha de servidor + restore |
-| 4 | Revisão de segredos | Rotação de `SECRET_KEY` e `JWT_SECRET_KEY` |
-| 5 | Atualização de imagens Docker | `docker-compose pull && docker-compose up -d` |
-| 6 | Relatório de conformidade | Exportar métricas de auditoria para arquivo |
-| 7 | Revisão de acessos administrativos | Confirmar lista de admins ativos |
-| 8 | Teste de rate limiting | `ab -n 1000 -c 10 https://api.txeka.co.mz/health` |
-
----
-
-## 4. Procedimentos Comuns
-
-### 4.1 Reiniciar a API
+### Verificação de Backup (Produção Nacional)
 
 ```bash
-# On-premise (Docker)
+# Verificar último backup
+ls -la /var/backups/txeka/ | tail -5
+
+# Verificar integridade do backup mais recente
+LATEST=$(ls -t /var/backups/txeka/*.sql.gz | head -1)
+gunzip -t "$LATEST" && echo "✅ Backup íntegro" || echo "❌ Backup corrompido"
+
+# Verificar tamanho (deve ser > 1MB para bases não vazias)
+SIZE=$(stat -c%s "$LATEST")
+if [ $SIZE -gt 1048576 ]; then
+    echo "✅ Tamanho adequado: $(numfmt --to=iec $SIZE)"
+else
+    echo "⚠️  Tamanho suspeito: $(numfmt --to=iec $SIZE)"
+fi
+```
+
+---
+
+## Checklist Semanal
+
+### Manutenção Preventiva (30 minutos)
+
+- [ ] Revisar logs de erro da semana (`docker logs txeka-ntiyiso-api 2>&1 | grep -i error`)
+- [ ] Verificar tentativas de acesso não autorizado (`grep 401 /var/log/nginx/access.log`)
+- [ ] Analisar padrões de rate limiting (`grep 429 /var/log/nginx/access.log`)
+- [ ] Verificar certificado SSL (expiração < 30 dias?)
+- [ ] Testar restore de backup em ambiente de staging
+- [ ] Revisar métricas de performance (latência P95, P99)
+- [ ] Verificar espaço em disco de todos os volumes
+- [ ] Atualizar dependências de segurança (`pip audit`)
+
+### Comandos Semanais
+
+```bash
+# Revisar erros
+docker logs txeka-ntiyiso-api 2>&1 | grep -i "error\\|exception\\|traceback" | tail -20
+
+# Verificar acessos suspeitos
+awk '{print $1}' /var/log/nginx/access.log | sort | uniq -c | sort -nr | head -10
+
+# Verificar expiração do certificado SSL
+openssl x509 -in /etc/nginx/ssl/txeka.crt -noout -dates
+
+# Testar restore (staging)
+LATEST=$(ls -t /var/backups/txeka/*.sql.gz | head -1)
+gunzip < "$LATEST" | docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
+
+# Audit de dependências (dentro do container)
+docker exec txeka-ntiyiso-api sh -c "pip install pip-audit && pip-audit"
+```
+
+---
+
+## Checklist Mensal
+
+### Manutenção Profunda (2 horas)
+
+- [ ] Executar `VACUUM ANALYZE` na base de dados PostgreSQL
+- [ ] Reindexar tabelas críticas (`REINDEX TABLE documents; REINDEX TABLE audit_logs;`)
+- [ ] Revisar e atualizar firewall rules (`ufw status verbose`)
+- [ ] Rotação de `JWT_SECRET_KEY` (se trimestral, verificar calendário)
+- [ ] Revisão de acessos: remover utilizadores inativos > 90 dias
+- [ ] Teste completo de disaster recovery (RTO 4h, RPO 15min)
+- [ ] Revisar documentação de runbook (atualizar procedimentos)
+- [ ] Reunião de revisão de incidentes do mês
+
+### Comandos Mensais
+
+```bash
+# Manutenção PostgreSQL
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "VACUUM ANALYZE;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE documents;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE audit_logs;"
+
+# Verificar fragmentação
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT schemaname, tablename,
+       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
+       pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) AS table_size
+FROM pg_tables
+WHERE schemaname='public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+"
+
+# Revisar utilizadores inativos (futuro — tabela users)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT email, last_login, NOW() - last_login AS inactive_for
+FROM users
+WHERE last_login < NOW() - INTERVAL '90 days'
+ORDER BY last_login;
+"
+```
+
+---
+
+## Procedimentos Comuns
+
+### Reiniciar Serviço API
+
+**Produção Cloud (Render.com):**
+
+1. Aceder ao [Dashboard do Render](https://dashboard.render.com)
+2. Selecionar serviço `txeka-ntiyiso-api`
+3. Clicar **Manual Deploy** (para novo deploy) ou **Restart** (para reinício)
+4. Aguardar health check verde (2-3 minutos)
+
+**Produção Nacional (Docker):**
+
+```bash
+cd /opt/txeka-ntiyiso
+
+# Reiniciar apenas API
 docker-compose restart api
 
 # Verificar logs
 docker-compose logs -f api --tail=50
 
-# Cloud (Render)
-# Dashboard → Manual Deploy → Clear build cache → Deploy
+# Verificar health check (aguardar 30s)
+sleep 30
+curl -f http://localhost:8000/health
 ```
 
-### 4.2 Escalar a Base de Dados
+### Escalar Base de Dados
+
+**Supabase (Cloud):**
+
+1. Dashboard Supabase → Database → Settings
+2. Ajustar **Max Connections** conforme carga (default: 100)
+3. Monitorizar **Active Connections** no painel
+4. Considerar upgrade de plano se > 80% consistente
+
+**PostgreSQL (Nacional — Docker):**
 
 ```bash
-# Aumentar recursos no docker-compose.yml
-# Editar: deploy.resources.limits.memory
+# Verificar conexões ativas
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT count(*) as active_connections
+FROM pg_stat_activity
+WHERE state = 'active';
+"
 
-# Aplicar mudanças
-docker-compose up -d --no-deps --build db
+# Verificar conexões totais
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT count(*) as total_connections
+FROM pg_stat_activity;
+"
 
-# Verificar
-docker stats txeka-ntiyiso-db
+# Ajustar max_connections (requer restart)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "ALTER SYSTEM SET max_connections = 200;"
+docker-compose restart db
+
+# Verificar após restart
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SHOW max_connections;"
 ```
 
-### 4.3 Rotação de Segredos
+### Rotação de Segredos
+
+**JWT Secret Key:**
 
 ```bash
-# 1. Gerar novos segredos
-NEW_SECRET=$(openssl rand -hex 32)
-NEW_JWT=$(openssl rand -hex 32)
+# 1. Gerar nova chave
+NEW_KEY=$(openssl rand -hex 32)
+echo "Nova chave: $NEW_KEY"
 
-# 2. Atualizar .env
-echo "SECRET_KEY=$NEW_SECRET" >> .env
-echo "JWT_SECRET_KEY=$NEW_JWT" >> .env
+# 2. Backup da chave anterior
+cp .env .env.backup.$(date +%Y%m%d)
 
-# 3. Reiniciar serviços
-docker-compose down
-docker-compose up -d
+# 3. Atualizar variável de ambiente
+sed -i "s/JWT_SECRET_KEY=.*/JWT_SECRET_KEY=$NEW_KEY/" .env
 
-# 4. Testar autenticação
-curl -H "Authorization: Bearer <novo_token>" https://api.txeka.co.mz/api/v1/audit/logs
+# 4. Reiniciar serviço
+docker-compose up -d --force-recreate api
+
+# 5. Notificar instituições (todos os tokens ativos serão invalidados)
+# Enviar email: tech@txeka.co.mz
+# Assunto: [MANUTENÇÃO] Rotação de credenciais — re-login necessário
+
+# 6. Verificar
+curl -f http://localhost:8000/health
 ```
 
-### 4.4 Rotação de API Keys (Instituições)
+**Rotação de API Keys (Instituições):**
 
 ```bash
-# 1. Gerar nova key
-NEW_KEY=$(openssl rand -hex 16)
+# 1. Listar API keys ativas (futuro — tabela api_keys)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT institution_id, api_key_created_at, api_key_last_used
+FROM api_keys
+WHERE is_active = true;
+"
 
-# 2. Atualizar na BD
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
-  -c "UPDATE institutions SET api_key = '$NEW_KEY' WHERE id = 'INST_ID';"
+# 2. Gerar nova key para instituição específica
+NEW_KEY=$(openssl rand -hex 32)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+UPDATE api_keys
+SET api_key = '$NEW_KEY',
+    api_key_created_at = NOW(),
+    api_key_last_used = NULL
+WHERE institution_id = 'INAGE';
+"
 
-# 3. Notificar instituição
-# Enviar email para admin da instituição
+# 3. Enviar nova key por canal seguro (email cifrado ou SMS)
+# NUNCA por email não cifrado
 ```
 
 ---
 
-## 5. Troubleshooting
+## Troubleshooting
 
-### 5.1 Erro 502 — Bad Gateway
+### Erro 502 Bad Gateway
 
-**Sintoma:** `curl /health` retorna 502
+**Sintoma:** API não responde, Nginx retorna 502.
 
 **Diagnóstico:**
 ```bash
-# Verificar se API está a correr
-docker ps | grep txeka-ntiyiso-api
+# Verificar se containers estão running
+docker ps | grep txeka-ntiyiso
 
-# Verificar logs
-docker logs txeka-ntiyiso-api --tail=50
+# Verificar logs do API (últimos 100 linhas)
+docker logs txeka-ntiyiso-api --tail=100
 
-# Verificar se porta 8000 está aberta
-ss -tlnp | grep 8000
+# Verificar se porta 8000 está a escutar
+docker exec txeka-ntiyiso-api netstat -tlnp | grep 8000
+
+# Verificar se processo uvicorn está ativo
+docker exec txeka-ntiyiso-api ps aux | grep uvicorn
 
 # Verificar Nginx
 sudo nginx -t
@@ -159,454 +317,632 @@ sudo systemctl status nginx
 
 **Resolução:**
 ```bash
-# Reiniciar API
-docker-compose restart api
+# Caso 1: Container parado
+docker-compose up -d api
 
-# Se persistir: rebuild completo
-docker-compose down
-docker-compose up -d --build
+# Caso 2: Erro de dependência (DB não pronta)
+docker-compose restart
 
-# Verificar Nginx
+# Caso 3: Memória insuficiente (OOM)
+docker system prune -f  # Limpar caches
+docker-compose up -d --force-recreate api
+
+# Caso 4: Porta em conflito
+sudo lsof -i :8000  # Verificar processo a usar porta
+sudo kill -9 <PID>   # Matar processo (se necessário)
+
+# Caso 5: Nginx
+cd /opt/txeka-ntiyiso && docker-compose restart api
 sudo systemctl restart nginx
 ```
 
----
+### Base de Dados Lenta
 
-### 5.2 Base de Dados Lenta
-
-**Sintoma:** Queries > 1s, timeouts
+**Sintoma:** Queries demoram > 500ms, timeout em verificações.
 
 **Diagnóstico:**
 ```bash
-# Verificar conexões ativas
+# Verificar queries lentas (> 100ms)
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
-SELECT pid, state, query_start, query 
-FROM pg_stat_activity 
-WHERE state = 'active' 
-ORDER BY query_start;"
+SELECT query, mean_exec_time, calls
+FROM pg_stat_statements
+WHERE mean_exec_time > 100
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+"
 
-# Verificar locks
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
-SELECT blocked_locks.pid AS blocked_pid,
-       blocked_activity.usename AS blocked_user,
-       blocking_locks.pid AS blocking_pid,
-       blocking_activity.usename AS blocking_user
-FROM pg_catalog.pg_locks blocked_locks
-JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks ON blocking_locks.locktype = blocked_locks.locktype
-JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_activity.pid = blocking_locks.pid
-WHERE blocked_locks.pid != blocking_locks.pid;"
+# Verificar índices existentes
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "\\di"
 
-# Verificar tamanho das tabelas
+# Verificar espaço em disco
+docker exec txeka-ntiyiso-db df -h /var/lib/postgresql/data
+
+# Verificar locks ativos
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
-SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) 
-FROM pg_tables 
-WHERE schemaname='public' 
-ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;"
+SELECT pid, state, query_start, query
+FROM pg_stat_activity
+WHERE state != 'idle'
+ORDER BY query_start;
+"
 ```
 
 **Resolução:**
 ```bash
-# 1. VACUUM ANALYZE
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "VACUUM ANALYZE;"
-
-# 2. Rebuild índices
+# Reindexar tabelas críticas
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE documents;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE audit_logs;"
 
-# 3. Se persistir: aumentar recursos no docker-compose.yml
-# memory: 512M → 1G
+# Vacuum (manutenção PostgreSQL)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "VACUUM ANALYZE;"
+
+# Se disco cheio: expandir volume ou arquivar logs antigos
+find /var/lib/docker/volumes/txeka-logs/_data -name "*.log" -mtime +30 -delete
+find /var/backups/txeka -name "*.sql.gz" -mtime +30 -delete
+
+# Se locks persistentes: cancelar query
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT pg_cancel_backend(<pid>);"
 ```
 
----
+### Erro 429 Rate Limit Exceeded
 
-### 5.3 Erro 429 — Too Many Requests
-
-**Sintoma:** Rate limiting ativado
+**Sintoma:** Clientes reportam "Too Many Requests".
 
 **Diagnóstico:**
 ```bash
-# Verificar logs
-docker logs txeka-ntiyiso-api --tail=100 | grep "429"
+# Verificar logs de rate limiting
+docker logs txeka-ntiyiso-api 2>&1 | grep "429" | tail -20
 
-# Verificar IP bloqueado
-docker logs txeka-ntiyiso-api --tail=100 | grep "rate_limit"
+# Identificar IPs com maior volume
+docker logs txeka-ntiyiso-api 2>&1 | grep "VERIFY" | \\
+  awk '{print $NF}' | sort | uniq -c | sort -nr | head -10
+
+# Verificar padrão temporal (ataque DDoS?)
+docker logs txeka-ntiyiso-api 2>&1 | grep "429" | \\
+  awk '{print $1}' | cut -d'T' -f2 | cut -d':' -f1,2 | sort | uniq -c
 ```
 
 **Resolução:**
 ```bash
-# Ajustar limites no .env (se legítimo)
-RATE_LIMIT_REQUESTS=2000
-RATE_LIMIT_PERIOD_SECONDS=60
+# Caso 1: Cliente legítimo excedeu limite
+# Ajustar limites temporariamente no .env
+# RATE_LIMIT_REQUESTS=2000
+# docker-compose restart api
 
-# Reiniciar
-docker-compose restart api
-
-# Se ataque DDoS: bloquear IP no firewall
+# Caso 2: Ataque DDoS
+# Bloquear IP no firewall
 sudo ufw deny from 192.0.2.100
+
+# Caso 3: Configuração muito restritiva
+# Editar configuração slowapi no código
+# Redeploy com limites ajustados
 ```
 
----
+### JWT Token Expirado
 
-### 5.4 JWT Expirado / Token Inválido
-
-**Sintoma:** 401 Unauthorized em endpoints protegidos
-
-**Diagnóstico:**
-```bash
-# Verificar expiração do token
-echo "TOKEN" | cut -d'.' -f2 | base64 -d 2>/dev/null | jq '.exp'
-
-# Verificar se SECRET_KEY está correto
-docker exec txeka-ntiyiso-api printenv | grep SECRET_KEY
-```
+**Sintoma:** Respostas 401 com "Token has expired".
 
 **Resolução:**
 ```bash
-# Gerar novo token (admin)
-curl -X POST https://api.txeka.co.mz/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@txeka.co.mz","password":"SECRETO"}'
+# Gerar novo token para instituição afetada
+curl -X POST http://localhost:8000/api/v1/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email": "admin@inage.gov.mz", "password": "senha_segura"}'
 
-# Se SECRET_KEY mudou: todos os tokens antigos são invalidados
-# Notificar utilizadores para fazerem login novamente
+# Enviar novo token por canal seguro:
+# - Email cifrado (PGP)
+# - SMS (para password temporária)
+# - Portal seguro (dashboard institucional)
+# NUNCA por email não cifrado
 ```
 
----
+### Disco Cheio
 
-### 5.5 Disco Cheio
-
-**Sintoma:** Erros de escrita, containers a falhar
+**Sintoma:** Erros de escrita, serviços a falhar, health check falha.
 
 **Diagnóstico:**
 ```bash
+# Verificar uso de disco
 df -h
-# Procurar ficheiros grandes
-find /var/lib/docker -type f -size +100M -exec ls -lh {} \;
-# Verificar logs
-du -sh /var/lib/docker/containers/*
+
+# Verificar tamanho dos volumes Docker
+docker system df -v
+
+# Verificar tamanho dos logs
+du -sh /var/lib/docker/volumes/txeka-logs/_data/*
+
+# Verificar tamanho dos backups
+du -sh /var/backups/txeka/*
 ```
 
 **Resolução:**
 ```bash
-# 1. Limpar logs antigos
-docker system prune -f
+# Limpar logs antigos (> 30 dias)
+find /var/lib/docker/volumes/txeka-logs/_data -name "*.log" -mtime +30 -delete
+
+# Limpar backups antigos (> 30 dias)
+find /var/backups/txeka -name "*.sql.gz" -mtime +30 -delete
+
+# Limpar Docker dangling images
+docker image prune -f
+
+# Limpar Docker volumes não utilizados
 docker volume prune -f
 
-# 2. Rotação de logs do container
-docker exec txeka-ntiyiso-api sh -c "find /app/logs -name '*.log' -mtime +7 -delete"
+# Limpar Docker containers parados
+docker container prune -f
 
-# 3. Se persistir: aumentar disco ou mover backups para storage externo
+# Se ainda cheio: expandir volume (se VM/cloud)
+# Ou adicionar disco adicional
 ```
 
----
+### PostgreSQL Corrompido
 
-### 5.6 PostgreSQL Corrompido
-
-**Sintoma:** Erros "could not read block", "invalid page"
+**Sintoma:** Erros de integridade, queries falham, dados inconsistentes.
 
 **Diagnóstico:**
 ```bash
-# Verificar logs do DB
-docker logs txeka-ntiyiso-db --tail=100
+# Verificar integridade da base de dados
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "CHECKPOINT;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT pg_database.datname, pg_database_size(pg_database.datname)
+FROM pg_database WHERE datname = 'txeka_ntiyiso';
+"
 
-# Verificar integridade
-docker exec txeka-ntiyiso-db pg_isready -U postgres
+# Verificar logs PostgreSQL
+docker logs txeka-ntiyiso-db --tail=100
 ```
 
 **Resolução:**
 ```bash
-# 1. Parar serviços
-docker-compose down
+# Caso 1: Corrupção leve (índice danificado)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX DATABASE txeka_ntiyiso;"
 
-# 2. Restaurar do backup mais recente
-BACKUP=$(ls -t /var/backups/txeka/db_*.sql.gz | head -1)
-gunzip < $BACKUP | docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
+# Caso 2: Corrupção grave (restauração necessária)
+# 1. Parar API
+docker-compose stop api
 
-# 3. Verificar integridade
+# 2. Restaurar do backup mais recente válido
+LATEST=$(ls -t /var/backups/txeka/db_*.sql.gz | head -1)
+gunzip < "$LATEST" | docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
+
+# 3. Verificar integridade pós-restore
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(*) FROM documents;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(*) FROM audit_logs;"
 
-# 4. Iniciar serviços
-docker-compose up -d
+# 4. Iniciar API
+docker-compose up -d api
 ```
 
 ---
 
-## 6. Manutenção Programada
+## Manutenção Programada
 
-### 6.1 Tipos de Janela de Manutenção
+### Janela de Manutenção Oficial
 
-| Tipo | Frequência | Duração | Impacto | Janela CAT |
-|------|-----------|---------|---------|------------|
-| **Leve** | Semanal | 15 min | Nenhum | Domingo 02:00–02:15 |
-| **Média** | Mensal | 1 hora | Read-only | Domingo 02:00–03:00 |
-| **Pesada** | Trimestral | 4 horas | Indisponível | Sábado 22:00–Domingo 02:00 |
-| **Crítica** | Sob demanda | Variável | Total | Coordenado com stakeholders |
-| **Emergência** | Imediata | Variável | Total | Sem aviso prévio |
+| Tipo | Frequência | Horário (CAT) | Duração Estimada | Impacto |
+|------|------------|---------------|------------------|---------|
+| **Backup** | Diário | 02:00 | 5 min | Nenhum |
+| **Vacuum DB** | Semanal | Domingo 03:00 | 15 min | Performance degradada temporária |
+| **Atualização de segurança** | Mensal | Primeiro sábado 04:00 | 30 min | Indisponibilidade parcial |
+| **Rotação de segredos** | Trimestral | Acordo prévio (48h) | 15 min | Re-login obrigatório |
+| **Upgrade de versão** | Semestral | Acordo prévio (72h) | 1-2h | Indisponibilidade total |
 
-### 6.2 Procedimento de Atualização
+### Procedimento de Atualização de Segurança
 
-```bash
-# 1. Anunciar janela de manutenção (mínimo 24h antes)
-# 2. Criar backup manual
-/opt/txeka/backup.sh
+1. **Notificar stakeholders** 48h antes
+   - Email: tech@txeka.co.mz + instituições afetadas
+   - Dashboard: banner de manutenção programada
+   - Status page: incidente programado
 
-# 3. Modo read-only (se aplicável)
-# 4. Atualizar código
-git pull origin main
+2. **Criar backup manual** antes da atualização
+   ```bash
+   /opt/txeka/backup.sh
+   ```
 
-# 5. Rebuild e deploy
-docker-compose down
-docker-compose up -d --build
+3. **Colocar modo manutenção** (se aplicável)
+   ```bash
+   echo '{"status": "maintenance", "until": "2026-06-28T06:00:00+02:00"}' > /tmp/maintenance.json
+   ```
 
-# 6. Verificar health check
-curl -f https://api.txeka.co.mz/health
+4. **Executar atualização**
+   ```bash
+   cd /opt/txeka-ntiyiso
+   git fetch origin
+   git checkout <nova_versao_tag>
+   docker-compose build --no-cache api
+   docker-compose up -d api
+   ```
 
-# 7. Teste de fumaça
-# - Emitir documento de teste
-# - Verificar documento de teste
-# - Revogar documento de teste
+5. **Verificar health check** (aguardar 2 minutos)
+   ```bash
+   sleep 120
+   curl -f http://localhost:8000/health
+   ```
 
-# 8. Notificar conclusão
+6. **Executar smoke tests**
+   ```bash
+   # Teste 1: Emissão
+   curl -X POST http://localhost:8000/api/v1/certify \\
+        -H "Authorization: Bearer $TOKEN" \\
+        -F "file=@test.pdf" -F "document_type=TEST" -F "institution_id=TXEKA"
+
+   # Teste 2: Verificação
+   curl http://localhost:8000/api/v1/verify/<hash>
+
+   # Teste 3: Revogação
+   curl -X POST http://localhost:8000/api/v1/emissions/<doc_id>/revoke \\
+        -H "Authorization: Bearer $TOKEN" \\
+        -d '{"reason": "Teste pós-manutenção"}'
+   ```
+
+7. **Notificar conclusão**
+   - Email: "Manutenção concluída com sucesso"
+   - Remover banner de manutenção
+   - Atualizar status page
+
+---
+
+## Resposta a Incidentes
+
+### Classificação de Severidade
+
+| Nível | Descrição | Exemplo | Tempo de Resposta | Escalation |
+|-------|-----------|---------|-------------------|------------|
+| **P1-Crítico** | Sistema inacessível, todos os serviços down | Render offline, DB corrompido, ataque DDoS massivo | 15 minutos | CTO + Clientes + INTIC |
+| **P2-Alto** | Funcionalidade core degradada | Verificações > 5s, taxa de erro > 5%, latência anómala | 1 hora | Tech Lead |
+| **P3-Médio** | Funcionalidade não-core afetada | Dashboard lento, relatórios indisponíveis, backup falhou | 4 horas | DevOps |
+| **P4-Baixo** | Questões cosméticas ou documentação | Erro de ortografia, badge desatualizado, typo em email | 24 horas | Backlog |
+
+### Playbook P1: Sistema Inacessível
+
+```
+T+0min    ALERTA: Health check falha 3x consecutivas
+          → PagerDuty dispara
+          → SMS para on-call engineer
+
+T+2min    DIAGNÓSTICO RÁPIDO:
+          → Verificar status Render.com / servidores físicos
+          → Verificar containers: docker ps | grep txeka-ntiyiso
+          → Verificar logs de sistema (dmesg, syslog)
+
+T+5min    AÇÃO IMEDIATA:
+          Se Cloud: Abrir ticket crítico no Render (Priority: Critical)
+          Se Nacional: Verificar energia (UPS, gerador), rede (switch, router)
+
+T+10min   TENTATIVA DE RECUPERAÇÃO:
+          → Restart manual: docker-compose restart api db
+          → Se DB corrompido: iniciar restore do backup mais recente
+
+T+15min   COMUNICAÇÃO DE CRISE:
+          → Email instituições afetadas (template predefinido)
+          → Atualizar status page (https://status.txeka.co.mz)
+          → Notificar INTIC (se infraestrutura crítica)
+          → Escalar para CTO
+
+T+30min   SE PERSISTIR:
+          → Ativar plano de contingência (ambiente híbrido/cloud)
+          → Redirecionar tráfego para instância de backup
+          → Iniciar post-mortem em paralelo
+
+T+60min   PÓS-RESOLUÇÃO:
+          → Verificar integridade de todos os dados
+          → Executar smoke tests completos
+          → Publicar relatório de incidente
+          → Agendar post-mortem (24h)
+```
+
+### Playbook P2: Degradação de Performance
+
+```
+T+0min    ALERTA: Latência P95 > 500ms OU taxa de erro > 1%
+          → Grafana alerta
+          → Slack #alerts
+
+T+5min    DIAGNÓSTICO:
+          → Verificar métricas: CPU, RAM, conexões DB, I/O disco
+          → docker stats --no-stream
+          → Verificar logs de erro recentes
+          → Identificar padrão (hora do dia, endpoint específico)
+
+T+10min   AÇÃO:
+          Se DB: REINDEX + VACUUM
+          Se API: docker-compose restart api
+          Se Rede: Verificar latência para Supabase/DB
+
+T+15min   SE PERSISTIR:
+          → Escalar horizontal (mais workers uvicorn)
+          → Escala vertical (mais RAM/CPU no docker-compose.yml)
+          → Ativar cache Redis
+
+T+30min   SE NÃO RESOLVIDO:
+          → Escalar para equipa de engenharia
+          → Considerar modo degradação (desativar features não-core)
+
+T+60min   PÓS-RESOLUÇÃO:
+          → Documentar causa raiz
+          → Ajustar alertas (thresholds mais sensíveis)
+          → Revisar capacity planning
+```
+
+### Playbook: Documento Fraudulento Detectado
+
+```
+T+0min    DETEÇÃO: Denúncia ou análise automática detecta documento fraudulento
+
+T+5min    CONFIRMAÇÃO:
+          → Verificar hash do documento suspeito
+          → Comparar com original (se disponível)
+          → Analisar logs de emissão (quem, quando, de onde)
+
+T+10min   REVOGAÇÃO IMEDIATA:
+          POST /api/v1/emissions/{doc_id}/revoke
+          {
+            "reason": "Documento fraudulento detectado em auditoria interna. "
+                      "Referência: Ticket #2026-06-27-001"
+          }
+
+T+15min   NOTIFICAÇÃO:
+          → Email instituição emissora (alerta de segurança)
+          → Email entidades que verificaram o documento (se identificadas)
+          → Notificar Tribunal de Contas (se governo)
+
+T+30min   PRESERVAÇÃO DE EVIDÊNCIAS:
+          → Exportar logs forenses dos últimos 90 dias
+          → Gerar relatório de auditoria do documento
+          → Arquivar hash e metadados (imutáveis por lei)
+
+T+60min   INVESTIGAÇÃO:
+          → Analisar padrão: outros documentos do mesmo emissor?
+          → Verificar IPs de emissão (localização geográfica)
+          → Cruzar com base de dados de documentos revogados
+
+T+24h     RELATÓRIO:
+          → Documentar incidente completo
+          → Lições aprendidas
+          → Medidas preventivas (ajustar validação, reforçar controlo)
+```
+
+### Playbook: Suspeita de Breach de Segurança
+
+```
+T+0min    DETEÇÃO: Logs anómalos, acessos não autorizados, alertas de IDS
+
+T+1min    ISOLAMENTO:
+          → Revogar TODOS os tokens JWT ativos (forçar re-login global)
+          → Desativar API keys comprometidas
+          → Isolar servidores afetados da rede
+
+T+5min    PRESERVAÇÃO:
+          → Exportar logs dos últimos 7 dias (imutáveis)
+          → Criar snapshot dos volumes Docker
+          → Preservar memória RAM (dump, se possível)
+
+T+10min   ANÁLISE:
+          → Identificar vetor de ataque (SQLi, XSS, brute-force, insider?)
+          → Identificar IPs envolvidos
+          → Determinar dados potencialmente afetados (hashes apenas?)
+
+T+30min   NOTIFICAÇÃO:
+          → security@txeka.co.mz
+          → INTIC (se infraestrutura crítica de informação)
+          → Banco de Moçambique (se sector financeiro afetado)
+          → Procuradoria (se dados de cidadãos comprometidos)
+
+T+60min   REMEDIAÇÃO:
+          → Aplicar patch de segurança
+          → Rotação de TODAS as credenciais (DB, JWT, API keys, SSL)
+          → Reforço de regras de firewall (block IPs maliciosos)
+          → Aumento de rate limiting
+          → Ativar 2FA obrigatório para todos os admins
+
+T+24h     RELATÓRIO:
+          → Documentar incidente completo
+          → Timeline detalhada
+          → Dados afetados (hashes são públicos por design, zero risco)
+          → Medidas preventivas implementadas
+          → Recomendações para futuro
+```
+
+### Playbook: Negação de Serviço (DoS/DDoS)
+
+```
+T+0min    DETEÇÃO: Latência anómala, spike de requisições (> 500% da média)
+
+T+2min    ATIVAÇÃO DE DEFESAS:
+          → Ativar rate limiting agressivo (nginx)
+          → Ativar fail2ban (block IPs com padrão anómalo)
+          → Ativar modo "under attack" (cloudflare, se disponível)
+
+T+5min    IDENTIFICAÇÃO:
+          → Analisar padrão de ataque (IPs, user-agents, endpoints alvo)
+          → docker logs txeka-ntiyiso-api 2>&1 | grep "429"
+          → Identificar tipo: volumétrico, protocolo, aplicação
+          → Verificar origem geográfica
+
+T+10min   MITIGAÇÃO:
+          → Bloquear IPs maliciosos no firewall
+          sudo ufw deny from <IP>
+          → Redirecionar tráfego legítimo (BGP anycast, se disponível)
+          → Ativar WAF rules (cloudflare)
+
+T+15min   ESCALAÇÃO:
+          → Contactar ISP upstream (se ataque volumétrico)
+          → Contactar Render.com (se cloud)
+          → Contactar INTIC (se infraestrutura crítica)
+
+T+30min   SE PERSISTIR:
+          → Considerar ativar modo "manutenção" (página estática)
+          → Redirecionar para CDN
+          → Escalar para cloud DDoS protection (AWS Shield, Cloudflare)
+
+T+60min   PÓS-RESOLUÇÃO:
+          → Análise forense do ataque
+          → Ajuste de regras de proteção
+          → Revisão de capacity planning
+          → Documentação de lições aprendidas
 ```
 
 ---
 
-## 7. Playbooks de Incidente
+## Contactos de Emergência
 
-### 7.1 P1 — Crítico (Sistema Indisponível)
+### Equipa Txeka Ntiyiso
 
-**Condição:** API retorna 5xx > 5 min ou BD inacessível
+| Função | Nome | Contacto | Disponibilidade | Escalation |
+|--------|------|----------|-----------------|------------|
+| **On-call Engineer** | Rotativo | +258 84 XXX XXXX | 24/7 | P1, P2 |
+| **Tech Lead** | A definir | tech@txeka.co.mz | 24/7 (escalação) | P1, P2 não resolvido |
+| **Security Officer** | A definir | security@txeka.co.mz | 24/7 (incidentes) | Breach, P1 segurança |
+| **CTO** | A definir | cto@txeka.co.mz | Business hours | P1 não resolvido em 1h |
 
-**Resposta (SLA: 15 min):**
+### Parceiros e Fornecedores
 
-```bash
-# 1. Alertar equipa (PagerDuty/Slack)
-# 2. Verificar status
-curl -s https://api.txeka.co.mz/health | jq
+| Entidade | Contacto | Uso |
+|----------|----------|-----|
+| **Render.com Support** | support@render.com | Cloud hosting, deploy issues |
+| **Supabase Support** | support@supabase.com | Database, PostgreSQL issues |
+| **INTIC** | info@intic.gov.mz | Regulador, infraestruturas críticas |
+| **Tribunal de Contas** | geral@tcontas.gov.mz | Auditoria, conformidade |
+| **Banco de Moçambique** | info@bancomoc.mz | Sector financeiro, conformidade transacional |
+| **ISP Nacional** | A definir | Conectividade, DDoS mitigation |
 
-# 3. Se on-premise: verificar containers
-docker ps
-docker-compose ps
+### Canais de Comunicação de Crise
 
-# 4. Se container down: reiniciar
-docker-compose restart api db
-
-# 5. Se persistir: restore do backup
-/opt/txeka/restore.sh $(ls -t /var/backups/txeka/db_*.sql.gz | head -1)
-
-# 6. Escalar para CTO se > 30 min
-```
-
-**Comunicação:**
-- **0-15 min:** Interno (equipa técnica)
-- **15-30 min:** Clientes B2B (email)
-- **> 30 min:** Público (status page + Twitter/X)
-
----
-
-### 7.2 P2 — Alto (Degradação de Serviço)
-
-**Condição:** Latência P95 > 2s ou erro 4xx > 10%
-
-**Resposta (SLA: 30 min):**
-
-```bash
-# 1. Verificar métricas
-docker stats --no-stream
-
-# 2. Verificar logs de erro
-docker logs txeka-ntiyiso-api --tail=200 | grep -i "error"
-
-# 3. Se CPU alto: escalar horizontal (se Kubernetes) ou vertical (aumentar recursos)
-# 4. Se BD lento: VACUUM ANALYZE + verificar locks
-
-# 5. Se ataque: ativar WAF / bloquear IPs
-```
+| Canal | Uso | Acesso |
+|-------|-----|--------|
+| **Email** | Notificações formais, relatórios | tech@txeka.co.mz |
+| **Slack #incidents** | Coordenação em tempo real | Equipa técnica |
+| **PagerDuty** | Alertas críticos, on-call | On-call engineer |
+| **Status Page** | Comunicação pública | https://status.txeka.co.mz |
+| **WhatsApp** | Coordenação rápida (P1) | Grupo de crise |
 
 ---
 
-### 7.3 Documento Fraudulento Detectado
-
-**Condição:** Documento verificado como suspeito/fraudulento
-
-**Resposta:**
-
-```bash
-# 1. Revogar imediatamente
-curl -X POST https://api.txeka.co.mz/api/v1/emissions/{doc_id}/revoke \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"reason": "Documento fraudulento detectado"}'
-
-# 2. Verificar logs de emissão
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
-SELECT * FROM audit_logs 
-WHERE resource_id = 'DOC_ID' AND action = 'EMIT';"
-
-# 3. Notificar instituição emissora
-# 4. Notificar verificadores (últimos 30 dias)
-# 5. Abrir ticket interno para investigação
-# 6. Notificar autoridades (se necessário)
-```
-
----
-
-### 7.4 Breach de Segurança
-
-**Condição:** Acesso não autorizado, vazamento de dados, token comprometido
-
-**Resposta:**
-
-```bash
-# 1. Isolar sistema (modo manutenção)
-# 2. Rotação IMEDIATA de todos os segredos
-NEW_SECRET=$(openssl rand -hex 32)
-NEW_JWT=$(openssl rand -hex 32)
-
-# 3. Invalidar todos os tokens ativos
-# 4. Verificar logs de acesso
-docker logs txeka-ntiyiso-api --since 24h | grep -i "unauthorized\|forbidden"
-
-# 5. Verificar acesso à BD
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
-SELECT * FROM audit_logs 
-WHERE timestamp > NOW() - INTERVAL '24 hours' 
-ORDER BY timestamp DESC;"
-
-# 6. Notificar stakeholders
-# 7. Abrir investigação forense
-# 8. Notificar INTIC / Tribunal de Contas (se dados governamentais)
-```
-
----
-
-### 7.5 DoS / DDoS
-
-**Condição:** Requisições > 10.000/min, serviço degradado
-
-**Resposta:**
-
-```bash
-# 1. Identificar IPs de origem
-docker logs txeka-ntiyiso-api --tail=1000 | grep "rate_limit" | awk '{print $NF}' | sort | uniq -c | sort -nr | head -20
-
-# 2. Bloquear IPs no firewall
-sudo ufw deny from 192.0.2.0/24
-
-# 3. Ativar Cloudflare (se disponível)
-# 4. Aumentar rate limiting temporariamente
-# 5. Escalar infraestrutura (se possível)
-# 6. Notificar ISP / INTIC para mitigação na rede
-```
-
----
-
-## 8. Contactos de Emergência
-
-| Função | Nome | Contacto | Disponibilidade |
-|--------|------|----------|-----------------|
-| **DevOps On-Call** | — | devops@txeka.co.mz | 24/7 |
-| **CTO** | — | cto@txeka.co.mz | 24/7 (escalation) |
-| **Render Support** | — | support@render.com | Business hours |
-| **Supabase Support** | — | support@supabase.com | Business hours |
-| **INTIC** | — | info@intic.gov.mz | Horário institucional |
-| **Tribunal de Contas** | — | info@tribunalcontas.gov.mz | Horário institucional |
-| **Banco de Moçambique** | — | info@bancomoc.mz | Horário institucional |
-
----
-
-## 9. Comandos Rápidos
+## Comandos de Referência Rápida
 
 ### Docker
 
 ```bash
-# Ver todos os containers
+# Ver containers
 docker ps -a
 
-# Ver logs em tempo real
-docker logs -f txeka-ntiyiso-api
-
-# Entrar no container
-docker exec -it txeka-ntiyiso-api sh
+# Logs em tempo real
+docker logs -f txeka-ntiyiso-api --tail=100
+docker logs -f txeka-ntiyiso-db --tail=50
 
 # Reiniciar serviço
 docker-compose restart api
 
-# Rebuild completo
-docker-compose down && docker-compose up -d --build
+# Rebuild sem cache
+docker-compose build --no-cache api
+
+# Escalar (mais instâncias — futuro com Swarm/K8s)
+docker-compose up -d --scale api=3
 
 # Limpar sistema
-docker system prune -f && docker volume prune -f
+docker system prune -f
+docker volume prune -f
+docker container prune -f
 ```
 
 ### PostgreSQL
 
 ```bash
-# Aceder à BD
+# Aceder à base de dados
 docker exec -it txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
 
-# Backup manual
-docker exec txeka-ntiyiso-db pg_dump -U postgres txeka_ntiyiso | gzip > /var/backups/txeka/manual_$(date +%Y%m%d).sql.gz
+# Estatísticas da base de dados
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT schemaname, tablename,
+       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname='public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+"
 
-# Restore
-gunzip < /var/backups/txeka/db_20260627.sql.gz | docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
+# Conexões ativas
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT pid, usename, application_name, client_addr, state, query_start, query
+FROM pg_stat_activity
+WHERE state != 'idle'
+ORDER BY query_start;
+"
 
-# Verificar tamanho
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT pg_size_pretty(pg_database_size('txeka_ntiyiso'));"
+# Queries lentas
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT query, mean_exec_time, calls
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+"
 
-# VACUUM
+# Vacuum e reindex
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "VACUUM ANALYZE;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE documents;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE audit_logs;"
 ```
 
 ### Backup
 
 ```bash
-# Backup manual
-/opt/txeka/backup.sh
+# Backup manual imediato
+DATE=$(date +%Y%m%d_%H%M%S)
+docker exec txeka-ntiyiso-db pg_dump -U postgres -d txeka_ntiyiso --clean --if-exists | \\
+  gzip > /var/backups/txeka/db_$DATE.sql.gz
+
+# Verificar backup
+gunzip -t /var/backups/txeka/db_*.sql.gz
 
 # Listar backups
-ls -lt /var/backups/txeka/
+ls -la /var/backups/txeka/ | tail -10
 
-# Verificar integridade do backup
-gunzip -t /var/backups/txeka/db_20260627.sql.gz
+# Restaurar backup
+gunzip -c /var/backups/txeka/db_YYYYMMDD_HHMMSS.sql.gz | \\
+  docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
 ```
 
 ### Sistema
 
 ```bash
-# Uso de recursos
-docker stats --no-stream
-
-# Disco
+# Espaço em disco
 df -h
+du -sh /var/lib/docker/volumes/txeka-logs/_data/*
+du -sh /var/backups/txeka/*
+docker system df
 
-# Memória
+# Memória e CPU
 free -h
-
-# CPU
-top
+top -bn1 | grep "Cpu(s)"
 
 # Rede
+netstat -tlnp
 ss -tlnp
+iptables -L -n
+
+# Processos
+ps aux | grep uvicorn
+ps aux | grep postgres
 ```
 
 ### API
 
 ```bash
 # Health check
-curl -s https://api.txeka.co.mz/health | jq
+curl -s http://localhost:8000/health | jq .
+
+# Estatísticas (admin)
+curl -s http://localhost:8000/api/v1/audit/stats \\
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
+
+# Emitir documento (teste)
+curl -X POST http://localhost:8000/api/v1/certify \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -F "file=@test.pdf" -F "document_type=TEST" -F "institution_id=TXEKA"
 
 # Verificar documento
-curl -s https://api.txeka.co.mz/api/v1/verify/{hash} | jq
-
-# Emitir documento (admin)
-curl -X POST https://api.txeka.co.mz/api/v1/certify \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@documento.pdf"
+curl http://localhost:8000/api/v1/verify/<hash>
 ```
 
 ---
 
-*Documento gerado em conformidade com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
-*Versão 1.0 — Junho 2026*
+*Txeka Ntiyiso — Runbook de Operações v1.1 🇲🇿*
