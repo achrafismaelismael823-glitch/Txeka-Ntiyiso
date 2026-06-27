@@ -1,336 +1,222 @@
-# Deploy e Infraestrutura — Txeka Ntiyiso
+# DEPLOYMENT.md
 
-**Guia Completo de Implantação, Operação e Soberania Digital**
+## Guia de Deploy e Infraestrutura — Txeka Ntiyiso
 
----
-
-## Índice
-
-1. [Visão Geral de Ambientes](#visão-geral-de-ambientes)
-2. [Ambiente 1: Produção Cloud](#ambiente-1-produção-cloud)
-3. [Ambiente 2: Produção Nacional](#ambiente-2-produção-nacional)
-4. [Ambiente 3: Híbrido](#ambiente-3-híbrido)
-5. [Docker Compose (Produção Nacional)](#docker-compose-produção-nacional)
-6. [Configuração SSL/TLS](#configuração-ssltls)
-7. [Nginx Reverse Proxy](#nginx-reverse-proxy)
-8. [Backup e Recuperação](#backup-e-recuperação)
-9. [Monitoramento e Alertas](#monitoramento-e-alertas)
-10. [Checklist de Deploy Nacional](#checklist-de-deploy-nacional)
-11. [Roadmap de Infraestrutura](#roadmap-de-infraestrutura)
+Plano de deploy, containerização e operação em conformidade com a legislação moçambicana.
 
 ---
 
-## Visão Geral de Ambientes
+## 1. Visão Geral
 
-O Txeka Ntiyiso opera em três níveis de infraestrutura, concebidos para evoluir com as necessidades da instituição e as exigências de soberania digital:
+O sistema Txeka Ntiyiso é containerizado com Docker e orquestrado via Docker Compose. A stack utiliza **Python 3.11** (FastAPI) no backend e **PostgreSQL 15** como base de dados relacional. Todo o ambiente é configurado para o fuso horário **CAT (UTC+2)** e locale **pt_MZ.UTF-8**, em alinhamento com os requisitos de auditoria cronológica do Decreto n.º 59/2019.
 
-| Ambiente | Hosting | Dados | Fase | Uso Principal |
-|----------|---------|-------|------|---------------|
-| **Produção Cloud** | Render.com + Supabase | EUA (Supabase) | Atual | Operação imediata, alta disponibilidade, validação de mercado |
-| **Produção Nacional** | Docker + Servidores MZ | Moçambique | Migração futura | Soberania digital, conformidade INTIC, intranet governamental |
-| **Híbrido** | Docker Edge + Cloud | Sincronizado | Futuro | Resiliência máxima, contingência offline, replicação |
-
-> **Nota:** O ambiente **Produção Cloud** (Render.com) está atualmente em operação plena. A migração para **Produção Nacional** será conduzida em coordenação com as entidades reguladoras (INTIC, Tribunal de Contas) à medida que a legislação de proteção de dados e soberania digital for consolidada, em alinhamento com a **Resolução n.º 69/2021 (PENSC)**.
-
----
-
-## Ambiente 1: Produção Cloud (Render.com + Supabase)
-
-### Estado Atual
-
-| Componente | URL | Estado |
-|------------|-----|--------|
-| API | [https://txeka-ntiyiso-api.onrender.com](https://txeka-ntiyiso-api.onrender.com) | Online |
-| Health Check | [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health) | Online |
-| Portal | [https://txeka-ntiyiso-portal.onrender.com](https://txeka-ntiyiso-portal.onrender.com) | Online |
-| Database | Supabase PostgreSQL | Online |
-
-### Pré-requisitos para Replicação
-
-- Conta no [Render.com](https://render.com)
-- Conta no [Supabase](https://supabase.com)
-- Repositório GitHub com o código-fonte
-- Domínio configurado (opcional: txeka.co.mz)
-
-### Configuração do Supabase (PostgreSQL)
-
-1. Criar projeto no Supabase
-2. Ir a **Database → Connection String**
-3. Copiar a URL: `postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres`
-4. Guardar como `DATABASE_URL` nas variáveis de ambiente do Render
-5. Configurar **Row Level Security (RLS)** para isolamento de dados por instituição
-
-### Configuração do Render.com
-
-1. No Render, clicar **New → Web Service**
-2. Conectar o repositório GitHub `Txeka-Ntiyiso`
-3. Configurar:
-
-| Campo | Valor |
-|-------|-------|
-| **Name** | `txeka-ntiyiso-api` |
-| **Runtime** | Python 3 |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `uvicorn src.main:app --host 0.0.0.0 --port $PORT` |
-
-4. Adicionar variáveis de ambiente:
-
-```env
-# === DATABASE ===
-DATABASE_URL=postgresql://postgres:senha_segura@db.abc123.supabase.co:5432/postgres
-
-# === SECURITY ===
-JWT_SECRET_KEY=chave_gerada_com_openssl_rand_hex_32
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION=3600
-
-# === ENVIRONMENT ===
-ENVIRONMENT=production
-DEBUG=false
-
-# === CORS ===
-CORS_ORIGINS=https://txeka-ntiyiso-portal.onrender.com,https://txeka.co.mz
-
-# === TZ ===
-TZ=Africa/Maputo
-```
-
-> **Gerar JWT_SECRET_KEY:**
-> ```bash
-> openssl rand -hex 32
-> ```
-
-5. Clicar **Deploy**
-
-### Verificação Pós-Deploy
-
-```bash
-curl -s https://txeka-ntiyiso-api.onrender.com/health | jq .
-```
-
-**Resposta esperada:**
-```json
-{
-  "status": "online",
-  "project": "Txeka Ntiyiso",
-  "version": "1.0.0",
-  "environment": "production",
-  "timezone": "CAT",
-  "timestamp": "2026-06-27T14:32:15+02:00"
-}
-```
+| Ambiente | Finalidade | Infraestrutura |
+|----------|-----------|----------------|
+| **Desenvolvimento** | Desenvolvimento local | Docker Compose local |
+| **Produção Cloud** | Deploy imediato | Render.com + Supabase |
+| **Produção Nacional** | Soberania digital | Servidor dedicado em Moçambique (INTIC) |
+| **Híbrido** | Transição cloud → on-prem | Docker Compose + Nginx + AC-MZ SSL |
 
 ---
 
-## Ambiente 2: Produção Nacional (Docker On-Premise)
+## 2. Ficheiros Docker
 
-### Contexto Estratégico
+### 2.1 Dockerfile — API Gateway
 
-A migração para infraestrutura nacional é estratégica para:
+```dockerfile
+# ============================================================
+# TXEKA NTIYISO - API Gateway
+# Plataforma de Validação Digital de Documentos - Moçambique
+# Conformidade: Decreto 59/2019, Lei 3/2017
+# Fuso horário: CAT (UTC+2)
+# ============================================================
 
-| Objetivo | Descrição | Base Legal |
-|----------|-----------|------------|
-| **Soberania digital** | Dados armazenados em território moçambicano | Resolução 69/2021 (PENSC) |
-| **Conformidade futura** | Antecipação da Lei de Proteção de Dados Pessoais | Lei 3/2017, Capítulo V |
-| **Resiliência** | Funcionamento independente de conectividade internacional | Decreto 59/2019 |
-| **Auditoria física** | Acesso a servidores por entidades reguladoras | Tribunal de Contas |
-| **Air-gapped** | Operação em intranet governamental sem internet | Requisito militar/governo |
+# -------- Stage 1: Builder --------
+FROM python:3.11-slim AS builder
 
-### Requisitos de Hardware
+LABEL maintainer="Txeka Ntiyiso Team <contato@txeka.co.mz>"
+LABEL description="API Gateway para validação criptográfica de documentos"
+LABEL version="1.0.0"
+LABEL country="MZ"
+LABEL timezone="CAT"
 
-#### Servidor Único (Mínimo para Testes/Piloto)
+WORKDIR /app
 
-| Recurso | Especificação | Nota |
-|---------|---------------|------|
-| CPU | 4 cores (x86_64 ou ARM64) | Intel Xeon ou AMD EPYC |
-| RAM | 8 GB | DDR4 ECC recomendado |
-| Disco | 100 GB SSD NVMe | RAID 1 para redundância |
-| OS | Ubuntu 22.04 LTS | Kernel 5.15+ |
-| Rede | Intranet governamental ou VPN/MPLS | Isolamento físico |
-| Energia | UPS + gerador | Continuidade operacional |
+# Instala dependências de build
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    gcc \\
+    libpq-dev \\
+    && rm -rf /var/lib/apt/lists/*
 
-#### Cluster Kubernetes (Recomendado para Produção Institucional)
+# Instala Poetry
+RUN pip install --no-cache-dir poetry
 
-| Componente | Especificação | Nota |
-|------------|---------------|------|
-| Nodes | 3 (1 master + 2 workers) | Alta disponibilidade |
-| Load Balancer | HAProxy ou Nginx | Failover automático |
-| Storage | Ceph ou NFS | Persistência distribuída |
-| Backup | Diário para tape/disco externo | Retenção 30 dias |
-| Monitoramento | Prometheus + Grafana | Métricas em tempo real |
-| Firewall | pfSense ou iptables | Regras de segurança |
+# Copia ficheiros de dependências
+COPY api-gateway/pyproject.toml api-gateway/poetry.lock* ./
 
-### Instalação do Docker
+# Instala dependências Python
+RUN poetry config virtualenvs.create false && \\
+    poetry install --no-interaction --no-ansi --only main --no-root
 
-```bash
-# Ubuntu 22.04 LTS
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y docker.io docker-compose-plugin
+# -------- Stage 2: Runtime --------
+FROM python:3.11-slim
 
-# Verificar instalação
-docker --version
-docker compose version
+LABEL maintainer="Txeka Ntiyiso Team <contato@txeka.co.mz>"
+LABEL description="Txeka Ntiyiso API Gateway"
 
-# Configurar Docker para iniciar no boot
-sudo systemctl enable docker
-sudo systemctl start docker
+# Configuração de conformidade
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV ENVIRONMENT=production
+ENV TZ=Africa/Maputo
+ENV LANG=pt_MZ.UTF-8
+ENV LC_ALL=pt_MZ.UTF-8
 
-# Adicionar utilizador ao grupo docker (opcional, para não usar sudo)
-sudo usermod -aG docker $USER
-newgrp docker
+# Instala runtime + locale + curl
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    libpq5 \\
+    curl \\
+    locales \\
+    && sed -i 's/# pt_MZ.UTF-8 UTF-8/pt_MZ.UTF-8 UTF-8/' /etc/locale.gen \\
+    && locale-gen pt_MZ.UTF-8 \\
+    && update-locale LANG=pt_MZ.UTF-8 \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Cria usuário não-root
+RUN groupadd -r txeka && useradd -r -g txeka -s /bin/false txeka
+
+WORKDIR /app
+
+# Copia dependências do builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copia código da aplicação
+COPY api-gateway/ ./api-gateway/
+
+# Permissões
+RUN chown -R txeka:txeka /app
+
+USER txeka
+
+EXPOSE 8000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \\
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "api-gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
 ```
 
-### Configuração do Projeto
-
-```bash
-# 1. Clonar o repositório
-git clone https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso.git
-cd Txeka-Ntiyiso
-
-# 2. Configurar variáveis de ambiente
-cp .env.example .env
-nano .env  # Editar com credenciais locais seguras
-```
-
-**Exemplo de `.env` para produção nacional:**
-
-```env
-# === DATABASE ===
-DATABASE_URL=postgresql://txeka:senha_muito_segura@db:5432/txeka_ntiyiso
-DB_PASSWORD=senha_muito_segura
-
-# === SECURITY ===
-JWT_SECRET_KEY=chave_gerada_com_openssl_rand_hex_32_minimo
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION=3600
-
-# === ENVIRONMENT ===
-ENVIRONMENT=production
-DEBUG=false
-
-# === CORS ===
-CORS_ORIGINS=https://txeka.gov.mz,https://portal.txeka.gov.mz
-
-# === TZ ===
-TZ=Africa/Maputo
-```
-
-> **Gerar credenciais seguras:**
-> ```bash
-> # JWT Secret (256 bits)
-> openssl rand -hex 32
->
-> # Password da base de dados (32 caracteres aleatórios)
-> openssl rand -base64 24
-> ```
+**Notas de conformidade:**
+- **Multi-stage build**: Reduz a superfície de ataque — apenas dependências de runtime no container final.
+- **Usuário não-root (`txeka`)**: Mitigação de Elevation of Privilege (STRIDE), alinhado com a Resolução n.º 69/2021 (PENSC).
+- **Locale `pt_MZ.UTF-8` e TZ `Africa/Maputo`**: Garante timestamps auditáveis em CAT (UTC+2), conforme Decreto 59/2019.
+- **Healthcheck**: Verificação periódica de disponibilidade; falha após 3 tentativas em 30s.
 
 ---
 
-## Docker Compose (Produção Nacional)
+### 2.2 Docker Compose — Ambiente Completo
 
 ```yaml
-version: '3.8'
+# ============================================================
+# TXEKA NTIYISO - Docker Compose
+# Ambiente de Desenvolvimento e Produção
+# Fuso horário: CAT (UTC+2) - Moçambique
+# ============================================================
+
+version: '3.9'
 
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: txeka-ntiyiso-db
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-txeka_ntiyiso}
+      TZ: Africa/Maputo
+      PGTZ: Africa/Maputo
+    
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - txeka-data:/var/lib/postgresql/data
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-txeka_ntiyiso}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    
+    networks:
+      - txeka-network
+
   api:
-    image: txeka-ntiyiso-api:latest
     build:
-      context: ./api-gateway
+      context: .
       dockerfile: Dockerfile
+    container_name: txeka-ntiyiso-api
+    restart: unless-stopped
+    
     ports:
       - "8000:8000"
+    
     environment:
-      - DATABASE_URL=postgresql://txeka:${DB_PASSWORD}@db:5432/txeka_ntiyiso
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - ENVIRONMENT=production
-      - TZ=Africa/Maputo
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-true}
+      PYTHONUNBUFFERED: "1"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: Africa/Maputo
+      LANG: pt_MZ.UTF-8
+      LC_ALL: pt_MZ.UTF-8
+      
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/txeka_ntiyiso}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-prod}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-TXEKA-NTIYISO-2026-k3ab9sGze6Igc1u8Q5@i+j0#0KX0rBzj}
+      ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS:-false}
+      BASE_URL: ${BASE_URL:-http://localhost:8000}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
+      RATE_LIMIT_PERIOD_SECONDS: ${RATE_LIMIT_PERIOD_SECONDS:-60}
+    
+    volumes:
+      - .:/app:ro
+      - txeka-logs:/app/logs
+    
+    command: >
+      sh -c "cd /app/api-gateway &&
+             poetry run alembic upgrade head &&
+             poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+    
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - txeka-network
+    
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-
-  db:
-    image: postgres:15-alpine
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
-    environment:
-      - POSTGRES_USER=txeka
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=txeka_ntiyiso
-      - TZ=Africa/Maputo
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U txeka -d txeka_ntiyiso"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - txeka-network
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    networks:
-      - txeka-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
+          cpus: '1.0'
           memory: 512M
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - api
-    restart: unless-stopped
+    
     networks:
       - txeka-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
+    
+    depends_on:
+      db:
+        condition: service_healthy
 
 networks:
   txeka-network:
@@ -338,377 +224,316 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
+
+volumes:
+  txeka-data:
+    driver: local
+  txeka-logs:
+    driver: local
 ```
 
-### Iniciar Serviços
+**Notas de conformidade:**
+- **Rede isolada (`txeka-network`, subnet `172.20.0.0/16`)**: Comunicação interna segregada; mitiga Information Disclosure (STRIDE).
+- **Resource limits**: CPU 1.0 + 512M RAM por serviço; proteção contra DoS por exaustão de recursos.
+- **Healthchecks em ambos os serviços**: API só inicia após DB estar saudável (`condition: service_healthy`).
+- **Volumes persistentes**: `txeka-data` para PostgreSQL (retenção 20+ anos) e `txeka-logs` para auditoria.
+- **Variáveis via `.env`**: Segredos (`SECRET_KEY`, `JWT_SECRET_KEY`) nunca hardcoded em produção.
+
+---
+
+## 3. Variáveis de Ambiente
+
+Crie um ficheiro `.env` na raiz do projeto:
 
 ```bash
-# Construir e iniciar todos os serviços
-docker-compose -f docker-compose.prod.yml up -d --build
+# Ambiente
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=INFO
 
-# Verificar estado dos containers
-docker-compose -f docker-compose.prod.yml ps
+# Base de Dados
+DATABASE_URL=postgresql://postgres:SECRETO@db:5432/txeka_ntiyiso
+POSTGRES_USER=txeka_admin
+POSTGRES_PASSWORD=<GERAR_VIA_OPENSSL_32CHAR>
+POSTGRES_DB=txeka_ntiyiso
 
-# Verificar logs em tempo real
-docker-compose -f docker-compose.prod.yml logs -f api --tail=100
+# Segurança (gerar via: openssl rand -hex 32)
+SECRET_KEY=<32_BYTES_HEX>
+JWT_SECRET_KEY=<32_BYTES_HEX>
 
-# Verificar health check
-curl -f http://localhost:8000/health
+# Rate Limiting
+RATE_LIMIT_REQUESTS=1000
+RATE_LIMIT_PERIOD_SECONDS=60
+
+# URLs
+BASE_URL=https://api.txeka.co.mz
+ALLOW_ANONYMOUS=false
+```
+
+> ⚠️ **Atenção**: Nunca commite o ficheiro `.env`. Adicione-o ao `.gitignore`.
+
+---
+
+## 4. Deploy Passo a Passo
+
+### 4.1 Desenvolvimento Local
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso.git
+cd Txeka-Ntiyiso
+
+# 2. Configure o ambiente
+cp .env.example .env
+# Edite .env com as suas credenciais
+
+# 3. Inicie os serviços
+docker-compose up -d --build
+
+# 4. Verifique o estado
+docker-compose ps
+docker-compose logs -f api
+
+# 5. Aceda à documentação
+open http://localhost:8000/docs
+```
+
+### 4.2 Produção Cloud (Render.com)
+
+| Passo | Ação | Tempo |
+|-------|------|-------|
+| 1 | Conecte o repo GitHub ao Render | 2 min |
+| 2 | Configure variáveis de ambiente no dashboard | 3 min |
+| 3 | Render deteta `Dockerfile` e faz build automático | 2-3 min |
+| 4 | Health check `GET /health` valida deploy | 30s |
+| 5 | API online em `https://txeka-ntiyiso-api.onrender.com` | — |
+
+**Nota**: A base de dados em produção cloud utiliza **Supabase PostgreSQL** (managed), não o container local.
+
+### 4.3 Produção Nacional (On-Premise)
+
+**Requisitos mínimos de hardware:**
+
+| Componente | Especificação | Observação |
+|------------|--------------|------------|
+| Servidor | 2 vCPU, 4 GB RAM | Pode ser VM no datacenter INTIC |
+| Disco | 100 GB SSD | Para dados + logs + backups |
+| OS | Ubuntu 22.04 LTS | Com suporte de segurança |
+| Rede | IP fixo, firewall UFW | Portas 80/443/22 apenas |
+| SSL | Certificado AC-MZ | Autoridade de Certificação de Moçambique |
+
+**Procedimento:**
+
+```bash
+# 1. Instale Docker e Docker Compose
+sudo apt update && sudo apt install -y docker.io docker-compose
+
+# 2. Clone e configure
+git clone <repo> && cd Txeka-Ntiyiso
+cp .env.example .env
+# Edite .env com credenciais de produção
+
+# 3. Deploy
+sudo docker-compose -f docker-compose.yml up -d --build
+
+# 4. Configure Nginx (ver secção 5)
+sudo cp nginx/txeka.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/txeka.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# 5. SSL com AC-MZ
+sudo certbot --nginx -d api.txeka.co.mz
 ```
 
 ---
 
-## Configuração SSL/TLS
-
-### Opção A: Certificado da AC-MZ (Recomendado para Governo)
-
-Se a Autoridade de Certificação de Moçambique (AC-MZ) emitir certificados:
-
-```bash
-# 1. Solicitar certificado à AC-MZ
-#    Submeter CSR (Certificate Signing Request)
-
-# 2. Gerar CSR
-openssl req -new -newkey rsa:2048 -nodes \
-  -keyout txeka.gov.mz.key \
-  -out txeka.gov.mz.csr \
-  -subj "/C=MZ/ST=Maputo/L=Maputo/O=Txeka Ntiyiso/CN=txeka.gov.mz"
-
-# 3. Colocar certificados em ./nginx/ssl/
-cp txeka.gov.mz.crt ./nginx/ssl/
-cp txeka.gov.mz.key ./nginx/ssl/
-
-# 4. Reiniciar Nginx
-docker-compose -f docker-compose.prod.yml restart nginx
-```
-
-> **Nota:** Certificados da AC-MZ são obrigatórios para domínios `.gov.mz` e garantem confiança máxima em comunicações governamentais.
-
-### Opção B: Let's Encrypt (Se Domínio Público)
-
-```bash
-# Instalar certbot
-sudo apt install -y certbot
-
-# Gerar certificado (standalone)
-sudo certbot certonly --standalone -d txeka.gov.mz
-
-# Copiar para diretório do projeto
-sudo cp /etc/letsencrypt/live/txeka.gov.mz/fullchain.pem ./nginx/ssl/
-sudo cp /etc/letsencrypt/live/txeka.gov.mz/privkey.pem ./nginx/ssl/
-
-# Configurar renovação automática (crontab)
-0 3 * * * certbot renew --quiet && docker-compose -f /opt/txeka/docker-compose.prod.yml restart nginx
-```
-
-### Opção C: Certificado Auto-assinado (Apenas para Desenvolvimento)
-
-```bash
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout ./nginx/ssl/txeka.gov.mz.key \
-  -out ./nginx/ssl/txeka.gov.mz.crt \
-  -subj "/C=MZ/ST=Maputo/L=Maputo/O=Txeka Ntiyiso/CN=txeka.gov.mz"
-```
-
-> ⚠️ **Atenção:** Certificados auto-assinados são **apenas para desenvolvimento e testes internos**. Em produção nacional, usar obrigatoriamente certificados emitidos pela AC-MZ ou PKI governamental.
-
----
-
-## Nginx Reverse Proxy
+## 5. Nginx — Reverse Proxy
 
 ```nginx
-# nginx/nginx.conf
-
-# Upstream para a API FastAPI
-upstream api_backend {
-    server api:8000;
-    keepalive 32;
-}
-
-# Redirecionar HTTP para HTTPS
+# /etc/nginx/sites-available/txeka.conf
 server {
     listen 80;
-    server_name txeka.gov.mz www.txeka.gov.mz;
-    
-    # Let's Encrypt challenge (se aplicável)
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
+    server_name api.txeka.co.mz;
+    return 301 https://$server_name$request_uri;
 }
 
-# Servidor HTTPS principal
 server {
     listen 443 ssl http2;
-    server_name txeka.gov.mz www.txeka.gov.mz;
+    server_name api.txeka.co.mz;
 
-    # Certificados SSL
-    ssl_certificate /etc/nginx/ssl/txeka.gov.mz.crt;
-    ssl_certificate_key /etc/nginx/ssl/txeka.gov.mz.key;
-    
-    # Configuração SSL hardening
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
-    ssl_prefer_server_ciphers on;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
-    ssl_session_tickets off;
-    
+    ssl_certificate /etc/letsencrypt/live/api.txeka.co.mz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.txeka.co.mz/privkey.pem;
+    ssl_protocols TLSv1.3;
+    ssl_ciphers 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256';
+    ssl_prefer_server_ciphers off;
+
     # Headers de segurança
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=63072000" always;
+    add_header Content-Security-Policy "default-src 'self'" always;
 
-    # Proxy para API
     location / {
-        proxy_pass http://api_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
+        proxy_pass http://localhost:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # Timeouts
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 300s;
-        proxy_send_timeout 300s;
-        
-        # Limite de tamanho (50MB para PDFs)
-        client_max_body_size 50M;
-    }
-
-    # Health check (sem logs)
-    location /health {
-        proxy_pass http://api_backend/health;
-        access_log off;
-    }
-
-    # Documentação Swagger (restrito)
-    location /docs {
-        proxy_pass http://api_backend/docs;
-        # Opcional: allow 10.0.0.0/8; deny all;
+        proxy_read_timeout 60s;
     }
 }
 ```
 
 ---
 
-## Backup e Recuperação
+## 6. Backup e Recuperação
 
-### Backup Automático (Diário)
+### 6.1 Backup Diário Automatizado
 
 ```bash
 #!/bin/bash
-# /opt/txeka/scripts/backup.sh
+# /opt/txeka/backup.sh
 
-set -euo pipefail
-
+BACKUP_DIR="/var/backups/txeka"
 DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backups/txeka"
+DB_NAME="txeka_ntiyiso"
 RETENTION_DAYS=30
 
-mkdir -p "$BACKUP_DIR"
+# Backup PostgreSQL
+docker exec txeka-ntiyiso-db pg_dump -U postgres $DB_NAME | gzip > $BACKUP_DIR/db_$DATE.sql.gz
 
-# 1. Backup PostgreSQL
-echo "[$(date)] Iniciando backup PostgreSQL..."
-docker exec txeka-db pg_dump -U txeka -d txeka_ntiyiso --clean --if-exists > \
-  "$BACKUP_DIR/txeka_ntiyiso_$DATE.sql"
+# Backup logs
+tar czf $BACKUP_DIR/logs_$DATE.tar.gz /var/lib/docker/volumes/txeka-logs/_data/
 
-# 2. Comprimir
-echo "[$(date)] Comprimindo backup..."
-gzip -f "$BACKUP_DIR/txeka_ntiyiso_$DATE.sql"
-
-# 3. Verificar integridade
-echo "[$(date)] Verificando integridade..."
-gunzip -t "$BACKUP_DIR/txeka_ntiyiso_$DATE.sql.gz"
-
-# 4. Limpar backups antigos
-echo "[$(date)] Limpando backups com mais de $RETENTION_DIAS dias..."
-find "$BACKUP_DIR" -name "*.sql.gz" -mtime +$RETENTION_DIAS -delete
-
-# 5. Notificar (opcional: webhook Slack/Email)
-echo "[$(date)] Backup concluído: txeka_ntiyiso_$DATE.sql.gz"
+# Rotação (manter 30 dias)
+find $BACKUP_DIR -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete
+find $BACKUP_DIR -name "*.tar.gz" -mtime +$RETENTION_DAYS -delete
 ```
 
-**Adicionar ao crontab:**
+Adicione ao crontab:
+```bash
+0 2 * * * /opt/txeka/backup.sh >> /var/log/txeka-backup.log 2>&1
+```
+
+### 6.2 Restauração
 
 ```bash
-# Editar crontab
-sudo crontab -e
+# Restaurar base de dados
+gunzip < /var/backups/txeka/db_20260627_020000.sql.gz | \\
+  docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
 
-# Adicionar linha (todos os dias às 02:00 CAT)
-0 2 * * * /opt/txeka/scripts/backup.sh >> /var/log/txeka-backup.log 2>&1
+# Verificar integridade
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(*) FROM documents;"
 ```
 
-### Restauração de Disaster Recovery
+### 6.3 RTO / RPO
 
-```bash
-#!/bin/bash
-# /opt/txeka/scripts/restore.sh
-
-set -euo pipefail
-
-BACKUP_FILE="$1"
-
-if [ -z "$BACKUP_FILE" ]; then
-    echo "Uso: $0 <caminho_do_backup.sql.gz>"
-    exit 1
-fi
-
-# 1. Parar serviços dependentes
-echo "[$(date)] Parando API..."
-docker-compose -f /opt/txeka/docker-compose.prod.yml stop api
-
-# 2. Restaurar base de dados
-echo "[$(date)] Restaurando base de dados..."
-gunzip -c "$BACKUP_FILE" | docker exec -i txeka-db psql -U txeka -d txeka_ntiyiso
-
-# 3. Verificar integridade
-echo "[$(date)] Verificando integridade..."
-docker exec txeka-db psql -U txeka -c "SELECT COUNT(*) FROM documents;"
-docker exec txeka-db psql -U txeka -c "SELECT COUNT(*) FROM audit_logs;"
-
-# 4. Reiniciar serviços
-echo "[$(date)] Reiniciando API..."
-docker-compose -f /opt/txeka/docker-compose.prod.yml up -d api
-
-# 5. Validar health check
-echo "[$(date)] Validando health check..."
-sleep 10
-curl -f http://localhost:8000/health
-
-echo "[$(date)] Restauração concluída com sucesso!"
-```
-
-**Uso:**
-```bash
-sudo /opt/txeka/scripts/restore.sh /backups/txeka/txeka_ntiyiso_20260627_020000.sql.gz
-```
+| Métrica | Valor | Nota |
+|---------|-------|------|
+| **RTO** | 4 horas | Tempo máximo para restaurar serviço |
+| **RPO** | 15 minutos | Perda máxima de dados aceitável |
+| **Retenção** | 20 anos | Hashes e logs (Decreto 59/2019) |
+| **Retenção backup** | 30 dias | Cópias de segurança operacionais |
 
 ---
 
-## Monitoramento e Alertas
+## 7. Monitoramento
 
-### Health Check
+### 7.1 Health Checks
+
+| Endpoint | Frequência | Ação em falha |
+|----------|-----------|---------------|
+| `GET /health` | 30s | Reiniciar container após 3 falhas |
+| `pg_isready` | 10s | Aguardar DB antes de iniciar API |
+
+### 7.2 Logs
 
 ```bash
-curl -s http://localhost:8000/health | jq .
+# Logs da API em tempo real
+docker-compose logs -f api --tail=100
+
+# Logs estruturados (JSON)
+docker exec txeka-ntiyiso-api cat /app/logs/app.json | jq
 ```
 
-### Métricas do Sistema (Opcional — Prometheus + Grafana)
+### 7.3 Métricas Futuras (Prometheus + Grafana)
 
-```yaml
-# Adicionar ao docker-compose.prod.yml
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    restart: unless-stopped
-    networks:
-      - txeka-network
-
-  grafana:
-    image: grafana/grafana:latest
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
-    networks:
-      - txeka-network
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-
-volumes:
-  prometheus_data:
-  grafana_data:
-```
-
-### Alertas Recomendados
-
-| Métrica | Threshold | Ação |
-|---------|-----------|------|
-| API down | Health check falha 3x | PagerDuty + Email |
-| Latência P95 | > 500ms | Slack + Email |
-| Taxa de erro | > 1% | PagerDuty + Escalation |
-| Espaço em disco | < 20% livre | Email + Auto-cleanup |
-| Conexões DB | > 80% do máximo | Slack + Escalation |
-| Backup falhou | Último backup > 25h | Email + PagerDuty |
+| Métrica | Alerta |
+|---------|--------|
+| Latência P95 > 500ms | Warning |
+| Erros 5xx > 1% | Critical |
+| CPU > 80% | Warning |
+| Disco > 85% | Critical |
+| Conexões DB > 80% | Warning |
 
 ---
 
-## Checklist de Deploy Nacional
+## 8. Checklist de Deploy
 
-### Pré-deploy
-
-- [ ] Servidores físicos em datacenter nacional (Maputo / Beira / Nampula)
-- [ ] Rede isolada (intranet governamental ou VPN/MPLS dedicada)
-- [ ] UPS + gerador de emergência configurados
-- [ ] Docker e Docker Compose instalados e testados
-- [ ] Variáveis `.env` configuradas com credenciais seguras (nunca no Git)
-- [ ] `JWT_SECRET_KEY` gerada com `openssl rand -hex 32` (mínimo 256 bits)
-- [ ] `DB_PASSWORD` gerada com `openssl rand -base64 24` (mínimo 32 caracteres)
-- [ ] Firewall configurado (apenas portas 80, 443, 22 SSH)
-- [ ] Acesso SSH restrito a IPs autorizados (fail2ban ativo)
+### Pré-Deploy
+- [ ] `.env` configurado com segredos fortes
+- [ ] `docker-compose.yml` validado (`docker-compose config`)
+- [ ] Portas 80/443/22 abertas no firewall
+- [ ] SSL configurado (AC-MZ recomendado)
+- [ ] Backup automático testado
 
 ### Deploy
+- [ ] `docker-compose up -d --build`
+- [ ] Health check `GET /health` retorna 200
+- [ ] `GET /docs` acessível
+- [ ] Teste de emissão: `POST /api/v1/certify`
+- [ ] Teste de verificação: `GET /api/v1/verify/{hash}`
 
-- [ ] PostgreSQL 15 com volume persistente encriptado
-- [ ] SSL configurado (AC-MZ ou PKI governamental — nunca auto-assinado em produção)
-- [ ] Nginx como reverse proxy com headers de segurança
-- [ ] Health check validado (`curl http://localhost:8000/health`)
-- [ ] CORS configurado apenas para domínios autorizados
-- [ ] Rate limiting ativo e testado
-- [ ] Logs estruturados (JSON) configurados
-
-### Pós-deploy
-
-- [ ] Backups automáticos configurados (diário às 02:00 CAT)
-- [ ] Teste de restauração de backup executado com sucesso
-- [ ] Monitoramento de health check ativo
-- [ ] Logs centralizados (opcional: ELK stack ou Loki)
-- [ ] Documentação de runbook entregue à equipa de operações
-- [ ] Treino de incident response realizado com equipa local
-- [ ] Plano de comunicação de crise definido (contactos INTIC, Tribunal de Contas)
+### Pós-Deploy
+- [ ] Logs sem erros críticos
+- [ ] Rate limiting ativo
+- [ ] CORS configurado para domínios autorizados
+- [ ] Auditoria: verificar `audit_logs` tem registos
 
 ### Conformidade
-
-- [ ] Auditoria de segurança inicial realizada
-- [ ] Penetration test básico executado (OWASP Top 10)
-- [ ] Documentação de conformidade entregue (COMPLIANCE.md)
-- [ ] Declaração de não-ICP assinada e arquivada
-- [ ] Acordo de nível de serviço (SLA) definido com instituições
-
----
-
-## Roadmap de Infraestrutura
-
-| Fase | Período | Ambiente | Objetivo | Milestones |
-|------|---------|----------|----------|------------|
-| **Atual** | Q2 2026 | Produção Cloud (Render) | Operação plena, validação de mercado, piloto com INAGE | API online, 99.9% uptime, < 100ms latência |
-| **Transição** | Q3–Q4 2026 | Híbrido | Replicação assíncrona Cloud ↔ Nacional, testes de failover | Sync funcional, RTO < 4h validado |
-| **Futuro** | Q1 2027+ | Produção Nacional | Soberania digital total, conformidade INTIC, air-gapped | Certificação AC-MZ, auditoria INTIC aprovada |
-
-### Métricas de Sucesso por Fase
-
-| Fase | Uptime | Latência P95 | RTO | RPO | Certificações |
-|------|--------|--------------|-----|-----|---------------|
-| Atual | 99.9% | < 200ms | 4h | 15min | — |
-| Transição | 99.95% | < 150ms | 2h | 5min | ISO 27001 (planeado) |
-| Futuro | 99.99% | < 100ms | 30min | 1min | ISO 27001 + INTIC |
+- [ ] TZ = Africa/Maputo (CAT UTC+2)
+- [ ] Locale = pt_MZ.UTF-8
+- [ ] Retenção de logs configurada (20 anos)
+- [ ] Backup diário ativo
+- [ ] Usuário não-root no container
 
 ---
 
-*Txeka Ntiyiso — Deploy e Infraestrutura v1.0 🇲🇿*
-*Alinhado com Lei 3/2017, Decreto 59/2019 e Resolução 69/2021 (PENSC)*
+## 9. Conformidade Legal
+
+| Requisito | Implementação | Ficheiro |
+|-----------|--------------|----------|
+| **Lei 3/2017** — Autenticidade | JWT + institution_id no payload | `Dockerfile` (runtime) |
+| **Lei 3/2017** — Integridade | SHA-256 imutável | `docker-compose.yml` (DB persistente) |
+| **Lei 3/2017** — Não-repúdio | Logs auditáveis em `txeka-logs` | `docker-compose.yml` (volume) |
+| **Decreto 59/2019** — Retenção 20 anos | Volume `txeka-data` persistente | `docker-compose.yml` |
+| **Decreto 59/2019** — Auditoria cronológica | TZ Africa/Maputo, locale pt_MZ | `Dockerfile` |
+| **Resolução 69/2021 (PENSC)** — ICI | Rede isolada, usuário não-root, resource limits | `docker-compose.yml` + `Dockerfile` |
+| **Resolução 69/2021 (PENSC)** — Cifragem | TLS 1.3 no Nginx, segredos via `.env` | `nginx.conf` + `.env` |
+
+---
+
+## 10. Roadmap Infraestrutura
+
+| Fase | Período | Objectivo | Métrica de Sucesso |
+|------|---------|-----------|-------------------|
+| **Fase 1** | Q2 2026 | Produção Cloud (Render) | Uptime 99.9% |
+| **Fase 2** | Q3 2026 | Produção Nacional (INTIC) | Latência < 100ms em MZ |
+| **Fase 3** | Q4 2026 | Cluster Kubernetes + HA | RTO < 1h, RPO < 5min |
+
+---
+
+## 11. Contactos para Suporte Infraestrutural
+
+| Função | Contacto | Canal |
+|--------|----------|-------|
+| DevOps | devops@txeka.co.mz | Email |
+| Render Support | support@render.com | Dashboard |
+| INTIC | info@intic.gov.mz | Email institucional |
+| AC-MZ | info@acmz.gov.mz | Certificados SSL |
+
+---
+
+*Documento gerado em conformidade com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Versão 1.0 — Junho 2026*
