@@ -1,6 +1,6 @@
 # Txeka Ntiyiso — Posicionamento Estratégico
 
-**Plataforma Descentralizada de Verificação de Integridade e Validação Cronológica**
+**Plataforma Descentralizada de Verificação de Integridade e Validação Cronológica Transacional**
 
 ---
 
@@ -14,57 +14,58 @@
 
 ### 1. Camada de Confiança Intermédia (Middleware de Integridade)
 
-O sistema não compete com os órgãos emissores de documentos (como o INAGE, Ministérios ou Universidades), nem tenta substituir a Infraestrutura de Chaves Públicas (ICP) do Estado. O Txeka Ntiyiso posiciona-se exatamente no meio: recebe o documento, extrai a sua **impressão digital matemática única (SHA-256)** e carimba uma **prova de existência imutável** na base de dados.
+O sistema não compete com os órgãos emissores de documentos (como o INAGE, Ministérios ou Universidades), nem tenta substituir a Infraestrutura de Chaves Públicas (ICP) do Estado. O Txeka Ntiyiso posiciona-se exatamente no meio: recebe o documento do cliente de forma local, extrai a sua **impressão digital matemática única (SHA-256)** e carimba uma **prova de existência imutável** na base de dados.
 
 > O hash SHA-256 funciona como uma impressão digital matemática única do documento: qualquer alteração de um único byte gera um hash completamente diferente, tornando a falsificação detetável instantaneamente.
 
 ### 2. Facilitador de Desmaterialização Pública e Privada
 
-O projeto resolve o problema da falsificação de documentos em Moçambique através de duas frentes:
+O projeto resolve o problema da falsificação de documentos em Moçambique através de duas frentes estratégicas:
 
 | Frente | Descrição | Benefício |
 |--------|-----------|-----------|
-| **B2G (Governo)** | Permite que instituições públicas verifiquem instantaneamente a autenticidade de certidões, alvarás, DUATs ou diplomas emitidos por outras instâncias do Estado | Redução da burocracia física e intermediação entre órgãos |
-| **B2B (Empresas)** | Permite que bancos, seguradoras e empresas privadas validem documentos submetidos por clientes de forma automatizada via API | Redução do risco de fraude operacional e aceleração de KYC |
+| **B2G (Governo)** | Permite que instituições públicas verifiquem instantaneamente a autenticidade de certidões, alvarás, DUATs ou diplomas emitidos por outras instâncias do Estado. | Redução drástica da burocracia física, filas e intermediação fraudulenta entre órgãos. |
+| **B2B (Empresas)** | Permite que bancos, seguradoras e empresas privadas validem documentos submetidos por clientes de forma automatizada via API. | Redução do risco de fraude operacional, mitigação de perdas financeiras e aceleração de processos KYC. |
 
-### 3. Motor de Auditoria Conforme a Lei Moçambicana
+### 3. Motor de Auditoria Conforme a Legislação Moçambicana
 
-Ao registar cada ação de emissão, verificação e revogação na tabela `audit_logs` (com IP, método e utilizador), o Txeka Ntiyiso assume a posição de um **sistema de auditoria forense**. Isto alinha a plataforma diretamente com as exigências da **Lei n.º 3/2017** (Lei das Transações Eletrónicas) e com os regulamentos do **INTIC**, servindo como uma **trilha de evidências digitais legalmente válidas**.
+Ao registar cada ação de emissão, verificação e revogação na tabela `audit_logs` (com mascaramento de IP, método e identificador), o Txeka Ntiyiso assume a posição de um **sistema de auditoria forense digital**. Isto alinha a plataforma diretamente com as exigências de tratamento de trilhas de auditoria da **Lei n.º 3/2017** (Lei das Transações Eletrónicas) e com as diretrizes da **Resolução n.º 69/2021** (Política de Segurança Cibernética), servindo como evidência digital robusta.
 
 ---
 
 ## O que somos (Para clientes e parceiros)
 
-| Pilar | Descrição | Benefício |
+| Atributo | Descrição | Benefício |
 |-------|-----------|-----------|
-| **Validador de Integridade** | Geramos uma impressão digital matemática única (hash SHA-256) de qualquer documento | Falsificação torna-se impossível — qualquer alteração de 1 byte muda o hash completamente |
-| **Motor de Auditoria** | Registamos imutavelmente cada emissão, verificação e revogação com selo temporal sincronizado à hora oficial de Moçambique (CAT, UTC+2) | Trilha de evidências digital válida por 20 anos, conforme a Lei 3/2017 |
-| **Guardião de Privacidade** | Arquitetura Zero-Knowledge: armazenamos apenas hashes de 64 caracteres. Zero documentos, zero dados pessoais, zero chaves privadas | Eliminação total de risco de vazamento de dados e conformidade com proteção de dados |
-| **Facilitador de Desmaterialização** | APIs REST que transformam validações manuais (dias de espera, filas, deslocações) em auditorias automáticas de **menos de 100 milissegundos** | Redução de 80% no tempo de verificação documental |
+| **Validador de Integridade** | Geramos uma impressão digital matemática única (hash SHA-256) de qualquer documento. | Falsificação torna-se impossível — qualquer alteração de 1 byte muda o hash completamente. |
+| **Motor de Auditoria** | Registamos imutavelmente cada emissão, verificação e revogação com selo temporal sincronizado ao fuso horário oficial de Moçambique (CAT, UTC+2). | Trilha de evidências digitais em total conformidade com o rasto de auditoria exigido por lei. |
+| **Guardião de Privacidade** | Arquitetura *Zero-Knowledge*: armazenamos apenas hashes de 64 caracteres. Zero documentos, zero dados pessoais (PII), zero chaves privadas. | Eliminação total do risco de vazamento de dados e conformidade imediata com a legislação de privacidade. |
+| **Facilitador de Processos** | APIs REST que transformam validações manuais e físicas em auditorias criptográficas automáticas de **menos de 100 milissegundos**. | Redução de mais de 80% no tempo de verificação documental e custos operacionais. |
 
 ---
 
-## O que NÃO somos (Para reguladores e entidades de supervisão)
+## O que NÃO somos (Para reguladores e entidades de supervisão como o INTIC)
 
-> **Declaração formal de não-enquadramento:**
+> ⚠️ **Declaração formal de não-enquadramento e escopo:**
 
 1. **Não somos uma Entidade Certificadora** — Não emitimos, não gerimos e não revogamos certificados digitais qualificados nos termos estritos da Lei n.º 3/2017.
-2. **Não somos uma ICP concorrente** — Não operamos Infraestrutura de Chaves Públicas, não emitimos chaves privadas nem assinaturas digitais qualificadas.
-3. **Não retemos dados pessoais** — Não armazenamos documentos originais, PII (Personally Identifiable Information), nem metadados identificáveis dos cidadãos.
-4. **Não substituímos órgãos emissores** — Não competimos com INAGE, Ministérios ou Universidades. Somos uma **camada de confiança intermédia** que valida o que eles já emitiram.
+2. **Não somos uma ICP concorrente** — Não operamos Infraestruturas de Chaves Públicas, não geramos pares de chaves assimétricas para os utilizadores finais, nem emitimos assinaturas digitais qualificadas.
+3. **Não retemos dados pessoais** — Não armazenamos documentos originais nem metadados de identificação civil ou biográfica dos cidadãos nos nossos servidores centrais.
+4. **Não substituímos órgãos emissores** — Não competimos com o INAGE, Ministérios, Conservatórias ou Universidades. Somos uma camada tecnológica de validação daquilo que estas entidades de direito já emitiram.
 
-> **Nota sobre selo temporal:** O registo temporal utiliza a hora oficial de Moçambique (CAT, UTC+2) sincronizada com o servidor da base de dados, funcionando como **prova de existência cronológica** e não como carimbo de tempo qualificado nos termos da ICP.
+> **Nota sobre o registo temporal:** O registo de data e hora utiliza o fuso horário de Moçambique (CAT, UTC+2) sincronizado internamente na infraestrutura, funcionando exclusivamente como **rasto de auditoria cronológica transacional** para consistência de logs, não constituindo um serviço de Validação Cronológica qualificada nos termos do Decreto n.º 59/2019.
 
 ---
 
 ## Enquadramento Legal e Conformidade
 
-| Legislação | Como cumprimos |
+| Legislação / Regulamento | Como o Txeka Ntiyiso cumpre |
 |------------|----------------|
-| **Lei n.º 3/2017** (Transações Eletrónicas) | Garantimos integridade, autenticidade e não-repúdio via hashes imutáveis e logs de auditoria |
-| **Decreto n.º 59/2019** | Retenção de registos por 20 anos; trilha de auditoria completa e imutável |
-| **Proteção de Dados** | Arquitetura Zero-Knowledge elimina processamento de dados pessoais sensíveis |
-| **Soberania Digital** | Arquitetura Docker pronta para deploy on-premise em datacenters nacionais |
+| **Lei n.º 3/2017** (Transações Eletrónicas) | Garante a integridade e o não-repúdio pós-emissão via hashes SHA-256 imutáveis e logs de auditoria detalhados. |
+| **Decreto n.º 59/2019** (Regulamento de Certificação) | Estrutura técnica e pipeline preparados para suporte à retenção de registos de logs por até 20 anos. |
+| **Proteção de Dados e Privacidade** | Cumpre o Capítulo V da Lei n.º 3/2017 através da arquitetura *Zero-Knowledge*, mitigando riscos ao não transitar dados sensíveis ou pessoais. |
+| **Resolução n.º 69/2021** (Segurança Cibernética) | Mascaramento ativo de IPs em consultas públicas (`GET /audit/logs`) e isolamento lógico para proteção de infraestruturas críticas. |
+| **Soberania Digital** | Arquitetura baseada em Docker, desenhada e pronta para deploys *on-premises* dentro de datacenters geolocalizados em território moçambicano, em resposta às exigências de localização de dados para Infraestruturas Críticas de Informação (ICI) previstas na PENSC. |
 
 ---
 
@@ -72,44 +73,42 @@ Ao registar cada ação de emissão, verificação e revogação na tabela `audi
 
 | Stakeholder | O que ganha | Como acede |
 |-------------|-------------|------------|
-| **Governo (B2G)** | Verificação instantânea entre instituições (INAGE, Ministérios, Tribunais) | Dashboard institucional + API |
-| **Empresas (B2B)** | Validação automática de documentos de clientes, redução de fraude | API REST integrada |
-| **Reguladores (INTIC, Tribunal de Contas)** | Relatórios de conformidade e auditoria forense completos | Dashboard de auditoria exclusivo |
-| **Cidadãos** | Verificação gratuita via QR code, sem necessidade de registo | Portal público / Aplicação móvel |
+| **Governo (B2G)** | Interoperabilidade e verificação imediata de documentos entre Ministérios, INAGE, Direções Nacionais e Tribunais. | Dashboard Institucional + Integração via API REST |
+| **Empresas (B2B)** | Validação automatizada de faturas, certidões de registo comercial, licenças e alvarás de clientes, reduzindo fraudes. | Chaves de API dedicadas para sistemas centrais (ERPs, CRMs, Core Bancário) |
+| **Reguladores (INTIC / Instâncias de Auditoria)** | Transparência total e capacidade de extração de relatórios forenses digitais imutáveis. | Dashboard de Auditoria / Permissões de Leitura Exclusivas |
+| **Cidadãos** | Consulta transparente e descentralizada da autenticidade do seu rasto documental. | Portal Público Web e verificação rápida via QR Code (sem registo obrigatório) |
 
 ---
 
 ## Diferenciação Competitiva
 
 ```
-Soluções estrangeiras (DocuSign, Adobe Sign)          Txeka Ntiyiso
+Soluções Estrangeiras (DocuSign, Adobe Sign)          Txeka Ntiyiso
 │                                                   │
 ▼                                                   ▼
-Assinatura digital + ICP                        Hash de integridade
-Retém documentos e dados                      Zero retenção de dados
-Custo em divisas (USD/EUR)                    Custo em Meticais (MT)
-Cloud exclusivo (US/EU)                      Pronto para deploy em MZ
-Genérico para qualquer país                    Desenhado para legislação MZ
+Foco em Assinatura Eletrónica + ICP             Foco em Integridade Criptográfica
+Retém documentos e dados sensíveis              Zero retenção de documentos/dados
+Custo dolarizado em divisas (USD/EUR)            Faturação local em Meticais (MT)
+Hospedagem em nuvens US/EU                      Pronto para Deploy On-Premise em MZ
+Genérico para o mercado global                  Alinhado com a Legislação de Moçambique
 ```
 
 ---
 
-## Estado Actual do Projecto
+## Estado Actual do Projecto (Junho de 2026)
 
-| Fase | Estado | Descrição | Marco |
+| Fase | Estado | Descrição | Marco Operacional |
 |------|--------|-----------|-------|
-| Fase 1 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs | API operacional em produção |
-| Fase 2 | 🔄 Em curso | Dashboard Web + Relatórios + Gestão de Instituições | Previsão: Q3 2026 |
-| Fase 3 | ⏳ Planeada | Go-to-market com INAGE e sector bancário | Q3 2026 |
-| Fase 4 | ⏳ Planeada | Escala empresarial: 2FA, OAuth2, ML fraud detection | Q4 2026 |
-
-> **Momento actual:** O Txeka Ntiyiso está em **Fase 2** de desenvolvimento. A API core está validada e operacional em produção (Render.com), com tráfego real de emissão e verificação. O foco actual é a construção do dashboard institucional, módulo de gestão de entidades e sistema de relatórios analíticos.
+| **Fase 1** | ✅ Concluída | MVP Core desenvolvido: endpoints de emissão, verificação, revogação e geração de logs estruturados em JSON. | API operacional em ambiente de produção (Render + Supabase). |
+| **Fase 2** | 🔄 Em curso | Construção do Dashboard Web, Módulo de Gestão de Entidades/Instituições e Relatórios de Auditoria. | **Fase Atual (Q2-Q3 2026)** |
+| **Fase 3** | ⏳ Planeada | Pilotos e Go-to-Market focado em Clientes Estratégicos (Instituições Públicas e Setor Bancário/Financeiro). | Planeado para Q3 2026 |
+| **Fase 4** | ⏳ Planeada | Escalabilidade corporativa avançada: Autenticação Multi-Fator (2FA), OAuth2 Enterprise e deteção de anomalias com ML. | Planeado para Q4 2026 |
 
 ---
 
 ## Resumo Executivo (30 segundos)
 
-> **"O Txeka Ntiyiso posiciona-se como a infraestrutura de transição digital que elimina a falsificação documental em Moçambique. Não emitimos certificados digitais — validamos a integridade matemática dos documentos que já existem. Sem armazenar documentos ou dados pessoais. Com conformidade total à Lei 3/2017. E com validações em menos de 100 milissegundos."**
+> **"O Txeka Ntiyiso posiciona-se como a infraestrutura intermédia de transição digital que elimina o problema da falsificação documental em Moçambique. Não emitimos certificados digitais nem chaves — validamos e blindamos matematicamente a integridade dos documentos que as instituições já emitem, com resposta em menos de 100ms, custo local em Meticais e retenção zero de documentos ou dados pessoais."**
 
 ---
 
@@ -117,13 +116,13 @@ Genérico para qualquer país                    Desenhado para legislação MZ
 
 | Termo | Definição no contexto Txeka Ntiyiso |
 |-------|-------------------------------------|
-| **Hash SHA-256** | Impressão digital matemática de 64 caracteres hexadecimais que identifica unicamente o conteúdo de um documento |
-| **Zero-Knowledge** | Arquitetura onde o servidor nunca tem acesso ao conteúdo original do documento, apenas ao seu hash |
-| **Não-repúdio** | Garantia de que uma emissão ou verificação não pode ser negada posteriormente, graças aos logs imutáveis |
-| **Prova de existência** | Registo temporal que demonstra que um documento existia num determinado momento, sem garantir a validade do seu conteúdo jurídico |
-| **Middleware de integridade** | Camada de software que opera entre o emissor e o verificador, garantindo a integridade do documento sem substituir nenhum dos dois |
+| **Hash SHA-256** | Algoritmo criptográfico que gera uma cadeia imutável de 64 caracteres hexadecimais, funcionando como a identidade matemática irreversível de um ficheiro. |
+| **Zero-Knowledge Architecture** | Modelo de engenharia onde a plataforma opera metadados e provas criptográficas sem nunca ver, ler ou armazenar o ficheiro ou dado pessoal original. |
+| **Não-repúdio Transacional** | Garantia de que uma operação de registo ou revogação não pode ser negada pelo seu autor devido à robustez e imutabilidade dos logs gerados pelo sistema. |
+| **Prova de Existência Criptográfica** | Registo tecnológico seguro que atesta que um documento com determinado hash exato existia exatamente no momento do seu envio ao sistema. |
+| **Middleware de Integridade** | Software de infraestrutura que atua de forma transparente entre o emissor e o verificador de um documento, garantindo que a informação não foi adulterada no caminho. |
+| **Rasto de Auditoria Cronológica Transacional** | Registo temporal de operações (emissão, verificação, revogação) para consistência de logs e trilha forense, não constituindo validação cronológica qualificada. |
 
 ---
 
 *Txeka Ntiyiso — Infraestrutura de Confiança para a Transformação Digital de Moçambique 🇲🇿*
-"""
