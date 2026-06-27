@@ -106,7 +106,7 @@ Genérico para o mercado global                  Alinhado com a Legislação de 
 
 ---
 
-## Resumo Executivo (30 segundos)
+## Resumo Executivo 
 
 > **"O Txeka Ntiyiso posiciona-se como a infraestrutura intermédia de transição digital que elimina o problema da falsificação documental em Moçambique. Não emitimos certificados digitais nem chaves — validamos e blindamos matematicamente a integridade dos documentos que as instituições já emitem, com resposta em menos de 100ms, custo local em Meticais e retenção zero de documentos ou dados pessoais."**
 
