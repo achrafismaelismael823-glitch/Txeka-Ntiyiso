@@ -5,7 +5,7 @@ Plataforma de Validação Digital de Documentos de Moçambique.
 
 ## O que é
 
-Txeka Ntiyiso é um sistema B2G (Business-to-Government) e B2B que garante autenticidade, integridade e não-repúdio de documentos digitais através de criptografia SHA-256 e QR codes verificáveis.
+Txeka Ntiyiso é um sistema B2G (Business-to-Government) e B2B que garante a autenticidade, integridade e o não-repúdio de documentos digitais através de criptografia SHA-256 e QR codes verificáveis. Atuando como um serviço descentralizado de verificação de integridade e validação cronológica, o sistema complementa o ecossistema legal sem a necessidade de reter ou gerir certificados digitais privados dos utilizadores.
 
 Reduz fraude documental em 80% mantendo conformidade total com a Lei das Transações Eletrónicas de Moçambique (Lei 3/2017) e Decreto n.º 59/2019.
 
@@ -32,6 +32,7 @@ Reduz fraude documental em 80% mantendo conformidade total com a Lei das Transa�
 - Auditoria completa (quem verificou, quando, resultado)
 - Lei 3/2017 compliant (autenticidade + integridade + não-repúdio)
 - Retenção de 20 anos (conformidade Decreto 59/2019)
+- **Privacidade por Design (Zero-Knowledge):** A plataforma processa e armazena exclusivamente hashes criptográficos de 64 caracteres. Os documentos originais nunca saem do ambiente do cliente, garantindo conformidade absoluta com as regras de sigilo e proteção de dados.
 
 ## Arquitetura
 
@@ -69,13 +70,13 @@ Oferecemos:
 Endpoints Principais
 
 Método	Endpoint	Descrição	
-POST	`/api/v1/certify`	Emitir documento	
-GET	`/api/v1/verify/{hash}`	Verificar documento (público)	
-POST	`/api/v1/verify`	Verificar documento (B2B/B2G)	
-POST	`/api/v1/emissions/{doc_id}/revoke`	Revogar documento	
-GET	`/api/v1/audit/logs`	Logs de auditoria (admin)	
-GET	`/api/v1/audit/document/{hash}/history`	Histórico do documento	
-GET	`/api/v1/audit/stats`	Estatísticas (admin)	
+POST	`/api/v1/certify`	Emitir/Registar integridade do documento	
+GET	`/api/v1/verify/{hash}`	Verificar documento (Consulta pública rápida)	
+POST	`/api/v1/verify`	Verificar documento (Validação em lote B2B/B2G)	
+POST	`/api/v1/emissions/{doc_id}/revoke`	Revogar documento (Invalidação legal)	
+GET	`/api/v1/audit/logs`	Logs de auditoria imutáveis (Apenas Admin)	
+GET	`/api/v1/audit/document/{hash}/history`	Rasto cronológico e histórico do documento	
+GET	`/api/v1/audit/stats`	Métricas e volume de validações (Admin)	
 
 Documentação completa: `/docs`
 
@@ -92,8 +93,8 @@ Retenção de Registos: Os hashes e logs de auditoria imutáveis são conservado
 
 Roadmap
 
-- Fase 1 (Atual): MVP core validado
-- Fase 2 (Q2 2026): Dashboard + Relatórios + Registo de Instituições
+- Fase 1 (Concluída): MVP core validado com persistência imutável e pipelines de auditoria ativos.
+- [➔] Fase 2 (Atual - Q2/Q3 2026): Construção do Dashboard Web + Relatórios analíticos + Módulo de gestão de Instituições.
 - Fase 3 (Q3 2026): Go-to-market com clientes
 - Fase 4 (Q4 2026): Escala empresarial
 
