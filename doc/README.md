@@ -1,3 +1,4 @@
+```markdown
 # Txeka Ntiyiso
 
 Plataforma de Validação Digital de Documentos de Moçambique.
@@ -27,7 +28,7 @@ Reduz fraude documental em 80% mantendo conformidade total com a Lei das Transa�
 - SHA-256 criptografia (impossível falsificar)
 - QR code verificável (cidadão scaneia do telemóvel)
 - Revogação de documentos (invalida documento se necessário)
-- Multi-instituição (governo, bancos, imobiliárias)
+- Multi-institução (governo, bancos, imobiliárias)
 - Auditoria completa (quem verificou, quando, resultado)
 - Lei 3/2017 compliant (autenticidade + integridade + não-repúdio)
 - Retenção de 20 anos (conformidade Decreto 59/2019)
@@ -51,37 +52,59 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn src.main:app --reload
-Acede a http://localhost:8000/docs para Swagger.
-Para Instituições
-Contacte: tech@txeka.co.mz
-Oferecemos:
-Demo gratuita (15 min)
-Piloto 30 dias (grátis)
-Integração API (simples)
-Suporte 24/7
-Endpoints Principais
-POST /api/v1/emit — Emitir documento
-GET /api/v1/verify/{hash} — Verificar documento
-GET /api/v1/certificate/{doc_id} — Ver certificado
-POST /api/v1/emissions/{doc_id}/revoke — Revogar documento
+```
 
-Documentação completa: /docs
+Aceda a http://localhost:8000/docs para Swagger.
+
+Para Instituições
+
+Contacte: tech@txeka.co.mz
+
+Oferecemos:
+- Demo gratuita (15 min)
+- Piloto 30 dias (grátis)
+- Integração API (simples)
+- Suporte 24/7
+
+Endpoints Principais
+
+Método	Endpoint	Descrição	
+POST	`/api/v1/certify`	Emitir documento	
+GET	`/api/v1/verify/{hash}`	Verificar documento (público)	
+POST	`/api/v1/verify`	Verificar documento (B2B/B2G)	
+POST	`/api/v1/emissions/{doc_id}/revoke`	Revogar documento	
+GET	`/api/v1/audit/logs`	Logs de auditoria (admin)	
+GET	`/api/v1/audit/document/{hash}/history`	Histórico do documento	
+GET	`/api/v1/audit/stats`	Estatísticas (admin)	
+
+Documentação completa: `/docs`
+
 Conformidade Legal e Retenção de Dados
+
 Txeka Ntiyiso cumpre integralmente o regime jurídico moçambicano de validação eletrónica:
-Lei n.º 3/2017 (Transações Eletrónicas de Moçambique)
-Decreto n.º 59/2019 (Serviços de Validação Cronológica e Eletrónica)
-Requisitos do Banco de Moçambique (conformidade transaccional)
-Proteção de Dados: Em total conformidade com as garantias de privacidade previstas na Lei n.º 3/2017, a plataforma opera exclusivamente com hashes criptográficos e metadados, sem armazenar dados de identificação pessoal (PII) ou ficheiros originais.
-Retenção de Registos: Os hashes e logs de auditoria imutáveis são conservados pelo período mínimo de 20 anos, em estrito cumprimento do regime jurídico dos serviços de validação cronológica e eletrónica em Moçambique.
+- Lei n.º 3/2017 (Transações Eletrónicas de Moçambique)
+- Decreto n.º 59/2019 (Serviços de Validação Cronológica e Eletrónica)
+- Requisitos do Banco de Moçambique (conformidade transaccional)
+
+Proteção de Dados: Em total conformidade com as garantias de privacidade previstas na Lei n.º 3/2017.
+
+Retenção de Registos: Os hashes e logs de auditoria imutáveis são conservados pelo período mínimo de 20 anos.
 
 Roadmap
-Fase 1 (Atual): MVP core validado
-Fase 2 (Q2 2026): Dashboard + Relatórios
-Fase 3 (Q3 2026): Go-to-market com clientes
-Fase 4 (Q4 2026): Escala empresarial
+
+- Fase 1 (Atual): MVP core validado
+- Fase 2 (Q2 2026): Dashboard + Relatórios + Registo de Instituições
+- Fase 3 (Q3 2026): Go-to-market com clientes
+- Fase 4 (Q4 2026): Escala empresarial
+
 Suporte
-Email: tech@txeka.co.mz
-GitHub Issues: [Link]
-Status: https://txeka-ntiyiso-api.onrender.com/health
+
+- Email: tech@txeka.co.mz
+- GitHub Issues: [Link]
+- Status: https://txeka-ntiyiso-api.onrender.com/health
+
 Licença
+
 Proprietary. All rights reserved. Txeka Ntiyiso, 2026.
+
+```
