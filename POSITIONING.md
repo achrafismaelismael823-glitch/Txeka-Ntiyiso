@@ -4,7 +4,7 @@
 
 ---
 
-## Declaração de Posição (Uma frase)
+## Declaração de Posição 
 
 > **O Txeka Ntiyiso é uma infraestrutura digital de confiança B2G/B2B que garante a integridade, autenticidade e não-repúdio de documentos digitais através de criptografia SHA-256, sem nunca armazenar os documentos originais nem competir com a ICP do Estado.**
 
