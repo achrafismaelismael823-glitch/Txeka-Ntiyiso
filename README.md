@@ -1,4 +1,4 @@
- """# Txeka Ntiyiso
+# Txeka Ntiyiso
 
 **Plataforma de Validação Digital de Documentos de Moçambique**
 
