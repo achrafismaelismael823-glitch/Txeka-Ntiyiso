@@ -1,15 +1,15 @@
+```markdown
 # Documentação Técnica — Txeka Ntiyiso
 
 Arquitetura, stack e decisões técnicas.
 
 ## Visão Geral
 
-Sistema distribuído B2G com dois componentes principais:
+Sistema distribuído B2G/B2B com componente principal:
 
-1. API Gateway (FastAPI + PostgreSQL)
-2. Web Portal (React + Tailwind)
+- API Gateway (FastAPI + PostgreSQL)
 
-Ambos deployados em Render.com com database em Supabase.
+Deployado em Render.com com database em Supabase.
 
 ## Stack Tecnológico
 
@@ -21,180 +21,230 @@ Ambos deployados em Render.com com database em Supabase.
 - Autenticação: JWT (pyjwt 2.8.0)
 - Criptografia: SHA-256, bcrypt
 - QR Code: qrcode 7.4.2 + Pillow
-
-### Frontend
-
-- Framework: React 18
-- Styling: Tailwind CSS
-- HTTP Client: Axios
-- Icons: Lucide React
-- Estado: React Hooks
+- Rate Limiting: slowapi
+- Logging: structlog (JSON)
 
 ### Infraestrutura
 
 - Hosting API: Render.com (US)
-- Hosting Frontend: Render.com (US)
 - Database: Supabase PostgreSQL
-- CDN: Render.com built-in
-- Monitoramento: Render logs
+- Monitoramento: Render logs + structlog
 
 ## Arquitetura de Dados
 
 ### Tabelas Principais
 
-#### emitted_documents
+#### documents
 
 ```sql
-CREATE TABLE emitted_documents (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE documents (
+    id UUID PRIMARY KEY,
     doc_id VARCHAR(100) UNIQUE,
     doc_hash VARCHAR(64) UNIQUE,
     document_type VARCHAR(50),
     institution_id VARCHAR(50),
-    issued_by VARCHAR(255),
-    certificate_url VARCHAR(255),
     qr_code TEXT,
-    status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMP,
+    file_size INTEGER,
+    revoked BOOLEAN DEFAULT FALSE,
     revoked_at TIMESTAMP,
-    revocation_reason TEXT
+    revoked_reason TEXT,
+    revoked_by VARCHAR(50),
+    created_at TIMESTAMP DEFAULT NOW()
 );
+```
+
 Índices:
-doc_hash (busca rápida na verificação)
-institution_id (filtrar por instituição)
-created_at (auditoria temporal)
-Fluxo de Emissão
-Cliente POST /api/v1/emit com PDF
-Validação: tamanho, tipo, extensão
-SHA-256(PDF bytes) → hash_sha256
-Verificação: hash já existe?
-SIM: 409 Conflict (documento já emitido)
-NÃO: Continua
-Gerar QR code: qrcode(hash_sha256, doc_id)
-Criar registro BD: emitted_documents
-Retornar: {doc_id, hash, qr_code, certificate_url}
-Tempo esperado: menos de 500ms
-Fluxo de Verificação
-Cliente GET /api/v1/verify/{doc_hash}
-Validação: hash tem 64 chars hexadecimais?
-NÃO: 400 Bad Request
-SIM: Continua
-Query BD: SELECT * WHERE doc_hash = ?
-Se não encontrado: 404 Not Found
-Se encontrado: Retornar documento + status
-Gerar novo QR para exibição
-Tempo esperado: menos de 100ms
-Fluxo de Revogação
-Cliente POST /api/v1/emissions/{doc_id}/revoke
-Validação: token JWT admin?
-NÃO: 403 Forbidden
-SIM: Continua
-Query BD: SELECT * WHERE doc_id = ?
-Se não encontrado: 404 Not Found
-Se encontrado: UPDATE status = 'revoked'
-Registo permanece em BD (não apagado)
-revoked_at = NOW()
-revocation_reason = fornecido
-Log auditoria: quem revogou, quando, por quê
-Retornar: {status='revoked', ...}
-Garantia: Não-repúdio mantido (Lei 3/2017)
-Tempo esperado: menos de 150ms
+- `doc_hash` (busca rápida na verificação)
+- `institution_id` (filtrar por instituição)
+- `created_at` (auditoria temporal)
+
+audit_logs
+
+```sql
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY,
+    user_email VARCHAR(100),
+    action VARCHAR(20),
+    resource_type VARCHAR(50),
+    resource_id VARCHAR(100),
+    institution_id VARCHAR(50),
+    ip_address VARCHAR(45),
+    request_path TEXT,
+    request_method VARCHAR(10),
+    status_code INTEGER,
+    success BOOLEAN,
+    details JSONB,
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+```
+
+Fluxos
+
+Emissão
+
+1. Cliente `POST /api/v1/certify` com PDF
+2. Validação: tamanho, tipo, extensão, magic bytes
+3. SHA-256(PDF bytes) → hash_sha256
+4. Verificação: hash já existe? → 409 Conflict
+5. Gerar QR code: `qrcode(hash_sha256, doc_id)`
+6. Criar registro BD: `documents`
+7. Audit log: `EMIT`
+8. Retornar: `{doc_id, hash, qr_code, certificate_url, timestamp}`
+
+Tempo esperado: < 500ms
+
+Verificação (Pública)
+
+1. Cliente `GET /api/v1/verify/{doc_hash}`
+2. Validação: hash tem 64 chars hexadecimais
+3. Query BD: `SELECT * WHERE doc_hash = ?`
+4. Se não encontrado: retorna `INVALID`
+5. Se revogado: retorna `REVOKED` + metadados
+6. Se válido: retorna `VALID` + dados públicos
+7. Audit log: `VERIFY` (anonymous)
+
+Tempo esperado: < 100ms
+
+Verificação (B2B/B2G)
+
+1. Cliente `POST /api/v1/verify` com JSON `{"hash": "..."}`
+2. `.strip()` no hash (remove espaços)
+3. Mesma lógica da verificação pública
+4. Audit log: `VERIFY` (anonymous)
+
+Revogação
+
+1. Cliente `POST /api/v1/emissions/{doc_id}/revoke` + JWT admin
+2. Validação: `role == "admin"` ou mesma instituição
+3. Query BD: `SELECT * WHERE doc_id = ?`
+4. Se já revogado: retorna `already_revoked`
+5. Se não encontrado: 404
+6. Atualiza: `revoked = TRUE`, `revoked_at = NOW()`, `revoked_reason`
+7. Audit log: `REVOKE`
+8. Retorna: `{status: "revoked", revoked_at, reason}`
+
+Tempo esperado: < 150ms
+
+Auditoria
+
+1. Admin `GET /api/v1/audit/logs` + JWT admin
+2. Filtros opcionais: action, institution_id, data, etc.
+3. Retorna: lista de logs paginada
+
+1. Admin `GET /api/v1/audit/document/{hash}/history`
+2. Retorna: histórico completo do documento
+
 Autenticação
+
 JWT Flow
-Utilizador login (mock: system@txeka.co.mz)
-Sistema cria token: jwt.encode(payload, SECRET_KEY)
-Cliente armazena em localStorage
-Cada request: Authorization: Bearer {token}
-security.py: jwt.decode(token, SECRET_KEY)
-Se válido: Continua. Se não: 401 Unauthorized
-Roles e Scopes
+
+1. Login (futuro: endpoint dedicado)
+2. Sistema cria token: `jwt.encode(payload, SECRET_KEY)`
+3. Payload: `{sub, email, id, role, institution, exp, iat}`
+4. Cliente envia: `Authorization: Bearer {token}`
+5. `security.py`: `jwt.decode(token, SECRET_KEY)`
+6. Se válido: continua. Se não: 401
+
+Roles
+
+```python
 ROLES = {
     "system": ["verify", "emit", "revoke"],
-    "admin": ["verify", "emit", "revoke", "manage"],
+    "admin": ["verify", "emit", "revoke", "manage_institutions"],
     "institution": ["emit", "verify"],
     "citizen": ["verify"]
 }
+```
+
 Segurança
+
 Criptografia
-SHA-256: Hash imutável do documento
-JWT (HS256): Autenticação stateless
-bcrypt: Password hashing (futuro)
-Validação e Restrição de Entrada
-Formato de Arquivo: Exclusivamente PDF (.pdf).
-Tipo MIME Autorizado: application/pdf.
-Assinatura Mágica (Magic Numbers): Verificação mandatória dos bytes iniciais (%PDF-) para mitigação de falsificação de extensão.
-Limite de Volume: menos de 50MB por requisição.
-Controlo de Fluxo (Rate Limiting): Parametrizado para 1.000 requisições por minuto por IP ao nível do API Gateway.
+
+- SHA-256: Hash imutável do documento
+- JWT (HS256): Autenticação stateless
+- bcrypt: Password hashing (futuro)
+
+Validação de Entrada
+
+- Formato: Exclusivamente PDF (.pdf)
+- MIME: `application/pdf`
+- Magic bytes: `%PDF-` (mitiga falsificação)
+- Limite: < 50MB
+- Rate limiting: 100 req/min por IP
+
 CORS
+
+```python
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:5173",
     "https://txeka-ntiyiso-portal.onrender.com"
 ]
-Database Connection
-Desenvolvimento
-DATABASE_URL = "sqlite:///./txeka_ntiyiso.db"
-Produção
-DATABASE_URL = os.getenv("DATABASE_URL")
-# postgresql://user:pass@db.supabase.co:5432/postgres
-Conexão automática via SQLAlchemy.
+```
+
 Deploy Pipeline
-Developer faz push ao GitHub
-Render webhook acionado
-Render clona repo
-Executa: pip install -r requirements.txt
-Executa: uvicorn src.main:app --host 0.0.0.0 --port 10000
-Health check: GET /health
-Se 200: Deploy bem-sucedido
-Se erro: Rollback automático
-Tempo: aproximadamente 2-3 minutos
+
+1. Developer faz push ao GitHub
+2. Render webhook acionado
+3. Render clona repo
+4. `poetry lock && poetry install`
+5. `alembic upgrade head`
+6. `uvicorn src.main:app --host 0.0.0.0 --port $PORT`
+7. Health check: `GET /health`
+8. Se 200: Deploy bem-sucedido
+
+Tempo: 2-3 minutos
+
 Performance
-Benchmarks
-Emit: 450ms (incluindo criptografia)
-Verify: 85ms (query BD + QR gen)
-Revoke: 120ms (update BD)
-Escalabilidade
-Atual: 100 requests/segundo
-Target: 1.000 requests/segundo (Fase 2)
-Bottleneck: PostgreSQL (Supabase pode escalar)
+
+Operação	Tempo	
+Emit	450ms	
+Verify	85ms	
+Revoke	120ms	
+
 Monitoramento
-Logs
-INFO:src.main:Rotas registadas com prefixo: /api/v1
-INFO:src.routes.emit:Documento emitido: DUAT-INAGE-20260604-A1B2C3D4
-INFO:src.routes.verify:Documento verificado: hash a740dc78...
-ERROR:src.main:Erro não tratado: [detalhes]
+
+Logs (structlog JSON)
+
+```json
+{
+  "event": "Documento emitido",
+  "doc_id": "DUAT-INAGE-20260626-XXXXXX",
+  "user_email": "admin@txeka.co.mz",
+  "timestamp": "2026-06-27T08:44:00+02:00"
+}
+```
+
 Health Check
+
+```json
 GET /health
-→ {
+{
   "status": "online",
   "project": "Txeka Ntiyiso",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "environment": "production"
 }
+```
+
 Decisões Arquiteturais
+
 Por que PostgreSQL?
-Txeka usa SQL nativo (não NoSQL)
-Transações ACID críticas
-Supabase é grátis e escalável
-Lei 3/2017 exige auditoria (SQL facilita)
+
+- Transações ACID críticas
+- Supabase é grátis e escalável
+- Lei 3/2017 exige auditoria (SQL facilita)
+
 Por que FastAPI?
-Type hints nativos (menos bugs)
-Auto-documentation (/docs)
-Performance (uvicorn + asyncio)
-JWT simples de implementar
-Por que React?
-Componentes reutilizáveis
-Hot reload (desenvolvimento)
-Ecosystem maduro
-Mobile-friendly com Tailwind
+
+- Type hints nativos
+- Auto-documentation (/docs)
+- Performance (uvicorn + asyncio)
+
 Roadmap Técnico
-Fase 2:
-Blockchain anchor (imutabilidade)
-Cache Redis (performance)
-Webhooks para clientes
-Fase 3:
-2FA (autenticação)
-OAuth2 (social login)
-ML fraud detection
-Fase 4:
-Multi-language
-Mobile app nativa
-API v2 (breaking changes)
+
+- Fase 2: Dashboard + relatórios, registo de instituições
+- Fase 3: 2FA, OAuth2, ML fraud detection
+- Fase 4: Multi-language, mobile app, API v2
+
+```
