@@ -15,9 +15,7 @@ from src.models.emission import RevokeRequest
 from src.security import verify_token
 from src.services.audit_service import AuditService
 
-# CAT = Central Africa Time (UTC+2) - Fuso horário oficial de Moçambique
 CAT = timezone(timedelta(hours=2), name="CAT")
-
 router = APIRouter(tags=["revocation"])
 
 
@@ -29,28 +27,17 @@ async def revoke_emission(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ) -> Dict[str, Any]:
-    """
-    Revoga um documento emitido e gera rastro de auditoria imutável.
-    
-      Regra de negócio:
-        Um documento revogado mantém-se na base de dados como
-        "revoked=true" para preservar o histórico legal.
-        NUNCA é eliminado fisicamente (soft delete proibido).
-  
-     Nota técnica:
-        O email é extraído do claim "email" do JWT, com fallback para "sub"
-        caso o token seja legado ou de integração B2B/B2G.
-    """
+    """Revoga documento. Apenas admin ou instituição proprietária."""
     doc_id_decoded = unquote(doc_id)
     
     result = await db.execute(select(Document).where(Document.doc_id == doc_id_decoded))
     document = result.scalar_one_or_none()
 
     if not document:
-        raise HTTPException(status_code=404, detail=f"Documento {doc_id_decoded} não encontrado")
+        raise HTTPException(status_code=404, detail=f"Documento {doc_id_decoded} nao encontrado")
 
     if document.revoked:
-        # Tentativa de revogação duplicada — loga para auditoria de segurança
+        # Documento ja revogado
         await AuditService.log_revoke(
             session=db,
             user_email=current_user.get("email", "unknown"),
@@ -64,12 +51,12 @@ async def revoke_emission(
         return {
             "status": "already_revoked",
             "doc_id": document.doc_id,
-            "message": f"Documento já se encontra revogado. Motivo: {document.revoked_reason}"
+            "message": f"Documento ja se encontra revogado. Motivo: {document.revoked_reason}"
         }
 
-    # Validação RBAC: admin pode tudo, instituição só os seus documentos
+    # RBAC: admin pode tudo, instituicao so os seus documentos
     if current_user.get("institution") != document.institution_id and current_user.get("role") != "admin":
-        # Tentativa não autorizada — potencial ataque de insider
+        # Sem permissao
         await AuditService.log_revoke(
             session=db,
             user_email=current_user.get("email", "unknown"),
@@ -80,9 +67,9 @@ async def revoke_emission(
             status_code=403,
             details={"reason": "permission_denied"}
         )
-        raise HTTPException(status_code=403, detail="Sem permissão para revogar este documento")
+        raise HTTPException(status_code=403, detail="Sem permissao para revogar este documento")
 
-    #  Revogação efetiva — atualiza flags e timestamp CAT
+    # Revoga
     document.revoked = True
     document.revoked_at = datetime.now(CAT)
     document.revoked_reason = request.reason
@@ -90,7 +77,7 @@ async def revoke_emission(
 
     await db.commit()
     
-    #  Registro de auditoria — sucesso com metadados completos
+    # Audit log
     await AuditService.log_revoke(
         session=db,
         user_email=current_user.get("email", "unknown"),
@@ -108,3 +95,4 @@ async def revoke_emission(
         "revoked_at": document.revoked_at.isoformat(),
         "message": f"Documento revogado com sucesso. Motivo: {request.reason}"
     }
+
