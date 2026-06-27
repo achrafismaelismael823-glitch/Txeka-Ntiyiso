@@ -11,6 +11,18 @@ Produção:  https://txeka-ntiyiso-api.onrender.com/api/v1
 Local:     http://localhost:8000/api/v1
 ```
 
+---
+
+## Escopo Legal e Isenção
+
+O Txeka Ntiyiso opera em total conformidade com a **Lei n.º 3/2017 (Transações Eletrónicas)** e o **Decreto n.º 59/2019**.
+
+* **Não-Repúdio:** O serviço atesta a integridade cronológica e a imutabilidade do documento a partir do momento do seu registo.
+* **Isenção de Atividade:** O Txeka Ntiyiso não emite certificados digitais de chave pública nem assinaturas eletrónicas qualificadas, não competindo com as competências da infraestrutura ICP-MZ gerida pelo INTIC.
+* **Privacidade:** Nenhum documento submetido através dos endpoints de emissão é armazenado nos servidores da plataforma. Apenas o hash criptográfico SHA-256 de 64 caracteres é persistido.
+
+---
+
 ## Autenticação
 
 A API utiliza **JWT (JSON Web Tokens)** via header `Authorization`.
@@ -67,6 +79,8 @@ Content-Type: multipart/form-data
 | `document_type` | String | Sim | Tipo: DUAT, CERTIDAO, LICENCA, DIPLOMA |
 | `institution_id` | String | Sim | Identificador da instituição |
 
+> **Nota de Privacidade:** O ficheiro PDF enviado é processado **estritamente em memória** para a extração do hash criptográfico SHA-256 e geração do QR code. O binário **nunca é persistido** em disco ou base de dados, garantindo conformidade absoluta com o princípio de minimização da Lei de Proteção de Dados Pessoais em Moçambique.
+
 **Exemplo cURL:**
 ```bash
 curl -X POST "https://txeka-ntiyiso-api.onrender.com/api/v1/certify" \
@@ -84,7 +98,7 @@ curl -X POST "https://txeka-ntiyiso-api.onrender.com/api/v1/certify" \
     "doc_id": "DUAT-INAGE-20260627-A1B2C3D4",
     "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "qr_code": "data:image/png;base64,iVBORw0KGgo...",
-    "certificate_url": "https://txeka.mz/verify/e3b0c44...",
+    "verification_url": "https://txeka.mz/verify/e3b0c44...",
     "institution_id": "INAGE",
     "document_type": "DUAT",
     "created_at": "2026-06-27T14:32:15+02:00",
@@ -92,6 +106,8 @@ curl -X POST "https://txeka-ntiyiso-api.onrender.com/api/v1/certify" \
   }
 }
 ```
+
+> **Nota sobre terminologia:** O campo `verification_url` aponta para a **URL pública de validação da integridade do registo**. Não se trata de um "certificado digital" no sentido da ICP-MZ, mas sim de uma prova de existência cronológica verificável.
 
 **Resposta 409 (Conflict):**
 ```json
@@ -287,6 +303,8 @@ curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?action=EMIT&insti
 }
 ```
 
+> **Nota de Privacidade:** Os endereços IP nos logs de auditoria são mascarados (`XXX.XXX`) em consultas públicas, alinhando-se com a Política Nacional de Segurança Cibernética (PENSC) e garantindo a proteção de identidade dos cidadãos em verificações anónimas via QR code.
+
 ---
 
 ### 6. Histórico de Documento
@@ -470,3 +488,4 @@ GET /health
 
 *Txeka Ntiyiso — API Reference v1.0 🇲🇿*
 """
+
