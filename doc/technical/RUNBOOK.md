@@ -4,6 +4,8 @@
 
 **Procedimentos Operacionais, Troubleshooting e Resposta a Incidentes**
 
+**Baseado em testes reais de produção** | Última atualização: 2026-06-28
+
 ---
 
 ## Índice
@@ -40,16 +42,17 @@ HEALTH=$(curl -s http://localhost:8000/health)
 echo "  Status: $(echo $HEALTH | jq -r '.status')"
 echo "  Versão: $(echo $HEALTH | jq -r '.version')"
 echo "  Ambiente: $(echo $HEALTH | jq -r '.environment')"
+echo "  Timezone: $(echo $HEALTH | jq -r '.timezone')"
 echo ""
 
 # 2. Status dos containers
 echo "[2/5] Containers..."
-docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 echo ""
 
 # 3. Logs recentes (últimas 24h)
 echo "[3/5] Logs recentes..."
-docker logs --since 24h txeka-ntiyiso-api 2>&1 | grep -i "error\\|critical" | tail -5
+docker logs --since 24h txeka-ntiyiso-api 2>&1 | grep -i "error\|critical" | tail -5
 echo ""
 
 # 4. Verificação de backup
@@ -69,18 +72,20 @@ echo ""
 echo "=== Health Check Concluído ==="
 ```
 
-**Indicadores Esperados:**
+> Nota: O health check retorna `timezone: "CAT"` (Central Africa Time, UTC+2). Todos os timestamps da API e logs de auditoria usam este timezone.
 
-| Métrica | Valor Esperado | Ação se Fora do Esperado |
-|---------|---------------|--------------------------|
-| Health status | `online` | Investigar imediatamente |
-| Containers | `txeka-ntiyiso-api` + `txeka-ntiyiso-db` = `Up` | `docker-compose restart` |
-| Latência média | < 100ms | Verificar carga do sistema |
-| Taxa de erro | < 0.1% | Analisar logs de erro |
-| Espaço em disco | > 20% livre | Limpar logs/backups antigos |
-| Backup | Arquivo existe | Executar backup manual |
+Indicadores Esperados:
 
-### Verificação de Backup (Produção Nacional)
+Métrica	Valor Esperado	Ação se Fora do Esperado	
+Health status	`online`	Investigar imediatamente	
+Containers	`txeka-ntiyiso-api` + `txeka-ntiyiso-db` = `Up`	`docker-compose restart`	
+Timezone	`CAT` (UTC+2)	Verificar configuração do container	
+Latência média	< 100ms	Verificar carga do sistema	
+Taxa de erro	< 0.1%	Analisar logs de erro	
+Espaço em disco	20% livre	Limpar logs/backups antigos	
+Backup	Arquivo existe	Executar backup manual	
+
+Verificação de Backup (Produção Nacional)
 
 ```bash
 # Verificar último backup
@@ -101,24 +106,24 @@ fi
 
 ---
 
-## Checklist Semanal
+Checklist Semanal
 
-### Manutenção Preventiva (30 minutos)
+Manutenção Preventiva (30 minutos)
 
-- [ ] Revisar logs de erro da semana (`docker logs txeka-ntiyiso-api 2>&1 | grep -i error`)
-- [ ] Verificar tentativas de acesso não autorizado (`grep 401 /var/log/nginx/access.log`)
-- [ ] Analisar padrões de rate limiting (`grep 429 /var/log/nginx/access.log`)
-- [ ] Verificar certificado SSL (expiração < 30 dias?)
-- [ ] Testar restore de backup em ambiente de staging
-- [ ] Revisar métricas de performance (latência P95, P99)
-- [ ] Verificar espaço em disco de todos os volumes
-- [ ] Atualizar dependências de segurança (`pip audit`)
+- Revisar logs de erro da semana (`docker logs txeka-ntiyiso-api 2>&1 | grep -i error`)
+- Verificar tentativas de acesso não autorizado (`grep 401 /var/log/nginx/access.log`)
+- Analisar padrões de rate limiting (`grep 429 /var/log/nginx/access.log`)
+- Verificar certificado SSL (expiração < 30 dias?)
+- Testar restore de backup em ambiente de staging
+- Revisar métricas de performance (latência P95, P99)
+- Verificar espaço em disco de todos os volumes
+- Atualizar dependências de segurança (`pip audit`)
 
-### Comandos Semanais
+Comandos Semanais
 
 ```bash
 # Revisar erros
-docker logs txeka-ntiyiso-api 2>&1 | grep -i "error\\|exception\\|traceback" | tail -20
+docker logs txeka-ntiyiso-api 2>&1 | grep -i "error\|exception\|traceback" | tail -20
 
 # Verificar acessos suspeitos
 awk '{print $1}' /var/log/nginx/access.log | sort | uniq -c | sort -nr | head -10
@@ -136,20 +141,20 @@ docker exec txeka-ntiyiso-api sh -c "pip install pip-audit && pip-audit"
 
 ---
 
-## Checklist Mensal
+Checklist Mensal
 
-### Manutenção Profunda (2 horas)
+Manutenção Profunda (2 horas)
 
-- [ ] Executar `VACUUM ANALYZE` na base de dados PostgreSQL
-- [ ] Reindexar tabelas críticas (`REINDEX TABLE documents; REINDEX TABLE audit_logs;`)
-- [ ] Revisar e atualizar firewall rules (`ufw status verbose`)
-- [ ] Rotação de `JWT_SECRET_KEY` (se trimestral, verificar calendário)
-- [ ] Revisão de acessos: remover utilizadores inativos > 90 dias
-- [ ] Teste completo de disaster recovery (RTO 4h, RPO 15min)
-- [ ] Revisar documentação de runbook (atualizar procedimentos)
-- [ ] Reunião de revisão de incidentes do mês
+- Executar `VACUUM ANALYZE` na base de dados PostgreSQL
+- Reindexar tabelas críticas (`REINDEX TABLE documents; REINDEX TABLE audit_logs;`)
+- Revisar e atualizar firewall rules (`ufw status verbose`)
+- Rotação de `JWT_SECRET_KEY` (se trimestral, verificar calendário)
+- Revisão de acessos: remover utilizadores inativos > 90 dias
+- Teste completo de disaster recovery (RTO 4h, RPO 15min)
+- Revisar documentação de runbook (atualizar procedimentos)
+- Reunião de revisão de incidentes do mês
 
-### Comandos Mensais
+Comandos Mensais
 
 ```bash
 # Manutenção PostgreSQL
@@ -178,18 +183,18 @@ ORDER BY last_login;
 
 ---
 
-## Procedimentos Comuns
+Procedimentos Comuns
 
-### Reiniciar Serviço API
+Reiniciar Serviço API
 
-**Produção Cloud (Render.com):**
+Produção Cloud (Render.com):
 
 1. Aceder ao [Dashboard do Render](https://dashboard.render.com)
 2. Selecionar serviço `txeka-ntiyiso-api`
-3. Clicar **Manual Deploy** (para novo deploy) ou **Restart** (para reinício)
+3. Clicar Manual Deploy (para novo deploy) ou Restart (para reinício)
 4. Aguardar health check verde (2-3 minutos)
 
-**Produção Nacional (Docker):**
+Produção Nacional (Docker):
 
 ```bash
 cd /opt/txeka-ntiyiso
@@ -205,16 +210,16 @@ sleep 30
 curl -f http://localhost:8000/health
 ```
 
-### Escalar Base de Dados
+Escalar Base de Dados
 
-**Supabase (Cloud):**
+Supabase (Cloud):
 
 1. Dashboard Supabase → Database → Settings
-2. Ajustar **Max Connections** conforme carga (default: 100)
-3. Monitorizar **Active Connections** no painel
+2. Ajustar Max Connections conforme carga (default: 100)
+3. Monitorizar Active Connections no painel
 4. Considerar upgrade de plano se > 80% consistente
 
-**PostgreSQL (Nacional — Docker):**
+PostgreSQL (Nacional — Docker):
 
 ```bash
 # Verificar conexões ativas
@@ -238,9 +243,9 @@ docker-compose restart db
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SHOW max_connections;"
 ```
 
-### Rotação de Segredos
+Rotação de Segredos
 
-**JWT Secret Key:**
+JWT Secret Key:
 
 ```bash
 # 1. Gerar nova chave
@@ -264,7 +269,7 @@ docker-compose up -d --force-recreate api
 curl -f http://localhost:8000/health
 ```
 
-**Rotação de API Keys (Instituições):**
+Rotação de API Keys (Instituições):
 
 ```bash
 # 1. Listar API keys ativas (futuro — tabela api_keys)
@@ -290,13 +295,14 @@ WHERE institution_id = 'INAGE';
 
 ---
 
-## Troubleshooting
+Troubleshooting
 
-### Erro 502 Bad Gateway
+Erro 502 Bad Gateway
 
-**Sintoma:** API não responde, Nginx retorna 502.
+Sintoma: API não responde, Nginx retorna 502.
 
-**Diagnóstico:**
+Diagnóstico:
+
 ```bash
 # Verificar se containers estão running
 docker ps | grep txeka-ntiyiso
@@ -315,7 +321,8 @@ sudo nginx -t
 sudo systemctl status nginx
 ```
 
-**Resolução:**
+Resolução:
+
 ```bash
 # Caso 1: Container parado
 docker-compose up -d api
@@ -336,11 +343,12 @@ cd /opt/txeka-ntiyiso && docker-compose restart api
 sudo systemctl restart nginx
 ```
 
-### Base de Dados Lenta
+Base de Dados Lenta
 
-**Sintoma:** Queries demoram > 500ms, timeout em verificações.
+Sintoma: Queries demoram > 500ms, timeout em verificações.
 
-**Diagnóstico:**
+Diagnóstico:
+
 ```bash
 # Verificar queries lentas (> 100ms)
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
@@ -352,7 +360,7 @@ LIMIT 10;
 "
 
 # Verificar índices existentes
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "\\di"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "\di"
 
 # Verificar espaço em disco
 docker exec txeka-ntiyiso-db df -h /var/lib/postgresql/data
@@ -366,7 +374,8 @@ ORDER BY query_start;
 "
 ```
 
-**Resolução:**
+Resolução:
+
 ```bash
 # Reindexar tabelas críticas
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE documents;"
@@ -383,25 +392,27 @@ find /var/backups/txeka -name "*.sql.gz" -mtime +30 -delete
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT pg_cancel_backend(<pid>);"
 ```
 
-### Erro 429 Rate Limit Exceeded
+Erro 429 Rate Limit Exceeded
 
-**Sintoma:** Clientes reportam "Too Many Requests".
+Sintoma: Clientes reportam "Too Many Requests".
 
-**Diagnóstico:**
+Diagnóstico:
+
 ```bash
 # Verificar logs de rate limiting
 docker logs txeka-ntiyiso-api 2>&1 | grep "429" | tail -20
 
 # Identificar IPs com maior volume
-docker logs txeka-ntiyiso-api 2>&1 | grep "VERIFY" | \\
+docker logs txeka-ntiyiso-api 2>&1 | grep "VERIFY" | \
   awk '{print $NF}' | sort | uniq -c | sort -nr | head -10
 
 # Verificar padrão temporal (ataque DDoS?)
-docker logs txeka-ntiyiso-api 2>&1 | grep "429" | \\
+docker logs txeka-ntiyiso-api 2>&1 | grep "429" | \
   awk '{print $1}' | cut -d'T' -f2 | cut -d':' -f1,2 | sort | uniq -c
 ```
 
-**Resolução:**
+Resolução:
+
 ```bash
 # Caso 1: Cliente legítimo excedeu limite
 # Ajustar limites temporariamente no .env
@@ -417,15 +428,16 @@ sudo ufw deny from 192.0.2.100
 # Redeploy com limites ajustados
 ```
 
-### JWT Token Expirado
+JWT Token Expirado
 
-**Sintoma:** Respostas 401 com "Token has expired".
+Sintoma: Respostas 401 com "Token has expired".
 
-**Resolução:**
+Resolução:
+
 ```bash
 # Gerar novo token para instituição afetada
-curl -X POST http://localhost:8000/api/v1/auth/login \\
-  -H "Content-Type: application/json" \\
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
   -d '{"email": "admin@inage.gov.mz", "password": "senha_segura"}'
 
 # Enviar novo token por canal seguro:
@@ -435,11 +447,12 @@ curl -X POST http://localhost:8000/api/v1/auth/login \\
 # NUNCA por email não cifrado
 ```
 
-### Disco Cheio
+Disco Cheio
 
-**Sintoma:** Erros de escrita, serviços a falhar, health check falha.
+Sintoma: Erros de escrita, serviços a falhar, health check falha.
 
-**Diagnóstico:**
+Diagnóstico:
+
 ```bash
 # Verificar uso de disco
 df -h
@@ -454,7 +467,8 @@ du -sh /var/lib/docker/volumes/txeka-logs/_data/*
 du -sh /var/backups/txeka/*
 ```
 
-**Resolução:**
+Resolução:
+
 ```bash
 # Limpar logs antigos (> 30 dias)
 find /var/lib/docker/volumes/txeka-logs/_data -name "*.log" -mtime +30 -delete
@@ -475,11 +489,12 @@ docker container prune -f
 # Ou adicionar disco adicional
 ```
 
-### PostgreSQL Corrompido
+PostgreSQL Corrompido
 
-**Sintoma:** Erros de integridade, queries falham, dados inconsistentes.
+Sintoma: Erros de integridade, queries falham, dados inconsistentes.
 
-**Diagnóstico:**
+Diagnóstico:
+
 ```bash
 # Verificar integridade da base de dados
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "CHECKPOINT;"
@@ -492,7 +507,8 @@ FROM pg_database WHERE datname = 'txeka_ntiyiso';
 docker logs txeka-ntiyiso-db --tail=100
 ```
 
-**Resolução:**
+Resolução:
+
 ```bash
 # Caso 1: Corrupção leve (índice danificado)
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX DATABASE txeka_ntiyiso;"
@@ -513,39 +529,78 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(
 docker-compose up -d api
 ```
 
+Parsing de Audit Logs — `details` como String JSON
+
+Sintoma: Scripts de análise de logs falham ao aceder `details` como objeto.
+
+Contexto: Nos testes reais, o campo `details` nos logs de auditoria é uma string JSON serializada (não um objeto). Isto significa que `log.details` é uma string que precisa de ser parseada com `JSON.parse()` ou equivalente.
+
+Exemplo de erro:
+
+```python
+# ❌ ERRADO — details é string, não dict
+for log in logs["logs"]:
+    print(log["details"]["doc_id"])  # TypeError: string indices must be integers
+```
+
+Resolução:
+
+```python
+# ✅ CORRETO — parsear details como string JSON
+import json
+
+for log in logs["logs"]:
+    details = json.loads(log["details"])
+    print(f"Doc ID: {details.get('doc_id')}")
+    print(f"Document Type: {details.get('document_type')}")
+```
+
+```bash
+# Usando jq na linha de comando
+curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \
+  -H "Authorization: Bearer $TOKEN" | \
+  jq '.logs[] | {action: .action, user: .user_email, doc_id: (.details | fromjson | .doc_id)}'
+```
+
+> Nota: Este comportamento aplica-se a TODOS os endpoints de auditoria: `GET /audit/logs`, `GET /audit/document/{hash}/history`, e futuramente `GET /audit/stats`. O campo `details` é sempre uma string JSON serializada que requer parsing explícito.
+
 ---
 
-## Manutenção Programada
+Manutenção Programada
 
-### Janela de Manutenção Oficial
+Janela de Manutenção Oficial
 
-| Tipo | Frequência | Horário (CAT) | Duração Estimada | Impacto |
-|------|------------|---------------|------------------|---------|
-| **Backup** | Diário | 02:00 | 5 min | Nenhum |
-| **Vacuum DB** | Semanal | Domingo 03:00 | 15 min | Performance degradada temporária |
-| **Atualização de segurança** | Mensal | Primeiro sábado 04:00 | 30 min | Indisponibilidade parcial |
-| **Rotação de segredos** | Trimestral | Acordo prévio (48h) | 15 min | Re-login obrigatório |
-| **Upgrade de versão** | Semestral | Acordo prévio (72h) | 1-2h | Indisponibilidade total |
+Tipo	Frequência	Horário (CAT)	Duração Estimada	Impacto	
+Backup	Diário	02:00	5 min	Nenhum	
+Vacuum DB	Semanal	Domingo 03:00	15 min	Performance degradada temporária	
+Atualização de segurança	Mensal	Primeiro sábado 04:00	30 min	Indisponibilidade parcial	
+Rotação de segredos	Trimestral	Acordo prévio (48h)	15 min	Re-login obrigatório	
+Upgrade de versão	Semestral	Acordo prévio (72h)	1-2h	Indisponibilidade total	
 
-### Procedimento de Atualização de Segurança
+> Nota sobre timezone: Todas as janelas de manutenção são em CAT (UTC+2). O container `txeka-ntiyiso-api` está configurado com `TZ=Africa/Maputo`, garantindo que todos os logs e timestamps da API estejam no timezone correto de Moçambique.
 
-1. **Notificar stakeholders** 48h antes
+Procedimento de Atualização de Segurança
+
+1. Notificar stakeholders 48h antes
    - Email: tech@txeka.co.mz + instituições afetadas
    - Dashboard: banner de manutenção programada
    - Status page: incidente programado
 
-2. **Criar backup manual** antes da atualização
-   ```bash
+2. Criar backup manual antes da atualização
+   
+```bash
    /opt/txeka/backup.sh
    ```
 
-3. **Colocar modo manutenção** (se aplicável)
-   ```bash
+3. Colocar modo manutenção (se aplicável)
+   
+```bash
    echo '{"status": "maintenance", "until": "2026-06-28T06:00:00+02:00"}' > /tmp/maintenance.json
    ```
 
-4. **Executar atualização**
-   ```bash
+4. Executar atualização
+   
+```bash
    cd /opt/txeka-ntiyiso
    git fetch origin
    git checkout <nova_versao_tag>
@@ -553,47 +608,56 @@ docker-compose up -d api
    docker-compose up -d api
    ```
 
-5. **Verificar health check** (aguardar 2 minutos)
-   ```bash
+5. Verificar health check (aguardar 2 minutos)
+   
+```bash
    sleep 120
    curl -f http://localhost:8000/health
    ```
 
-6. **Executar smoke tests**
-   ```bash
-   # Teste 1: Emissão
-   curl -X POST http://localhost:8000/api/v1/certify \\
-        -H "Authorization: Bearer $TOKEN" \\
+6. Executar smoke tests
+   
+```bash
+   # Teste 1: Emissão (status code 200, não 201)
+   curl -X POST http://localhost:8000/api/v1/certify \
+        -H "Authorization: Bearer $TOKEN" \
         -F "file=@test.pdf" -F "document_type=TEST" -F "institution_id=TXEKA"
+   # Esperado: {"success": true, "data": {...}}
 
-   # Teste 2: Verificação
+   # Teste 2: Verificação (usa "dados_publicos", não "data")
    curl http://localhost:8000/api/v1/verify/<hash>
+   # Esperado: {"success": true, "status": "VALID", "dados_publicos": {...}}
 
    # Teste 3: Revogação
-   curl -X POST http://localhost:8000/api/v1/emissions/<doc_id>/revoke \\
-        -H "Authorization: Bearer $TOKEN" \\
+   curl -X POST http://localhost:8000/api/v1/emissions/<doc_id>/revoke \
+        -H "Authorization: Bearer $TOKEN" \
         -d '{"reason": "Teste pós-manutenção"}'
+   # Esperado: {"success": true, "status": "revoked", ...}
+
+   # Teste 4: Auditoria (details é string JSON)
+   curl "http://localhost:8000/api/v1/audit/logs?limit=5" \
+        -H "Authorization: Bearer $ADMIN_TOKEN"
+   # Esperado: {"success": true, "count": 5, "logs": [{..., "details": "{\"...\"}"}]}
    ```
 
-7. **Notificar conclusão**
+7. Notificar conclusão
    - Email: "Manutenção concluída com sucesso"
    - Remover banner de manutenção
    - Atualizar status page
 
 ---
 
-## Resposta a Incidentes
+Resposta a Incidentes
 
-### Classificação de Severidade
+Classificação de Severidade
 
-| Nível | Descrição | Exemplo | Tempo de Resposta | Escalation |
-|-------|-----------|---------|-------------------|------------|
-| **P1-Crítico** | Sistema inacessível, todos os serviços down | Render offline, DB corrompido, ataque DDoS massivo | 15 minutos | CTO + Clientes + INTIC |
-| **P2-Alto** | Funcionalidade core degradada | Verificações > 5s, taxa de erro > 5%, latência anómala | 1 hora | Tech Lead |
-| **P3-Médio** | Funcionalidade não-core afetada | Dashboard lento, relatórios indisponíveis, backup falhou | 4 horas | DevOps |
-| **P4-Baixo** | Questões cosméticas ou documentação | Erro de ortografia, badge desatualizado, typo em email | 24 horas | Backlog |
+Nível	Descrição	Exemplo	Tempo de Resposta	Escalation	
+P1-Crítico	Sistema inacessível, todos os serviços down	Render offline, DB corrompido, ataque DDoS massivo	15 minutos	CTO + Clientes + INTIC	
+P2-Alto	Funcionalidade core degradada	Verificações > 5s, taxa de erro > 5%, latência anómala	1 hora	Tech Lead	
+P3-Médio	Funcionalidade não-core afetada	Dashboard lento, relatórios indisponíveis, backup falhou	4 horas	DevOps	
+P4-Baixo	Questões cosméticas ou documentação	Erro de ortografia, badge desatualizado, typo em email	24 horas	Backlog	
 
-### Playbook P1: Sistema Inacessível
+Playbook P1: Sistema Inacessível
 
 ```
 T+0min    ALERTA: Health check falha 3x consecutivas
@@ -626,12 +690,12 @@ T+30min   SE PERSISTIR:
 
 T+60min   PÓS-RESOLUÇÃO:
           → Verificar integridade de todos os dados
-          → Executar smoke tests completos
+          → Executar smoke tests completos (verificar dados_publicos, details JSON)
           → Publicar relatório de incidente
           → Agendar post-mortem (24h)
 ```
 
-### Playbook P2: Degradação de Performance
+Playbook P2: Degradação de Performance
 
 ```
 T+0min    ALERTA: Latência P95 > 500ms OU taxa de erro > 1%
@@ -664,7 +728,7 @@ T+60min   PÓS-RESOLUÇÃO:
           → Revisar capacity planning
 ```
 
-### Playbook: Documento Fraudulento Detectado
+Playbook: Documento Fraudulento Detectado
 
 ```
 T+0min    DETEÇÃO: Denúncia ou análise automática detecta documento fraudulento
@@ -702,7 +766,7 @@ T+24h     RELATÓRIO:
           → Medidas preventivas (ajustar validação, reforçar controlo)
 ```
 
-### Playbook: Suspeita de Breach de Segurança
+Playbook: Suspeita de Breach de Segurança
 
 ```
 T+0min    DETEÇÃO: Logs anómalos, acessos não autorizados, alertas de IDS
@@ -743,7 +807,7 @@ T+24h     RELATÓRIO:
           → Recomendações para futuro
 ```
 
-### Playbook: Negação de Serviço (DoS/DDoS)
+Playbook: Negação de Serviço (DoS/DDoS)
 
 ```
 T+0min    DETEÇÃO: Latência anómala, spike de requisições (> 500% da média)
@@ -784,43 +848,40 @@ T+60min   PÓS-RESOLUÇÃO:
 
 ---
 
-## Contactos de Emergência
+Contactos de Emergência
 
-### Equipa Txeka Ntiyiso
+Equipa Txeka Ntiyiso
 
-| Função | Nome | Contacto | Disponibilidade | Escalation |
-|--------|------|----------|-----------------|------------|
-| **On-call Engineer** | Rotativo | +258 84 XXX XXXX | 24/7 | P1, P2 |
-| **Tech Lead** | A definir | tech@txeka.co.mz | 24/7 (escalação) | P1, P2 não resolvido |
-| **Security Officer** | A definir | security@txeka.co.mz | 24/7 (incidentes) | Breach, P1 segurança |
-| **CTO** | A definir | cto@txeka.co.mz | Business hours | P1 não resolvido em 1h |
+Função	Contacto	Disponibilidade	Escalation	
+On-call Engineer	+258 84 XXX XXXX	24/7	P1, P2	
+Tech Lead	tech@txeka.co.mz	24/7 (escalação)	P1, P2 não resolvido	
+Security Officer	security@txeka.co.mz	24/7 (incidentes)	Breach, P1 segurança	
+CTO	cto@txeka.co.mz	Business hours	P1 não resolvido em 1h	
 
-### Parceiros e Fornecedores
+Parceiros e Fornecedores
 
-| Entidade | Contacto | Uso |
-|----------|----------|-----|
-| **Render.com Support** | support@render.com | Cloud hosting, deploy issues |
-| **Supabase Support** | support@supabase.com | Database, PostgreSQL issues |
-| **INTIC** | info@intic.gov.mz | Regulador, infraestruturas críticas |
-| **Tribunal de Contas** | geral@tcontas.gov.mz | Auditoria, conformidade |
-| **Banco de Moçambique** | info@bancomoc.mz | Sector financeiro, conformidade transacional |
-| **ISP Nacional** | A definir | Conectividade, DDoS mitigation |
+Entidade	Contacto	Uso	
+Render.com	support@render.com	Cloud hosting, deploy	
+Supabase	support@supabase.com	Database, PostgreSQL	
+INTIC	info@intic.gov.mz	Regulador, infraestruturas críticas	
+Tribunal de Contas	geral@tcontas.gov.mz	Auditoria, conformidade	
+Banco de Moçambique	info@bancomoc.mz	Sector financeiro, conformidade	
+ISP Nacional	A definir	Conectividade, DDoS mitigation	
 
-### Canais de Comunicação de Crise
+Canais de Comunicação de Crise
 
-| Canal | Uso | Acesso |
-|-------|-----|--------|
-| **Email** | Notificações formais, relatórios | tech@txeka.co.mz |
-| **Slack #incidents** | Coordenação em tempo real | Equipa técnica |
-| **PagerDuty** | Alertas críticos, on-call | On-call engineer |
-| **Status Page** | Comunicação pública | https://status.txeka.co.mz |
-| **WhatsApp** | Coordenação rápida (P1) | Grupo de crise |
+Canal	Uso	Acesso	
+Email	Notificações formais, relatórios	tech@txeka.co.mz	
+Slack #incidents	Coordenação em tempo real	Equipa técnica	
+PagerDuty	Alertas críticos, on-call	On-call engineer	
+Status Page	Comunicação pública	status.txeka.co.mz	
+WhatsApp	Coordenação rápida (P1)	Grupo de crise	
 
 ---
 
-## Comandos de Referência Rápida
+Comandos de Referência Rápida
 
-### Docker
+Docker
 
 ```bash
 # Ver containers
@@ -845,7 +906,7 @@ docker volume prune -f
 docker container prune -f
 ```
 
-### PostgreSQL
+PostgreSQL
 
 ```bash
 # Aceder à base de dados
@@ -882,12 +943,12 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE audit_logs;"
 ```
 
-### Backup
+Backup
 
 ```bash
 # Backup manual imediato
 DATE=$(date +%Y%m%d_%H%M%S)
-docker exec txeka-ntiyiso-db pg_dump -U postgres -d txeka_ntiyiso --clean --if-exists | \\
+docker exec txeka-ntiyiso-db pg_dump -U postgres -d txeka_ntiyiso --clean --if-exists | \
   gzip > /var/backups/txeka/db_$DATE.sql.gz
 
 # Verificar backup
@@ -897,11 +958,11 @@ gunzip -t /var/backups/txeka/db_*.sql.gz
 ls -la /var/backups/txeka/ | tail -10
 
 # Restaurar backup
-gunzip -c /var/backups/txeka/db_YYYYMMDD_HHMMSS.sql.gz | \\
+gunzip -c /var/backups/txeka/db_YYYYMMDD_HHMMSS.sql.gz | \
   docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
 ```
 
-### Sistema
+Sistema
 
 ```bash
 # Espaço em disco
@@ -924,25 +985,37 @@ ps aux | grep uvicorn
 ps aux | grep postgres
 ```
 
-### API
+API
 
 ```bash
-# Health check
+# Health check (verifica timezone CAT)
 curl -s http://localhost:8000/health | jq .
 
-# Estatísticas (admin)
-curl -s http://localhost:8000/api/v1/audit/stats \\
+# Estatísticas (admin) — placeholder, retorna note
+curl -s http://localhost:8000/api/v1/audit/stats \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 
-# Emitir documento (teste)
-curl -X POST http://localhost:8000/api/v1/certify \\
-  -H "Authorization: Bearer $TOKEN" \\
+# Emitir documento (status 200, não 201)
+curl -X POST http://localhost:8000/api/v1/certify \
+  -H "Authorization: Bearer $TOKEN" \
   -F "file=@test.pdf" -F "document_type=TEST" -F "institution_id=TXEKA"
 
-# Verificar documento
+# Verificar documento (usa "dados_publicos", não "data")
 curl http://localhost:8000/api/v1/verify/<hash>
+
+# Verificar documento revogado (revoked: true)
+curl http://localhost:8000/api/v1/verify/<hash_revogado>
+
+# Auditoria (details é string JSON — usar fromjson no jq)
+curl "http://localhost:8000/api/v1/audit/logs?limit=5" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | \
+  jq '.logs[] | {action, user: .user_email, doc_id: (.details | fromjson | .doc_id)}'
 ```
 
 ---
 
-*Txeka Ntiyiso — Runbook de Operações v1.1 🇲🇿*
+Txeka Ntiyiso — Runbook de Operações v1.1 🇲🇿
+
+Baseado em testes reais de produção | Alinhado com Lei 3/2017, Decreto 59/2019 e Resolução 69/2021 (PENSC)
+
+```
