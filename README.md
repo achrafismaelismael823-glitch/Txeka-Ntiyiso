@@ -194,4 +194,4 @@ O Txeka Ntiyiso cumpre integralmente o regime jurídico moçambicano de validaç
 ## Licença
 
 *Proprietary. All rights reserved. Txeka Ntiyiso, 2026.*
-"""
+
