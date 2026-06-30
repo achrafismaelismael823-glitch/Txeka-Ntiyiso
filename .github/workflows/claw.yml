@@ -1,93 +1,183 @@
-name: Txeka Claw Bot v3.0
+name: Txeka Claw Bot v4.0 - Senior
 on:
   issues:
     types: [opened, reopened]
+  pull_request:
+    types: [opened, closed, merged]
 
 jobs:
-  claw-core:
-    if: contains(github.event.issue.body, '@claw')
+  claw-senior:
+    if: contains(github.event.issue.body, '@claw') || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       issues: write
       contents: read
-    
+      pull-requests: read
+      actions: read
+
     steps:
-      - name: Executar Claw
+      - name: Executar Claw Senior
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.CLAW_TOKEN }}
           script: |
+            // Se for PR, trata automático
+            if (context.payload.pull_request) {
+              const pr = context.payload.pull_request;
+              const action = context.payload.action;
+              let msg = `🦀 **Claw Senior Audit** | PR #${pr.number}\n\n`;
+
+              if (action === 'opened') {
+                msg += `**PR Aberto:** ${pr.title}\n`;
+                msg += `📊 **Stats:** +${pr.additions} -${pr.deletions} | ${pr.changed_files} arquivos\n`;
+                msg += `🌿 **Branch:** \`${pr.head.ref}\` → \`${pr.base.ref}\`\n`;
+                msg += `👤 **Autor:** @${pr.user.login}\n\n_Aguardando review_`;
+              } else if (action === 'closed' && pr.merged) {
+                msg += `**MERGED** ✅\n**Título:** ${pr.title}\n`;
+                msg += `📊 **Impacto:** +${pr.additions} -${pr.deletions} | ${pr.commits} commits\n`;
+                msg += `🔀 **Mergeado por:** @${pr.merged_by.login}\n`;
+                msg += `⏱️ **Tempo aberto:** ${Math.round((new Date(pr.merged_at) - new Date(pr.created_at))/36e5)}h`;
+              }
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: msg
+              });
+              return;
+            }
+
             const issue = context.payload.issue;
-            const comando_bruto = issue.body.replace('@claw', '').trim().toLowerCase();
+            const comando_bruto = issue.body.replace('@claw', '').trim();
             const args = comando_bruto.split(' ');
-            const cmd = args[0];
+            const cmd = args[0].toLowerCase();
             const autor = issue.user.login;
-            
-            console.log(`[CLAW] Comando recebido: ${comando_bruto} | Autor: ${autor} | Issue: #${issue.number}`);
-            
-            let resposta = `🦀 **Claw Txeka v3.0** | Pedido de @${autor}\n\n`;
+
+            let resposta = `🦀 **Claw Senior v4.0** | @${autor}\n\n`;
             let status = 'sucesso';
-            
+
             try {
               switch(cmd) {
-                case 'resumo':
-                  resposta += `**Txeka Ntiyiso - Controle Financeiro**\n\n` +
-                              `**1. Entrada de gastos**\nEnvia foto/nota no WhatsApp que eu registro\n\n` +
-                              `**2. Relatórios semanais**\nTodo domingo mando resumo + gráfico\n\n` +
-                              `**3. Alertas de meta**\nTe aviso quando passar de 80% do limite\n\n` +
-                              `_Stack: 100% GitHub Actions. Custo: $0 🇲🇿_`;
+                case 'audit':
+                  const { data: repo } = await github.rest.repos.get({...context.repo});
+                  const { data: langs } = await github.rest.repos.listLanguages({...context.repo});
+                  const { data: workflows } = await github.rest.actions.listRepoWorkflows({...context.repo});
+                  const { data: issues } = await github.rest.issues.listForRepo({...context.repo, state: 'open'});
+                  const { data: prs } = await github.rest.pulls.list({...context.repo, state: 'open'});
+
+                  resposta += `**Auditoria Técnica Completa**\n\n`;
+                  resposta += `**Repo:** ${repo.name}\n`;
+                  resposta += `**Linguagens:** ${Object.keys(langs).join(', ') || 'Nenhuma'}\n`;
+                  resposta += `**Workflows:** ${workflows.total_count}\n`;
+                  resposta += `**Issues Abertas:** ${issues.length}\n`;
+                  resposta += `**PRs Abertos:** ${prs.length}\n`;
+                  resposta += `**Último Push:** ${new Date(repo.pushed_at).toLocaleString('pt-BR')}\n`;
+                  resposta += `**Tamanho:** ${(repo.size/1024).toFixed(2)} MB\n`;
+                  resposta += `**Visibilidade:** ${repo.private? 'Privado' : 'Público'}\n`;
                   break;
-                  
-                case 'status':
-                  resposta += `**Status Operacional**\n` +
-                              `✅ Online\n✅ Token válido\n✅ Permissões OK\n✅ Latência: ~7s\n\n` +
-                              `Uptime: 100% desde ativação\nLimite GitHub: 2000min/mês`;
+
+                case 'deps':
+                  try {
+                    const { data: pkg } = await github.rest.repos.getContent({...context.repo, path: 'package.json'});
+                    const pkgJson = JSON.parse(Buffer.from(pkg.content, 'base64').toString('utf8'));
+                    resposta += `**Dependências package.json**\n\n`;
+                    resposta += `**Deps:**\n\`\`\`json\n${JSON.stringify(pkgJson.dependencies || {}, null, 2)}\n\`\`\`\n`;
+                    resposta += `**DevDeps:**\n\`\`\`json\n${JSON.stringify(pkgJson.devDependencies || {}, null, 2)}\n\`\`\``;
+                  } catch {
+                    resposta += `**Erro:** \`package.json\` não encontrado na raiz.`;
+                  }
                   break;
-                  
+
+                case 'actions':
+                  const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
+                   ...context.repo, per_page: 5
+                  });
+                  resposta += `**Últimas 5 Actions Runs**\n\n`;
+                  runs.workflow_runs.forEach(run => {
+                    const emoji = run.conclusion === 'success'? '✅' : run.conclusion === 'failure'? '❌' : '🔄';
+                    resposta += `${emoji} **${run.name}** #${run.run_number}\n`;
+                    resposta += ` _${run.head_branch} | ${new Date(run.created_at).toLocaleTimeString('pt-BR')} | ${run.conclusion}_\n\n`;
+                  });
+                  break;
+
+                case 'buscar':
+                  const termo = args.slice(1).join(' ');
+                  if (!termo) {
+                    resposta += `**Erro:** Especifica termo.\nEx: \`@claw buscar function\``;
+                    break;
+                  }
+                  const { data: busca } = await github.rest.search.code({
+                    q: `${termo} repo:${context.repo.owner}/${context.repo.repo}`
+                  });
+                  resposta += `**Busca por:** \`${termo}\`\n**Resultados:** ${busca.total_count}\n\n`;
+                  busca.items.slice(0,5).forEach(item => {
+                    resposta += `📄 \`${item.path}\`\n`;
+                  });
+                  break;
+
+                case 'stats':
+                  const { data: commits } = await github.rest.repos.listCommits({...context.repo, per_page: 100});
+                  const autores = {};
+                  commits.forEach(c => {
+                    const nome = c.author?.login || 'unknown';
+                    autores[nome] = (autores[nome] || 0) + 1;
+                  });
+                  resposta += `**Stats dos últimos 100 commits**\n\n`;
+                  Object.entries(autores).sort((a,b)=>b[1]-a[1]).forEach(([autor, count]) => {
+                    resposta += `👤 @${autor}: ${count} commits\n`;
+                  });
+                  break;
+
+                case 'seguranca':
+                  const { data: alerts } = await github.rest.secretScanning.listAlertsForRepo({...context.repo});
+                  resposta += `**Scan de Segurança**\n\n`;
+                  resposta += `🚨 **Secrets Expostos:** ${alerts.length}\n`;
+                  if (alerts.length > 0) {
+                    alerts.slice(0,3).forEach(a => {
+                      resposta += `- \`${a.secret_type}\` em ${a.locations[0]?.path}\n`;
+                    });
+                  } else {
+                    resposta += `✅ Nenhum secret vazado detectado.`;
+                  }
+                  break;
+
                 case 'ajuda':
-                case 'help':
-                  resposta += `**Comandos Disponíveis:**\n\n` +
-                              `\`@claw resumo\` - Overview do projeto Txeka\n` +
-                              `\`@claw status\` - Saúde do sistema\n` +
-                              `\`@claw ping\` - Teste de latência\n` +
-                              `\`@claw log #N\` - Mostra logs da issue #N\n` +
-                              `\`@claw ajuda\` - Esta mensagem\n\n` +
-                              `**Novo comando?** Edita \`.github/workflows/claw.yml\``;
+                  resposta += `**Comandos Senior:**\n\n`;
+                  resposta += `\`@claw audit\` - Auditoria completa do repo\n`;
+                  resposta += `\`@claw deps\` - Lista dependências package.json\n`;
+                  resposta += `\`@claw actions\` - Status das últimas Actions\n`;
+                  resposta += `\`@claw buscar termo\` - Busca código no repo\n`;
+                  resposta += `\`@claw stats\` - Stats de commits por autor\n`;
+                  resposta += `\`@claw seguranca\` - Scan de secrets vazados\n`;
+                  resposta += `\`@claw estrutura\` - Lista arquivos\n`;
+                  resposta += `\`@claw ler arquivo\` - Mostra conteúdo\n\n`;
+                  resposta += `**Auto:** Comento em PRs abertos/merged com métricas.`;
                   break;
-                  
-                case 'ping':
-                  const tempo = new Date().toLocaleString('pt-BR', {timeZone: 'Africa/Maputo'});
-                  resposta += `**PONG** 🏓\n\nServidor: GitHub Actions\nRegião: Global\nHorário Maputo: ${tempo}\nLatência workflow: ~7s`;
+
+                case 'estrutura':
+                  const { data: conteudo } = await github.rest.repos.getContent({...context.repo, path: ''});
+                  resposta += `**Estrutura Raiz**\n\n`;
+                  conteudo.forEach(item => {
+                    const emoji = item.type === 'dir'? '📁' : '📄';
+                    resposta += `${emoji} \`${item.name}\`\n`;
+                  });
                   break;
-                  
-                case 'log':
-                  resposta += `**Logs Issue #${issue.number}**\n\`\`\`\nComando: ${comando_bruto}\nAutor: ${autor}\nTimestamp: ${new Date().toISOString()}\nRunner: ${process.env.RUNNER_OS}\n\`\`\``;
+
+                case 'ler':
+                  const arquivo = args[1];
+                  const { data: file } = await github.rest.repos.getContent({...context.repo, path: arquivo});
+                  const conteudoFile = Buffer.from(file.content, 'base64').toString('utf8');
+                  resposta += `**\`${arquivo}\`:**\n\n\`\`\`\n${conteudoFile.slice(0, 2000)}\n\`\`\``;
                   break;
-                  
+
                 default:
                   status = 'comando_invalido';
-                  resposta += `**Comando não reconhecido:** \`${cmd}\`\n\n` +
-                              `Digite \`@claw ajuda\` pra ver a lista completa.\n\n` +
-                              `Se é comando novo, edita o workflow e adiciona no switch.`;
+                  resposta += `**Comando não reconhecido:** \`${cmd}\`\n\nDigite \`@claw ajuda\``;
               }
-              
-              console.log(`[CLAW] Status: ${status} | Comando: ${cmd}`);
-              
+
             } catch (error) {
               status = 'erro';
-              console.error(`[CLAW] ERRO:`, error);
-              resposta = `🦀 **Erro no Claw v3.0**\n\n` +
-                         `Falha ao processar: \`${comando_bruto}\`\n\n` +
-                         `**Erro:** ${error.message}\n\n` +
-                         `Marca @achrafismaelismael823-glitch pra debug.`;
+              resposta = `🦀 **Erro Senior**\n\n\`${comando_bruto}\`\n\n**Erro:** ${error.message}`;
             }
-            
-            // Adiciona rodapé
-            resposta += `\n\n---\n*Issue #${issue.number} | ${status} | ${new Date().toLocaleTimeString('pt-BR')}*`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              body: resposta
-            });
+
+            resposta += `\n\n---\n*Issue #${issue.number} | ${status} | ${new Date().toLocaleTimeString('pt-BR', {timeZone: 'Africa/Maputo'})}*`;
+
+            await github.rest.issues.createComment({...context.repo, issue_number: issue.number, body: resposta});
