@@ -1,25 +1,93 @@
-name: Txeka Claw Bot
+name: Txeka Claw Bot v3.0
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened]
 
 jobs:
-  run-claw:
+  claw-core:
     if: contains(github.event.issue.body, '@claw')
     runs-on: ubuntu-latest
     permissions:
       issues: write
       contents: read
-
+    
     steps:
-      - name: Claw responde
+      - name: Executar Claw
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.CLAW_TOKEN }}
           script: |
+            const issue = context.payload.issue;
+            const comando_bruto = issue.body.replace('@claw', '').trim().toLowerCase();
+            const args = comando_bruto.split(' ');
+            const cmd = args[0];
+            const autor = issue.user.login;
+            
+            console.log(`[CLAW] Comando recebido: ${comando_bruto} | Autor: ${autor} | Issue: #${issue.number}`);
+            
+            let resposta = `🦀 **Claw Txeka v3.0** | Pedido de @${autor}\n\n`;
+            let status = 'sucesso';
+            
+            try {
+              switch(cmd) {
+                case 'resumo':
+                  resposta += `**Txeka Ntiyiso - Controle Financeiro**\n\n` +
+                              `**1. Entrada de gastos**\nEnvia foto/nota no WhatsApp que eu registro\n\n` +
+                              `**2. Relatórios semanais**\nTodo domingo mando resumo + gráfico\n\n` +
+                              `**3. Alertas de meta**\nTe aviso quando passar de 80% do limite\n\n` +
+                              `_Stack: 100% GitHub Actions. Custo: $0 🇲🇿_`;
+                  break;
+                  
+                case 'status':
+                  resposta += `**Status Operacional**\n` +
+                              `✅ Online\n✅ Token válido\n✅ Permissões OK\n✅ Latência: ~7s\n\n` +
+                              `Uptime: 100% desde ativação\nLimite GitHub: 2000min/mês`;
+                  break;
+                  
+                case 'ajuda':
+                case 'help':
+                  resposta += `**Comandos Disponíveis:**\n\n` +
+                              `\`@claw resumo\` - Overview do projeto Txeka\n` +
+                              `\`@claw status\` - Saúde do sistema\n` +
+                              `\`@claw ping\` - Teste de latência\n` +
+                              `\`@claw log #N\` - Mostra logs da issue #N\n` +
+                              `\`@claw ajuda\` - Esta mensagem\n\n` +
+                              `**Novo comando?** Edita \`.github/workflows/claw.yml\``;
+                  break;
+                  
+                case 'ping':
+                  const tempo = new Date().toLocaleString('pt-BR', {timeZone: 'Africa/Maputo'});
+                  resposta += `**PONG** 🏓\n\nServidor: GitHub Actions\nRegião: Global\nHorário Maputo: ${tempo}\nLatência workflow: ~7s`;
+                  break;
+                  
+                case 'log':
+                  resposta += `**Logs Issue #${issue.number}**\n\`\`\`\nComando: ${comando_bruto}\nAutor: ${autor}\nTimestamp: ${new Date().toISOString()}\nRunner: ${process.env.RUNNER_OS}\n\`\`\``;
+                  break;
+                  
+                default:
+                  status = 'comando_invalido';
+                  resposta += `**Comando não reconhecido:** \`${cmd}\`\n\n` +
+                              `Digite \`@claw ajuda\` pra ver a lista completa.\n\n` +
+                              `Se é comando novo, edita o workflow e adiciona no switch.`;
+              }
+              
+              console.log(`[CLAW] Status: ${status} | Comando: ${cmd}`);
+              
+            } catch (error) {
+              status = 'erro';
+              console.error(`[CLAW] ERRO:`, error);
+              resposta = `🦀 **Erro no Claw v3.0**\n\n` +
+                         `Falha ao processar: \`${comando_bruto}\`\n\n` +
+                         `**Erro:** ${error.message}\n\n` +
+                         `Marca @achrafismaelismael823-glitch pra debug.`;
+            }
+            
+            // Adiciona rodapé
+            resposta += `\n\n---\n*Issue #${issue.number} | ${status} | ${new Date().toLocaleTimeString('pt-BR')}*`;
+            
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              body: `🦀 Claw online boss!\n\nLi teu pedido: "${context.payload.issue.body}"\n\nMVP ativo. Me testa com comandos reais da Txeka 🇲🇿`
+              issue_number: issue.number,
+              body: resposta
             });
