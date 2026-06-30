@@ -1,0 +1,25 @@
+name: Txeka Claw Bot
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  run-claw:
+    if: contains(github.event.issue.body, '@claw')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Claw responde
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CLAW_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `🦀 Claw online boss!\n\nLi teu pedido: "${context.payload.issue.body}"\n\nMVP ativo. Me testa com comandos reais da Txeka 🇲🇿`
+            });
