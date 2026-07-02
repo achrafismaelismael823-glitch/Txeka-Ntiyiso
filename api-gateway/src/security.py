@@ -1,4 +1,14 @@
 """
+import bcrypt
+
+def get_password_hash(password: str) -> str:
+    """Gera hash bcrypt da password."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifica password contra hash bcrypt."""
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+
 Txeka Ntiyiso - Security Module
 Enterprise-grade JWT authentication and authorization.
 """

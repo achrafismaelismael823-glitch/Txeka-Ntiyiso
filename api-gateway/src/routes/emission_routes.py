@@ -1,4 +1,8 @@
-"""Emission Routes - Document certification endpoints."""
+"""
+Emission Routes — Certificação de documentos digitais (DUAT, etc.).
+🇲🇿 Txeka Ntiyiso: hash SHA-256 + QR code + audit log.
+"""
+
 import logging
 import base64
 from typing import List
@@ -18,17 +22,21 @@ from src.exceptions import TxekaNtiyisoException
 
 router = APIRouter(tags=["emission"])
 logger = logging.getLogger(__name__)
+
 MAX_FILE_SIZE = 50 * 1024 * 1024
 PDF_MAGIC = b"%PDF-"
+
 
 class BulkDocumentItem(BaseModel):
     document_type: str = Field(..., example="DUAT")
     file_name: str = Field(..., example="documento.pdf")
-    content: str = Field(..., description="Conteudo em texto ou string codificada")
+    content: str = Field(..., description="Conteudo em base64 ou texto")
+
 
 class BulkEmissionInput(BaseModel):
     institution_id: str = Field(..., example="INAGE")
     documents: List[BulkDocumentItem]
+
 
 def validate_pdf(file: UploadFile, content: bytes) -> None:
     filename = file.filename.lower() if file.filename else ""
@@ -38,6 +46,24 @@ def validate_pdf(file: UploadFile, content: bytes) -> None:
         raise HTTPException(status_code=400, detail="Falsificacao de formato. Conteudo nao e PDF valido")
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="Ficheiro excede o limite de 50MB")
+
+
+def _get_institution_id_from_token(current_user: dict, requested_id: str) -> str:
+    token_institution = current_user.get("institution")
+    user_role = current_user.get("role", "citizen")
+    
+    if user_role == "admin":
+        return requested_id
+    
+    if user_role == "institution":
+        if not token_institution:
+            raise HTTPException(status_code=400, detail="Token sem instituição associada")
+        if token_institution.upper() != requested_id.upper():
+            raise HTTPException(status_code=403, detail="Só pode emitir documentos para a sua instituição")
+        return token_institution
+    
+    raise HTTPException(status_code=403, detail="Role nao autorizado para emissao")
+
 
 @router.post("/certify", response_model=EmitResponse)
 async def emit_document(
@@ -50,32 +76,37 @@ async def emit_document(
 ) -> EmitResponse:
     if not file:
         raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
+    
+    effective_institution = _get_institution_id_from_token(current_user, institution_id)
+    
     document_bytes = await file.read()
     validate_pdf(file, document_bytes)
+    
     service = EmissionService(db)
     try:
         result = await service.certify_document(
-            institution_id=institution_id,
+            institution_id=effective_institution,
             document_type=document_type,
             file_name=file.filename,
             content=document_bytes.decode('latin-1'),
             issued_by=current_user.get("institution", "system")
         )
+        
         db_result = await db.execute(select(Document).where(Document.doc_id == result["doc_id"]))
         doc_record = db_result.scalar_one_or_none()
         if not doc_record:
             raise HTTPException(status_code=500, detail="Documento nao encontrado apos emissao")
+        
         qr_code_bytes = gerar_qr_code(doc_record.doc_hash, doc_record.doc_id)
         qr_code_base64 = f"data:image/png;base64,{base64.b64encode(qr_code_bytes).decode()}"
         doc_record.qr_code = qr_code_base64
         doc_record.file_size = len(document_bytes)
         
-        # ✅ REGISTRAR AUDITORIA — Emissão bem-sucedida
         await AuditService.log_emit(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash=doc_record.doc_hash,
-            institution_id=institution_id,
+            institution_id=effective_institution,
             request=req,
             success=True,
             status_code=200,
@@ -97,18 +128,18 @@ async def emit_document(
             message=f"Documento emitido com sucesso. Creditos restantes: {result['credits_remaining']}"
         )
     except TxekaNtiyisoException as e:
-        # Registrar falha de emissão na auditoria
         await AuditService.log_emit(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
-            institution_id=institution_id,
+            institution_id=effective_institution,
             request=req,
             success=False,
             status_code=e.status_code,
             details={"error": e.message, "document_type": document_type}
         )
         raise HTTPException(status_code=e.status_code, detail=e.message)
+
 
 @router.post("/certify/bulk", status_code=status.HTTP_201_CREATED)
 async def emit_document_bulk(
@@ -117,22 +148,23 @@ async def emit_document_bulk(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
+    effective_institution = _get_institution_id_from_token(current_user, payload.institution_id)
+    
     service = EmissionService(db)
     try:
         documents_list = [doc.model_dump() for doc in payload.documents]
         result = await service.certify_bulk_documents(
-            institution_id=payload.institution_id,
+            institution_id=effective_institution,
             documents_list=documents_list,
             issued_by=current_user.get("institution", "system")
         )
         
-        # ✅ REGISTRAR AUDITORIA — Bulk emission bem-sucedida
         for doc in result.get("documents", []):
             await AuditService.log_emit(
                 session=db,
                 user_email=current_user.get("email", "unknown"),
                 doc_hash=doc.get("hash_sha256", "unknown"),
-                institution_id=payload.institution_id,
+                institution_id=effective_institution,
                 request=req,
                 success=True,
                 status_code=201,
@@ -145,12 +177,11 @@ async def emit_document_bulk(
         
         return result
     except TxekaNtiyisoException as e:
-        # Registrar falha de bulk emission na auditoria
         await AuditService.log_emit(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
-            institution_id=payload.institution_id,
+            institution_id=effective_institution,
             request=req,
             success=False,
             status_code=e.status_code,

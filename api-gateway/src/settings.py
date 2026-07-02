@@ -1,6 +1,4 @@
-"""
-TXEKA NTIYISO API - SETTINGS
-"""
+"""Settings — configuração centralizada da API."""
 
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,7 +13,7 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str = "TXEKA NTIYISO API"
-    VERSION: str = "1.0.0"
+    VERSION: str = "2.0.0"
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
 
@@ -25,6 +23,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Admin do Sistema
+    ADMIN_EMAIL: str = "admin@txeka.co.mz"
+    ADMIN_PASSWORD_HASH: SecretStr = ""
 
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
@@ -41,6 +43,7 @@ class Settings(BaseSettings):
 
     @property
     def database_url_async(self) -> str:
+        """Converte URL para asyncpg."""
         url = str(self.DATABASE_URL)
         if url.startswith("postgresql://") and "asyncpg" not in url:
             url = url.replace("postgresql://", "postgresql+asyncpg://")
@@ -48,10 +51,10 @@ class Settings(BaseSettings):
 
     @property
     def database_url_sync(self) -> str:
+        """Converte URL para driver síncrono."""
         url = str(self.DATABASE_URL)
         if "asyncpg" in url:
             url = url.replace("postgresql+asyncpg://", "postgresql://")
         return url
-
 
 settings = Settings()

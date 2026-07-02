@@ -1,15 +1,12 @@
-"""
-Txeka Ntiyiso - Main Application
-Enterprise-grade FastAPI application with security, rate limiting, and monitoring.
-"""
+"""Main — entry point da API Txeka Ntiyiso."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
 
-from src.database import init_db, engine
-from src.routes import emission_routes, verify, revocation, audit_routes
+from src.database import init_db
+from src.routes import emission_routes, verify, revocation, audit_routes, institution_routes, auth_routes
 from src.exceptions import TxekaNtiyisoException, txeka_exception_handler
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -23,7 +20,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="Txeka Ntiyiso",
     description="Plataforma de Validacao Digital de Documentos",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 app.state.limiter = limiter
@@ -41,20 +38,19 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS", "PATCH"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key", "Accept"]
 )
 
 
 @app.on_event("startup")
 async def startup():
-    logger.info("Application startup initiated")
-    
+    logger.info("Startup iniciado")
     db_ok = await init_db()
     if db_ok:
-        logger.info("Database connected and ready")
+        logger.info("BD pronta")
     else:
-        logger.warning("Database unavailable at startup. Health check will monitor.")
+        logger.warning("BD indisponivel. Health check monitora.")
 
 
 API_PREFIX = "/api/v1"
@@ -63,8 +59,10 @@ app.include_router(emission_routes.router, prefix=API_PREFIX)
 app.include_router(verify.router, prefix=API_PREFIX)
 app.include_router(revocation.router, prefix=API_PREFIX)
 app.include_router(audit_routes.router, prefix=API_PREFIX)
+app.include_router(institution_routes.router, prefix=API_PREFIX)
+app.include_router(auth_routes.router, prefix=API_PREFIX)
 
-logger.info(f"Routes registered with prefix: {API_PREFIX}")
+logger.info(f"Rotas registadas: {API_PREFIX}")
 
 
 @app.get("/health")
@@ -72,7 +70,7 @@ async def health_check():
     return {
         "status": "online",
         "project": "Txeka Ntiyiso",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "environment": os.getenv("ENVIRONMENT", "production"),
         "api_prefix": API_PREFIX
     }
@@ -86,6 +84,10 @@ async def root():
         "health": "/health",
         "api_prefix": API_PREFIX,
         "endpoints": {
-            "verification": f"{API_PREFIX}/verify/{{hash}}"
+            "auth": f"{API_PREFIX}/auth/login",
+            "verification": f"{API_PREFIX}/verify/{{hash}}",
+            "institutions": f"{API_PREFIX}/institutions",
+            "emission": f"{API_PREFIX}/certify",
+            "audit": f"{API_PREFIX}/audit"
         }
     }
