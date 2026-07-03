@@ -45,6 +45,7 @@ pillow = "11.0.0"
 
 # Dependência Local do Monorepo
 txeka-core = { path = "../core", develop = true }
+python-jose = "^3.5.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
