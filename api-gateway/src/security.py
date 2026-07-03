@@ -79,8 +79,16 @@ class TokenBearer(HTTPBearer):
 token_bearer = TokenBearer()
 
 
-def verify_role(token: str, required_role: str) -> bool:
-    """Verifica se o token tem o role necessario."""
-    payload = verify_token(token)
-    role = payload.get("role", "public")
-    return role == required_role
+
+def verify_role(required_role: str):
+    """Factory que retorna uma funcao de dependencia para verificar roles."""
+    def role_checker(token: str = Depends(token_bearer)):
+        payload = verify_token(token.credentials if hasattr(token, "credentials") else token)
+        user_role = payload.get("role", "public")
+        if user_role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Acesso negado. Role necessario: {required_role}"
+            )
+        return payload
+    return role_checker
