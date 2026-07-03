@@ -6,7 +6,7 @@ import logging
 import os
 
 from src.database import init_db
-from src.routes import emission_routes, verify, revocation, audit_routes
+from src.routes import emission_routes, verify, revocation, audit_routes, institution_routes
 from src.exceptions import TxekaNtiyisoException, txeka_exception_handler
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
