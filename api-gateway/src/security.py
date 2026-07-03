@@ -77,3 +77,10 @@ class TokenBearer(HTTPBearer):
 
 # Instância reutilizável
 token_bearer = TokenBearer()
+
+
+def verify_role(token: str, required_role: str) -> bool:
+    """Verifica se o token tem o role necessario."""
+    payload = verify_token(token)
+    role = payload.get("role", "public")
+    return role == required_role
