@@ -96,3 +96,13 @@ alembic/versions/*.pyc
 alembic.ini.local
 *.pdf # PDFs de teste não vão pro git
 txeka.db
+
+# Secrets e ambientes
+**/.env
+**/.env.local
+**/.env.*.local
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.venv/
+**/venv/
