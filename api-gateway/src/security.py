@@ -1,118 +1,79 @@
 """
-import bcrypt
-
-def get_password_hash(password: str) -> str:
-    """Gera hash bcrypt da password."""
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica password contra hash bcrypt."""
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
-
 Txeka Ntiyiso - Security Module
 Enterprise-grade JWT authentication and authorization.
 """
 
 import os
 import logging
+import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Callable
 
-import jwt
-from fastapi import Depends, HTTPException
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from fastapi import HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+# Configuração
+SECRET_KEY = os.getenv("SECRET_KEY", "txeka-dev-secret-change-in-production")
+ALGORITHM = "HS256"
+
+# Contexto para hash de passwords (legado - mantido para compatibilidade)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Logger
 logger = logging.getLogger(__name__)
 
-security = HTTPBearer(auto_error=False)
 
-JWT_ALGORITHM = "HS256"
-
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not JWT_SECRET_KEY or JWT_SECRET_KEY == "dev-secret-key":
-    logger.warning("JWT_SECRET_KEY not configured or insecure. Using fallback.")
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "txeka-fallback-secret-key-change-immediately")
-
-JWT_EXPIRATION_HOURS = 24
-ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
+def get_password_hash(password: str) -> str:
+    """Gera hash bcrypt da password."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
-class AuthConfig:
-    ALGORITHM = JWT_ALGORITHM
-    SECRET_KEY = JWT_SECRET_KEY
-    EXPIRATION_HOURS = JWT_EXPIRATION_HOURS
-
-    ROLES = {
-        "system": ["verify", "emit", "revoke"],
-        "admin": ["verify", "emit", "revoke", "manage_institutions"],
-        "institution": ["emit", "verify"],
-        "citizen": ["verify"]
-    }
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifica password contra hash bcrypt."""
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
-def create_access_token(email: str, role: str = "system", expires_delta: Optional[timedelta] = None) -> str:
-    if expires_delta is None:
-        expires_delta = timedelta(hours=AuthConfig.EXPIRATION_HOURS)
-    expire = datetime.now(timezone.utc) + expires_delta
-    payload = {"sub": email, "role": role, "exp": expire, "iat": datetime.now(timezone.utc), "type": "access"}
-    return jwt.encode(payload, AuthConfig.SECRET_KEY, algorithm=AuthConfig.ALGORITHM)
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Cria token JWT com claims e expiração."""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str) -> Dict:
+def verify_token(token: str) -> Dict:
+    """Verifica e decodifica token JWT."""
     try:
-        return jwt.decode(token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expirado")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Token invalido")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError as e:
+        logger.warning(f"Token inválido: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido ou expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
-async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict:
-    try:
-        if credentials is None:
-            if ALLOW_ANONYMOUS:
-                return {"email": "anonymous@txeka.co.mz", "role": "citizen", "authenticated": False}
-            raise HTTPException(status_code=401, detail="Autenticacao obrigatoria")
-
-        token = credentials.credentials
-        payload = decode_token(token)
-        return {"email": payload.get("sub"), "role": payload.get("role", "citizen"), "authenticated": True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Token verification error: {e}")
-        raise HTTPException(status_code=401, detail="Falha na autenticacao")
-
-
-def verify_role(required_role: str) -> Callable:
-    async def role_checker(user: Dict = Depends(verify_token)) -> Dict:
-        if not user["authenticated"] and required_role != "citizen":
-            raise HTTPException(status_code=401, detail="Autenticacao necessaria para esta operacao")
-        if user["role"] not in [required_role, "admin"]:
-            raise HTTPException(status_code=403, detail="Acesso negado")
-        return user
-    return role_checker
+class TokenBearer(HTTPBearer):
+    """Bearer token personalizado para Txeka Ntiyiso."""
+    
+    def __init__(self, auto_error: bool = True):
+        super().__init__(auto_error=auto_error)
+    
+    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+        credentials = await super().__call__(request)
+        if credentials:
+            if not credentials.scheme == "Bearer":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Esquema de autenticação inválido."
+                )
+            return credentials
+        return None
 
 
-def verify_scopes(required_scopes: list[str]) -> Callable:
-    async def scope_checker(user: Dict = Depends(verify_token)) -> Dict:
-        if not user["authenticated"] and any(s != "verify" for s in required_scopes):
-            raise HTTPException(status_code=401, detail="Token de seguranca ausente ou invalido")
-        user_scopes = AuthConfig.ROLES.get(user["role"], [])
-        for scope in required_scopes:
-            if scope not in user_scopes:
-                raise HTTPException(status_code=403, detail="Permissao insuficiente")
-        return user
-    return scope_checker
-
-
-def is_authenticated(user: Dict) -> bool:
-    return user.get("authenticated", False)
-
-
-def get_user_email(user: Dict) -> str:
-    return user.get("email", "anonymous@txeka.co.mz")
-
-
-def get_user_role(user: Dict) -> str:
-    return user.get("role", "citizen")
+# Instância reutilizável
+token_bearer = TokenBearer()
