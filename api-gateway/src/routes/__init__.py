@@ -1,8 +1,4 @@
-"""
-Routes package - API endpoint definitions.
-Aggregates all route modules for document emission, verification,
-revocation, and audit.
-"""
+"""Routes package — agrega todos os endpoints da API."""
 
 from src.routes.emission_routes import router as emission_router
 from src.routes.verify import router as verify_router

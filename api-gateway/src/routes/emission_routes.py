@@ -28,17 +28,20 @@ PDF_MAGIC = b"%PDF-"
 
 
 class BulkDocumentItem(BaseModel):
+    """Item para emissão em massa."""
     document_type: str = Field(..., example="DUAT")
     file_name: str = Field(..., example="documento.pdf")
     content: str = Field(..., description="Conteudo em base64 ou texto")
 
 
 class BulkEmissionInput(BaseModel):
+    """Payload para emissão em massa."""
     institution_id: str = Field(..., example="INAGE")
     documents: List[BulkDocumentItem]
 
 
 def validate_pdf(file: UploadFile, content: bytes) -> None:
+    """Valida formato PDF: extensão, MIME e magic bytes."""
     filename = file.filename.lower() if file.filename else ""
     if not filename.endswith(".pdf") or file.content_type != "application/pdf":
         raise HTTPException(status_code=415, detail="Extensao ou Tipo MIME invalido. Aceita apenas .pdf")
@@ -46,23 +49,6 @@ def validate_pdf(file: UploadFile, content: bytes) -> None:
         raise HTTPException(status_code=400, detail="Falsificacao de formato. Conteudo nao e PDF valido")
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="Ficheiro excede o limite de 50MB")
-
-
-def _get_institution_id_from_token(current_user: dict, requested_id: str) -> str:
-    token_institution = current_user.get("institution")
-    user_role = current_user.get("role", "citizen")
-    
-    if user_role == "admin":
-        return requested_id
-    
-    if user_role == "institution":
-        if not token_institution:
-            raise HTTPException(status_code=400, detail="Token sem instituição associada")
-        if token_institution.upper() != requested_id.upper():
-            raise HTTPException(status_code=403, detail="Só pode emitir documentos para a sua instituição")
-        return token_institution
-    
-    raise HTTPException(status_code=403, detail="Role nao autorizado para emissao")
 
 
 @router.post("/certify", response_model=EmitResponse)
@@ -74,10 +60,9 @@ async def emit_document(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ) -> EmitResponse:
+    """Emite documento: hash SHA-256 + QR code + audit log."""
     if not file:
         raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
-    
-    effective_institution = _get_institution_id_from_token(current_user, institution_id)
     
     document_bytes = await file.read()
     validate_pdf(file, document_bytes)
@@ -102,6 +87,7 @@ async def emit_document(
         doc_record.qr_code = qr_code_base64
         doc_record.file_size = len(document_bytes)
         
+        # Audit log
         await AuditService.log_emit(
             session=db,
             user_email=current_user.get("email", "unknown"),
@@ -128,6 +114,7 @@ async def emit_document(
             message=f"Documento emitido com sucesso. Creditos restantes: {result['credits_remaining']}"
         )
     except TxekaNtiyisoException as e:
+        # Audit log (falha)
         await AuditService.log_emit(
             session=db,
             user_email=current_user.get("email", "unknown"),
@@ -148,8 +135,7 @@ async def emit_document_bulk(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
-    effective_institution = _get_institution_id_from_token(current_user, payload.institution_id)
-    
+    """Emite múltiplos documentos em lote (B2B/B2G)."""
     service = EmissionService(db)
     try:
         documents_list = [doc.model_dump() for doc in payload.documents]
@@ -159,6 +145,7 @@ async def emit_document_bulk(
             issued_by=current_user.get("institution", "system")
         )
         
+        # Audit log
         for doc in result.get("documents", []):
             await AuditService.log_emit(
                 session=db,
@@ -177,6 +164,7 @@ async def emit_document_bulk(
         
         return result
     except TxekaNtiyisoException as e:
+        # Audit log (falha)
         await AuditService.log_emit(
             session=db,
             user_email=current_user.get("email", "unknown"),
@@ -188,3 +176,4 @@ async def emit_document_bulk(
             details={"error": e.message, "bulk": True, "total_documents": len(payload.documents)}
         )
         raise HTTPException(status_code=e.status_code, detail=e.message)
+

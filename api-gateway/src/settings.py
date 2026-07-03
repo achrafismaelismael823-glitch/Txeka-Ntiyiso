@@ -4,6 +4,7 @@ from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import PostgresDsn, SecretStr
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",

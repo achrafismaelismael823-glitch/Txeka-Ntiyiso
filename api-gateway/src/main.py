@@ -6,7 +6,7 @@ import logging
 import os
 
 from src.database import init_db
-from src.routes import emission_routes, verify, revocation, audit_routes, institution_routes, auth_routes
+from src.routes import emission_routes, verify, revocation, audit_routes
 from src.exceptions import TxekaNtiyisoException, txeka_exception_handler
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -46,6 +46,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     logger.info("Startup iniciado")
+    
     db_ok = await init_db()
     if db_ok:
         logger.info("BD pronta")

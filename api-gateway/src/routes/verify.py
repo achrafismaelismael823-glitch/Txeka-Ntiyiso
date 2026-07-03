@@ -1,6 +1,6 @@
 """
-Verification Routes - Public endpoints for document authentication.
-Qualquer cidadão pode verificar sem autenticação.
+Verification Routes — Verificação pública de documentos via hash.
+🇲🇿 Txeka Ntiyiso: GET para QR code/links, POST para B2B/B2G.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,13 +19,14 @@ async def verify_document_get(
     req: Request,
     db: AsyncSession = Depends(get_db),
 ) -> VerifyResponse:
-    """Verifica a autenticidade de um documento via URL (público)."""
+    """Verificação pública via URL (QR code, WhatsApp, etc.)."""
     if len(doc_hash) != 64:
         raise HTTPException(status_code=400, detail="Hash SHA-256 deve ter 64 caracteres.")
-        
+    
     service = VerificationService(db)
     result = await service.verify_document(doc_hash.lower())
     
+    # Audit log
     await AuditService.log_verify(
         session=db,
         user_email="anonymous",
@@ -46,10 +47,11 @@ async def verify_document_post(
     req: Request,
     db: AsyncSession = Depends(get_db),
 ) -> VerifyResponse:
-    """Verifica a autenticidade via JSON (B2B/B2G - integrações empresariais e governo)."""
+    """Verificação B2B/B2G via JSON (bancos, portais gov, APIs)."""
     service = VerificationService(db)
     result = await service.verify_document(request.hash.lower())
     
+    # Audit log
     await AuditService.log_verify(
         session=db,
         user_email="anonymous",
