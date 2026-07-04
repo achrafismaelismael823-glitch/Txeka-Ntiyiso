@@ -1,5 +1,6 @@
 """Settings — configuração centralizada da API."""
 
+import os
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import PostgresDsn, SecretStr
@@ -7,7 +8,7 @@ from pydantic import PostgresDsn, SecretStr
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=".env" if os.path.exists(".env") else None,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore"
