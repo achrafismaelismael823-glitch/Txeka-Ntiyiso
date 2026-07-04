@@ -12,6 +12,7 @@ from src.models.schemas import InstitutionLoginRequest, InstitutionLoginResponse
 from src.services.institution_service import InstitutionService
 from src.security import create_access_token, verify_password, get_password_hash
 
+from src.settings import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
@@ -19,8 +20,8 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 @router.post("/admin/login")
 async def login_admin(email: str, password: str):
-    admin_email = os.getenv("ADMIN_EMAIL", "admin@txeka.co.mz")
-    admin_password_hash = os.getenv("ADMIN_PASSWORD_HASH")
+    admin_email = settings.ADMIN_EMAIL
+    admin_password_hash = settings.ADMIN_PASSWORD_HASH.get_secret_value()
     
     if not admin_password_hash:
         logger.error("ADMIN_PASSWORD_HASH nao configurado")

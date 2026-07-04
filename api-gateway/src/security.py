@@ -67,7 +67,7 @@ def create_access_token(
         "iat": now,
         "type": "access"
     }
-    return jwt.encode(payload, AuthConfig.SECRET_KEY, algorithm=AuthConfig.ALGORITHM)
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def decode_token(token: str) -> Dict:
