@@ -45,11 +45,17 @@ class InstitutionService:
         temp_password = generate_temp_password()
         password_hash = get_password_hash(temp_password)
         
+        # GERA API KEY E HASH
+        api_key = generate_api_key()
+        api_key_hash = get_password_hash(api_key)
+        
         institution = Institution(
             id=data.id.upper(),
             name=data.name,
             contact_email=str(data.contact_email),
             password_hash=password_hash,
+            api_key=api_key,
+            api_key_hash=api_key_hash,
             role="institution",
             credits=data.credits,
             subscription_plan=data.subscription_plan,
@@ -76,6 +82,7 @@ class InstitutionService:
         
         return {
             "institution": institution,
+            "api_key": api_key,
             "temp_password": temp_password,
             "message": f"Instituição {institution.id} criada. Password temporária: {temp_password}"
         }
@@ -257,6 +264,7 @@ class InstitutionService:
         
         new_key = generate_api_key()
         institution.api_key = new_key
+        institution.api_key_hash = get_password_hash(new_key)
         institution.updated_at = datetime.now(timezone.utc)
         
         await db.commit()
