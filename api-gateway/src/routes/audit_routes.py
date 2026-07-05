@@ -85,6 +85,13 @@ async def get_audit_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Estatísticas de auditoria para dashboards. Acesso admin."""
+    stats = await AuditService.get_stats(
+        session=db,
+        institution_id=institution_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
     return {
         "success": True,
         "period": {
@@ -93,7 +100,5 @@ async def get_audit_stats(
         },
         "institution_id": institution_id,
         "timezone": "CAT (UTC+2)",
-        "stats": {
-            "note": "Implementar queries agregadas no proximo sprint",
-        },
+        "stats": stats,
     }
