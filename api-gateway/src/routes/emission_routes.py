@@ -1,5 +1,5 @@
 """
-Emission Routes — Certificação de documentos digitais (CERTIFICADOS,DUAT, etc.).
+Emission Routes — Certificação de documentos digitais (CERTIFICADOS, DUAT, etc.).
 🇲🇿 Txeka Ntiyiso: hash SHA-256 + QR code + audit log.
 ACEITA EXCLUSIVAMENTE FICHEIROS PDF.
 """
@@ -178,7 +178,7 @@ async def emit_document_bulk(
     try:
         documents_list = [doc.model_dump() for doc in payload.documents]
         result = await service.certify_bulk_documents(
-            institution_id=institution_id,
+            institution_id=payload.institution_id,  
             documents_list=documents_list,
             issued_by=current_user.get("institution", "system")
         )
@@ -189,7 +189,7 @@ async def emit_document_bulk(
                 session=db,
                 user_email=current_user.get("email", "unknown"),
                 doc_hash=doc.get("hash_sha256", "unknown"),
-                institution_id=institution_id,
+                institution_id=payload.institution_id,  
                 request=req,
                 success=True,
                 status_code=201,
@@ -207,7 +207,7 @@ async def emit_document_bulk(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
-            institution_id=institution_id,
+            institution_id=payload.institution_id,  
             request=req,
             success=False,
             status_code=e.status_code,
