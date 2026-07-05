@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
-from src.database import AuditBase
+from sqlalchemy.sql import func
+from src.database import AuditBase, Base
 
 
 class Document(AuditBase):
@@ -35,11 +36,11 @@ class Institution(AuditBase):
     credits = Column(Integer, default=0, nullable=False)
     status = Column(String(20), default="pending", nullable=False, index=True)
     api_key = Column(String(255), unique=True, index=True, nullable=True)
-    api_key_hash = Column(String(255), nullable=False)  # ✅
+    api_key_hash = Column(String(255), nullable=False)
     approved = Column(Boolean, default=False, nullable=False)
 
 
-class CreditTransaction(AuditBase):
+class CreditTransaction(Base): 
     __tablename__ = "credit_transactions"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -51,3 +52,4 @@ class CreditTransaction(AuditBase):
     payment_reference = Column(String(100))
     notes = Column(Text())
     created_by = Column(String(100))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)  
