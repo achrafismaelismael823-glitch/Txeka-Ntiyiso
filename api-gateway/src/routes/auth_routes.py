@@ -10,7 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_db
 from src.models.schemas import InstitutionLoginRequest, InstitutionLoginResponse
 from src.services.institution_service import InstitutionService
-from src.security import create_access_token, verify_password, get_password_hash
+from src.security import (
+    create_access_token, 
+    verify_password, 
+    get_password_hash,
+    JWT_EXPIRATION_DAYS_ADMIN,        
+    JWT_EXPIRATION_DAYS_INSTITUTION   
+)
 
 from src.settings import settings
 logger = logging.getLogger(__name__)
@@ -33,20 +39,22 @@ async def login_admin(email: str, password: str):
     if not verify_password(password, admin_password_hash):
         raise HTTPException(status_code=401, detail="Credenciais invalidas")
     
+    # Admin = 90 dias
     token = create_access_token(
         email=admin_email,
         user_id="admin",
         role="admin",
         institution_id=None,
-        expires_delta=timedelta(hours=24)
+        expires_delta=timedelta(days=JWT_EXPIRATION_DAYS_ADMIN)
     )
     
-    logger.info(f"Admin {admin_email} autenticado com sucesso")
+    logger.info(f"Admin {admin_email} autenticado com sucesso (token: 90 dias)")
     
     return {
         "access_token": token,
         "token_type": "bearer",
         "role": "admin",
+        "expires_in_days": JWT_EXPIRATION_DAYS_ADMIN,
         "message": "Bem-vindo, Administrador Txeka Ntiyiso!"
     }
 
@@ -60,19 +68,21 @@ async def login_institution(data: InstitutionLoginRequest, db: AsyncSession = De
     if not institution:
         raise HTTPException(status_code=401, detail="Credenciais inválidas ou conta inativa")
     
+    # Institution = 30 dias (mais seguro)
     token = create_access_token(
         email=institution.contact_email or f"{institution.id}@txeka.local",
         user_id=institution.id,
         role="institution",
         institution_id=institution.id,
-        expires_delta=timedelta(hours=24)
+        expires_delta=timedelta(days=JWT_EXPIRATION_DAYS_INSTITUTION)
     )
     
-    logger.info(f"Instituição {institution.id} autenticada com sucesso")
+    logger.info(f"Instituição {institution.id} autenticada com sucesso (token: {JWT_EXPIRATION_DAYS_INSTITUTION} dias)")
     
     return {
         "access_token": token,
         "token_type": "bearer",
         "institution": institution,
+        "expires_in_days": JWT_EXPIRATION_DAYS_INSTITUTION,
         "message": f"Bem-vindo, {institution.name}!"
     }
