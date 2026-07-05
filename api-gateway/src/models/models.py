@@ -35,6 +35,7 @@ class Institution(AuditBase):
     credits = Column(Integer, default=0, nullable=False)
     status = Column(String(20), default="pending", nullable=False, index=True)
     api_key = Column(String(255), unique=True, index=True, nullable=True)
+    api_key_hash = Column(String(255), nullable=False)  # ✅
     approved = Column(Boolean, default=False, nullable=False)
 
 
