@@ -1,12 +1,26 @@
 # Txeka Ntiyiso — Posicionamento Estratégico
 
-**Plataforma Descentralizada de Verificação de Integridade e Validação Cronológica Transacional**
+**Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental**
 
 ---
 
-## Declaração de Posição 
+## Declaração de Posição
 
 > **O Txeka Ntiyiso é uma infraestrutura digital de confiança B2G/B2B que garante a integridade, autenticidade e não-repúdio de documentos digitais através de criptografia SHA-256, sem nunca armazenar os documentos originais nem competir com a ICP do Estado.**
+
+---
+
+## Princípios de Posicionamento
+
+| Princípio | Fundamento Jurídico-Técnico |
+|-----------|----------------------------|
+| **Integridade** | Qualquer alteração de um único byte no documento original gera um hash SHA-256 completamente diferente, tornando a adulteração matematicamente detetável. |
+| **Autenticidade** | A impressão digital criptográfica vincula irrevogavelmente o documento à entidade emissora registada no sistema. |
+| **Não-repúdio** | Cada operação (emissão, verificação, revogação) é registada imutavelmente com selo temporal sincronizado ao fuso horário oficial de Moçambique (CAT, UTC+2). |
+| **Privacidade por Design** | Armazenamento exclusivo de hashes de 64 caracteres. Zero retenção de documentos originais, zero processamento de dados pessoais identificáveis. |
+| **Interoperabilidade** | API REST padronizada para integração com sistemas governamentais e corporativos existentes, sem necessidade de substituição de infraestruturas legadas. |
+| **Auditabilidade** | Logs imutáveis estruturados em JSON, acessíveis para auditorias internas, externas e perícias forenses digitais. |
+| **Segurança por Defeito** | Configurações técnicas seguras por padrão, com mascaramento de IPs em consultas públicas e isolamento lógico de tenants. |
 
 ---
 
@@ -36,11 +50,11 @@ Ao registar cada ação de emissão, verificação e revogação na tabela `audi
 ## O que somos (Para clientes e parceiros)
 
 | Atributo | Descrição | Benefício |
-|-------|-----------|-----------|
-| **Validador de Integridade** | Geramos uma impressão digital matemática única (hash SHA-256) de qualquer documento. | Falsificação torna-se impossível — qualquer alteração de 1 byte muda o hash completamente. |
+|----------|-----------|-----------|
+| **Validador de Integridade** | Geramos uma impressão digital matemática única (hash SHA-256) de qualquer documento. | Falsificação torna-se detetável — qualquer alteração de 1 byte muda o hash completamente. |
 | **Motor de Auditoria** | Registamos imutavelmente cada emissão, verificação e revogação com selo temporal sincronizado ao fuso horário oficial de Moçambique (CAT, UTC+2). | Trilha de evidências digitais em total conformidade com o rasto de auditoria exigido por lei. |
 | **Guardião de Privacidade** | Arquitetura *Zero-Knowledge*: armazenamos apenas hashes de 64 caracteres. Zero documentos, zero dados pessoais (PII), zero chaves privadas. | Eliminação total do risco de vazamento de dados e conformidade imediata com a legislação de privacidade. |
-| **Facilitador de Processos** | APIs REST que transformam validações manuais e físicas em auditorias criptográficas automáticas de **menos de 100 milissegundos**. | Redução de mais de 80% no tempo de verificação documental e custos operacionais. |
+| **Facilitador de Processos** | APIs REST que transformam validações manuais e físicas em auditorias criptográficas automáticas de **menos de 100 milissegundos**. | Redução significativa no tempo de verificação documental e custos operacionais. |
 
 ---
 
@@ -57,10 +71,21 @@ Ao registar cada ação de emissão, verificação e revogação na tabela `audi
 
 ---
 
+## Riscos Mitigados por Stakeholder
+
+| Stakeholder | Risco Operacional | Como o Txeka Ntiyiso Mitiga |
+|-------------|-------------------|----------------------------|
+| **Governo (B2G)** | Falsificação de certidões, alvarás e DUATs entre órgãos; burocracia de validação cruzada. | Verificação criptográfica instantânea (< 100ms) entre instituições, eliminando deslocações físicas e intermediários. |
+| **Empresas (B2B)** | Fraude documental em processos KYC, onboarding e compliance; perdas financeiras por documentos adulterados. | Validação automatizada via API REST com deteção matemática de adulterações, reduzindo risco operacional. |
+| **Reguladores (INTIC)** | Incumprimento de retenção de trilhas de auditoria; falta de evidências digitais em processos de fiscalização. | Logs imutáveis estruturados em JSON com retenção mínima de 20 anos, prontos para auditorias e perícias forenses. |
+| **Cidadãos** | Vazamento de dados pessoais em plataformas de verificação; dependência de intermediários para autenticar documentos. | Arquitetura Zero-Knowledge: o documento original nunca sai do dispositivo do cidadão. Verificação via QR code sem registo obrigatório. |
+
+---
+
 ## Enquadramento Legal e Conformidade
 
 | Legislação / Regulamento | Como o Txeka Ntiyiso cumpre |
-|------------|----------------|
+|--------------------------|----------------------------|
 | **Lei n.º 3/2017** (Transações Eletrónicas) | Garante a integridade e o não-repúdio pós-emissão via hashes SHA-256 imutáveis e logs de auditoria detalhados. |
 | **Decreto n.º 59/2019** (Regulamento de Certificação) | Estrutura técnica e pipeline preparados para suporte à retenção de registos de logs por até 20 anos. |
 | **Proteção de Dados e Privacidade** | Cumpre o Capítulo V da Lei n.º 3/2017 através da arquitetura *Zero-Knowledge*, mitigando riscos ao não transitar dados sensíveis ou pessoais. |
@@ -95,20 +120,20 @@ Genérico para o mercado global                  Alinhado com a Legislação de 
 
 ---
 
-## Estado Actual do Projecto (Junho de 2026)
+## Estado Atual do Projecto
 
-| Fase | Estado | Descrição | Marco Operacional |
-|------|--------|-----------|-------|
-| **Fase 1** | ✅ Concluída | MVP Core desenvolvido: endpoints de emissão, verificação, revogação e geração de logs estruturados em JSON. | API operacional em ambiente de produção (Render + Supabase). |
-| **Fase 2** | 🔄 Em curso | Construção do Dashboard Web, Módulo de Gestão de Entidades/Instituições e Relatórios de Auditoria. | **Fase Atual (Q2-Q3 2026)** |
-| **Fase 3** | ⏳ Planeada | Pilotos e Go-to-Market focado em Clientes Estratégicos (Instituições Públicas e Setor Bancário/Financeiro). | Planeado para Q3 2026 |
-| **Fase 4** | ⏳ Planeada | Escalabilidade corporativa avançada: Autenticação Multi-Fator (2FA), OAuth2 Enterprise e deteção de anomalias com ML. | Planeado para Q4 2026 |
+| Fase | Período | Estado | Marco Operacional |
+|------|---------|--------|-------------------|
+| **Fase 1** | Q1 2026 | ✅ Concluída | MVP Core: endpoints de emissão, verificação, revogação e geração de logs estruturados em JSON. API operacional em ambiente de produção (Render + Supabase). |
+| **Fase 2** | Q2–Q3 2026 | 🔄 Em curso | Dashboard Web, Módulo de Gestão de Entidades/Instituições, Emissão em Bulk e Relatórios de Auditoria. |
+| **Fase 3** | Q3 2026 | ⏳ Planeada | Pilotos e Go-to-Market focado em Clientes Estratégicos (Instituições Públicas e Setor Bancário/Financeiro). |
+| **Fase 4** | Q4 2026 | ⏳ Planeada | Escalabilidade corporativa avançada: Autenticação Multi-Fator (2FA), OAuth2 Enterprise e deteção de anomalias com ML. |
 
 ---
 
-## Resumo Executivo 
+## Resumo Executivo
 
-> **"O Txeka Ntiyiso posiciona-se como a infraestrutura intermédia de transição digital que elimina o problema da falsificação documental em Moçambique. Não emitimos certificados digitais nem chaves — validamos e blindamos matematicamente a integridade dos documentos que as instituições já emitem, com resposta em menos de 100ms, custo local em Meticais e retenção zero de documentos ou dados pessoais."**
+> **"O Txeka Ntiyiso posiciona-se como a infraestrutura intermédia de transição digital que mitiga o problema da falsificação documental em Moçambique. Não emitimos certificados digitais nem chaves — validamos e blindamos matematicamente a integridade dos documentos que as instituições já emitem, com resposta em menos de 100ms, custo local em Meticais e retenção zero de documentos ou dados pessoais."**
 
 ---
 
