@@ -1,8 +1,10 @@
 # Documentação Txeka Ntiyiso
 
-**Índice Mestre — Mapa de Navegação por Perfil**
+**Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental**
 
 ---
+
+## Índice Mestre — Mapa de Navegação por Perfil
 
 Bem-vindo à documentação oficial do Txeka Ntiyiso. Esta página organiza toda a informação por perfil de utilizador. Escolha o seu caminho:
 
@@ -60,7 +62,7 @@ Aceda a `http://localhost:8000/docs` para Swagger interativo.
 
 ```
 doc/
-├── README.md                    ← Você está aqui
+├── README.md                    ← Está aqui
 │
 ├── guides/
 │   ├── USER_GUIDE.md            ← Manual operacional para instituições
@@ -82,12 +84,21 @@ doc/
 
 | Fase | Período | Estado | Descrição |
 |------|---------|--------|-----------|
-| Fase 1 | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
-| Fase 2 | Q2–Q3 2026 | 🔄 Em curso | Dashboard Web + Relatórios analíticos + Módulo de gestão de Instituições |
-| Fase 3 | Q3 2026 | ⏳ Planeada | Go-to-market com clientes pilotos (INAGE, setor bancário) |
-| Fase 4 | Q4 2026 | ⏳ Planeada | Escala empresarial: 2FA, OAuth2, ML fraud detection, multi-language |
+| **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
+| **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | **Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos** |
+| **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
+| **Fase 4** | Q4 2026 | ⏳ Planeada | Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial: 2FA, OAuth2, ML fraud detection |
 
-> **Fase actual:** Fase 2 — desenvolvimento do dashboard institucional e módulo multi-tenant.
+> **Fase 2 — O que estamos a construir agora:**
+> - ✅ Registo de instituições com API key
+> - ✅ Login dual (Admin 90d / Institution 30d)
+> - ✅ Emissão única PDF com validação rigorosa
+> - ✅ Emissão em bulk B2B/B2G
+> - ✅ Verificação pública anónima
+> - ✅ Audit logs (28+ registos)
+> - ✅ Validação PDF: extensão + MIME + magic bytes
+> - ✅ Multi-tenant
+> - 🔄 Portal web React (em evolução)
 
 ---
 
@@ -100,4 +111,3 @@ doc/
 ---
 
 *Txeka Ntiyiso — Documentação Enterprise-Grade 🇲🇿*
-
