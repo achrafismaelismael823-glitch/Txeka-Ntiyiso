@@ -1,8 +1,10 @@
-## Runbook de Operações — Txeka Ntiyiso
+# Runbook de Operações — Txeka Ntiyiso
+
+**Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental**
 
 **Procedimentos Operacionais, Troubleshooting e Resposta a Incidentes**
 
-**Baseado em testes reais de produção** | Última atualização: 2026-06-30
+Baseado em testes reais de produção | Última atualização: 07/07/2026
 
 ---
 
@@ -35,26 +37,26 @@ echo "Data: $(date)"
 echo ""
 
 # 1. Health check da API
-echo "[1/5] Verificando API..."
-HEALTH=$(curl -s http://localhost:8000/health)
-echo "  Status: $(echo $HEALTH | jq -r \'.status\')"
-echo "  Versão: $(echo $HEALTH | jq -r \'.version\')"
-echo "  Ambiente: $(echo $HEALTH | jq -r \'.environment\')"
-echo "  Timezone: $(echo $HEALTH | jq -r \'.timezone\')"
+echo "[1/6] Verificando API..."
+HEALTH=$(curl -s https://txeka-ntiyiso-api.onrender.com/health)
+echo "  Status: $(echo $HEALTH | jq -r '.status')"
+echo "  Versão: $(echo $HEALTH | jq -r '.version')"
+echo "  Ambiente: $(echo $HEALTH | jq -r '.environment')"
+echo "  Timezone: $(echo $HEALTH | jq -r '.timezone')"
 echo ""
 
-# 2. Status dos containers
-echo "[2/5] Containers..."
-docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+# 2. Status dos containers (Produção Nacional)
+echo "[2/6] Containers..."
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 echo ""
 
 # 3. Logs recentes (últimas 24h)
-echo "[3/5] Logs recentes..."
-docker logs --since 24h txeka-ntiyiso-api 2>&1 | grep -i "error\\|critical" | tail -5
+echo "[3/6] Logs recentes..."
+docker logs --since 24h txeka-ntiyiso-api 2>&1 | grep -i "error\|critical" | tail -5
 echo ""
 
 # 4. Verificação de backup
-echo "[4/5] Backup..."
+echo "[4/6] Backup..."
 if [ -f "/var/backups/txeka/db_$(date +%Y%m%d)*.sql.gz" ]; then
     echo "  ✅ Backup de hoje encontrado"
 else
@@ -63,8 +65,20 @@ fi
 echo ""
 
 # 5. Espaço em disco
-echo "[5/5] Espaço em disco..."
+echo "[5/6] Espaço em disco..."
 df -h | grep -E "(Filesystem|/dev/)"
+echo ""
+
+# 6. Verificação de créditos ativos (Fase 2)
+echo "[6/6] Créditos de instituições..."
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT institution_id, credits, credits_used,
+       (credits - credits_used) as credits_remaining
+FROM institutions
+WHERE is_active = TRUE
+ORDER BY credits_remaining ASC
+LIMIT 5;
+"
 echo ""
 
 echo "=== Health Check Concluído ==="
@@ -81,8 +95,9 @@ echo "=== Health Check Concluído ==="
 | Timezone | `CAT` (UTC+2) | Verificar configuração do container (`echo $TZ`) |
 | Latência média | < 100ms | Verificar carga do sistema |
 | Taxa de erro | < 0.1% | Analisar logs de erro |
-| Espaço em disco | 20% livre | Limpar logs/backups antigos |
+| Espaço em disco | > 20% livre | Limpar logs/backups antigos |
 | Backup | Arquivo existe | Executar backup manual |
+| Créditos instituições | > 0 para ativas | Notificar admin para recarga |
 
 ### Verificação de Backup (Produção Nacional)
 
@@ -117,15 +132,16 @@ fi
 - Revisar métricas de performance (latência P95, P99)
 - Verificar espaço em disco de todos os volumes
 - Atualizar dependências de segurança (`pip audit`)
+- **Revisar consumo de créditos por instituição (Fase 2)**
 
 ### Comandos Semanais
 
 ```bash
 # Revisar erros
-docker logs txeka-ntiyiso-api 2>&1 | grep -i "error\\|exception\\|traceback" | tail -20
+docker logs txeka-ntiyiso-api 2>&1 | grep -i "error\|exception\|traceback" | tail -20
 
 # Verificar acessos suspeitos
-awk \'{print $1}\' /var/log/nginx/access.log | sort | uniq -c | sort -nr | head -10
+awk '{print $1}' /var/log/nginx/access.log | sort | uniq -c | sort -nr | head -10
 
 # Verificar expiração do certificado SSL
 openssl x509 -in /etc/nginx/ssl/txeka.crt -noout -dates
@@ -136,6 +152,16 @@ gunzip < "$LATEST" | docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_n
 
 # Audit de dependências (dentro do container)
 docker exec txeka-ntiyiso-api sh -c "pip install pip-audit && pip-audit"
+
+# Revisar créditos (Fase 2)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT institution_id, credits, credits_used,
+       (credits - credits_used) as remaining,
+       CASE WHEN (credits - credits_used) < 10 THEN '⚠️ RECARREGAR' ELSE '✅ OK' END as status
+FROM institutions
+WHERE is_active = TRUE
+ORDER BY remaining ASC;
+"
 ```
 
 ---
@@ -145,13 +171,15 @@ docker exec txeka-ntiyiso-api sh -c "pip install pip-audit && pip-audit"
 ### Manutenção Profunda (2 horas)
 
 - Executar `VACUUM ANALYZE` na base de dados PostgreSQL
-- Reindexar tabelas críticas (`REINDEX TABLE documents; REINDEX TABLE audit_logs;`)
+- Reindexar tabelas críticas (`REINDEX TABLE documents; REINDEX TABLE audit_logs; REINDEX TABLE institutions;`)
 - Revisar e atualizar firewall rules (`ufw status verbose`)
 - Rotação de `JWT_SECRET_KEY` (se trimestral, verificar calendário)
 - Revisão de acessos: remover utilizadores inativos > 90 dias
 - Teste completo de disaster recovery (RTO 4h, RPO 15min)
 - Revisar documentação de runbook (atualizar procedimentos)
 - Reunião de revisão de incidentes do mês
+- **Auditar transações de créditos (Fase 2)**
+- **Verificar isolamento multi-tenant (Fase 2)**
 
 ### Comandos Mensais
 
@@ -160,23 +188,46 @@ docker exec txeka-ntiyiso-api sh -c "pip install pip-audit && pip-audit"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "VACUUM ANALYZE;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE documents;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE audit_logs;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE institutions;"
 
 # Verificar fragmentação
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
 SELECT schemaname, tablename,
-       pg_size_pretty(pg_total_relation_size(schemaname||\'.\'||tablename)) AS size,
-       pg_size_pretty(pg_relation_size(schemaname||\'.\'||tablename)) AS table_size
+       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
+       pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) AS table_size
 FROM pg_tables
-WHERE schemaname=\'public\'
-ORDER BY pg_total_relation_size(schemaname||\'.\'||tablename) DESC;
+WHERE schemaname='public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 "
 
-# Revisar utilizadores inativos (futuro — tabela users)
+# Revisar utilizadores inativos
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
 SELECT email, last_login, NOW() - last_login AS inactive_for
 FROM users
-WHERE last_login < NOW() - INTERVAL \'90 days\'
+WHERE last_login < NOW() - INTERVAL '90 days'
 ORDER BY last_login;
+"
+
+# Auditar créditos (Fase 2)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT ct.institution_id, i.name,
+       SUM(CASE WHEN ct.type = 'purchase' THEN ct.amount ELSE 0 END) as total_purchased,
+       SUM(CASE WHEN ct.type = 'consumption' THEN ct.amount ELSE 0 END) as total_consumed,
+       i.credits as current_balance
+FROM credit_transactions ct
+JOIN institutions i ON ct.institution_id = i.institution_id
+WHERE ct.created_at > NOW() - INTERVAL '30 days'
+GROUP BY ct.institution_id, i.name, i.credits
+ORDER BY total_consumed DESC;
+"
+
+# Verificar isolamento multi-tenant (Fase 2)
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT institution_id, COUNT(*) as doc_count
+FROM documents
+GROUP BY institution_id
+ORDER BY doc_count DESC
+LIMIT 10;
 "
 ```
 
@@ -206,7 +257,7 @@ docker-compose logs -f api --tail=50
 
 # Verificar health check (aguardar 30s)
 sleep 30
-curl -f http://localhost:8000/health
+curl -f https://txeka-ntiyiso-api.onrender.com/health
 ```
 
 ### Escalar Base de Dados
@@ -225,7 +276,7 @@ curl -f http://localhost:8000/health
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
 SELECT count(*) as active_connections
 FROM pg_stat_activity
-WHERE state = \'active\';
+WHERE state = 'active';
 "
 
 # Verificar conexões totais
@@ -240,6 +291,38 @@ docker-compose restart db
 
 # Verificar após restart
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SHOW max_connections;"
+```
+
+### Gerir Créditos de Instituições (Fase 2)
+
+**Consultar saldo:**
+```bash
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+SELECT institution_id, name, credits, credits_used,
+       (credits - credits_used) as remaining
+FROM institutions
+WHERE institution_id = 'INAGE';
+"
+```
+
+**Adicionar créditos:**
+```bash
+# 1. Atualizar saldo
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+UPDATE institutions
+SET credits = credits + 1000
+WHERE institution_id = 'INAGE';
+"
+
+# 2. Registar transação
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
+INSERT INTO credit_transactions (institution_id, amount, type, description)
+VALUES ('INAGE', 1000, 'purchase', 'Recarga manual — Ordem #2026-07-001');
+"
+
+# 3. Notificar instituição
+# Email: tech@txeka.co.mz
+# Assunto: [Txeka Ntiyiso] Créditos adicionados — INAGE
 ```
 
 ### Rotação de Segredos
@@ -260,32 +343,31 @@ sed -i "s/JWT_SECRET_KEY=.*/JWT_SECRET_KEY=$NEW_KEY/" .env
 # 4. Reiniciar serviço
 docker-compose up -d --force-recreate api
 
-# 5. Notificar instituições (todos os tokens ativos serão invalidados)
+# 5. Notificar institções (todos os tokens ativos serão invalidados)
 # Enviar email: tech@txeka.co.mz
 # Assunto: [MANUTENÇÃO] Rotação de credenciais — re-login necessário
 
 # 6. Verificar
-curl -f http://localhost:8000/health
+curl -f https://txeka-ntiyiso-api.onrender.com/health
 ```
 
 **Rotação de API Keys (Instituições):**
 
 ```bash
-# 1. Listar API keys ativas (futuro — tabela api_keys)
+# 1. Listar API keys ativas
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
-SELECT institution_id, api_key_created_at, api_key_last_used
-FROM api_keys
+SELECT institution_id, api_key_created_at, last_login
+FROM institutions
 WHERE is_active = true;
 "
 
 # 2. Gerar nova key para instituição específica
 NEW_KEY=$(openssl rand -hex 32)
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
-UPDATE api_keys
-SET api_key = \'$NEW_KEY\',
-    api_key_created_at = NOW(),
-    api_key_last_used = NULL
-WHERE institution_id = \'INAGE\';
+UPDATE institutions
+SET api_key = '$NEW_KEY',
+    api_key_created_at = NOW()
+WHERE institution_id = 'INAGE';
 "
 
 # 3. Enviar nova key por canal seguro (email cifrado ou SMS)
@@ -359,7 +441,7 @@ LIMIT 10;
 "
 
 # Verificar índices existentes
-docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "\\di"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "\di"
 
 # Verificar espaço em disco
 docker exec txeka-ntiyiso-db df -h /var/lib/postgresql/data
@@ -368,7 +450,7 @@ docker exec txeka-ntiyiso-db df -h /var/lib/postgresql/data
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
 SELECT pid, state, query_start, query
 FROM pg_stat_activity
-WHERE state != \'idle\'
+WHERE state != 'idle'
 ORDER BY query_start;
 "
 ```
@@ -379,6 +461,7 @@ ORDER BY query_start;
 # Reindexar tabelas críticas
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE documents;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE audit_logs;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE institutions;"
 
 # Vacuum (manutenção PostgreSQL)
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "VACUUM ANALYZE;"
@@ -402,12 +485,12 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT pg_can
 docker logs txeka-ntiyiso-api 2>&1 | grep "429" | tail -20
 
 # Identificar IPs com maior volume
-docker logs txeka-ntiyiso-api 2>&1 | grep "VERIFY" | \\
-  awk \'{print $NF}\' | sort | uniq -c | sort -nr | head -10
+docker logs txeka-ntiyiso-api 2>&1 | grep "VERIFY" | \
+  awk '{print $NF}' | sort | uniq -c | sort -nr | head -10
 
 # Verificar padrão temporal (ataque DDoS?)
-docker logs txeka-ntiyiso-api 2>&1 | grep "429" | \\
-  awk \'{print $1}\' | cut -d\'T\' -f2 | cut -d\':\' -f1,2 | sort | uniq -c
+docker logs txeka-ntiyiso-api 2>&1 | grep "429" | \
+  awk '{print $1}' | cut -d'T' -f2 | cut -d':' -f1,2 | sort | uniq -c
 ```
 
 **Resolução:**
@@ -435,9 +518,9 @@ sudo ufw deny from 192.0.2.100
 
 ```bash
 # Gerar novo token para instituição afetada
-curl -X POST http://localhost:8000/api/v1/auth/login \\
-  -H "Content-Type: application/json" \\
-  -d \'{"email": "admin@inage.gov.mz", "password": "senha_segura"}\'
+curl -X POST https://txeka-ntiyiso-api.onrender.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@inage.gov.mz", "password": "senha_segura"}'
 
 # Enviar novo token por canal seguro:
 # - Email cifrado (PGP)
@@ -499,7 +582,7 @@ docker container prune -f
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "CHECKPOINT;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
 SELECT pg_database.datname, pg_database_size(pg_database.datname)
-FROM pg_database WHERE datname = \'txeka_ntiyiso\';
+FROM pg_database WHERE datname = 'txeka_ntiyiso';
 "
 
 # Verificar logs PostgreSQL
@@ -523,6 +606,7 @@ gunzip < "$LATEST" | docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_n
 # 3. Verificar integridade pós-restore
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(*) FROM documents;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(*) FROM audit_logs;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(*) FROM institutions;"
 
 # 4. Iniciar API
 docker-compose up -d api
@@ -550,15 +634,15 @@ import json
 
 for log in logs["logs"]:
     details = json.loads(log["details"])
-    print(f"Doc ID: {details.get(\'doc_id\')}")
-    print(f"Document Type: {details.get(\'document_type\')}")
+    print(f"Doc ID: {details.get('doc_id')}")
+    print(f"Document Type: {details.get('document_type')}")
 ```
 
 ```bash
 # Usando jq na linha de comando
-curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \\
-  -H "Authorization: Bearer $TOKEN" | \\
-  jq \'.logs[] | {action: .action, user: .user_email, doc_id: (.details | fromjson | .doc_id)}\'
+curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \
+  -H "Authorization: Bearer $TOKEN" | \
+  jq '.logs[] | {action: .action, user: .user_email, doc_id: (.details | fromjson | .doc_id)}'
 ```
 
 > **Nota:** Este comportamento aplica-se a **TODOS** os endpoints de auditoria: `GET /audit/logs`, `GET /audit/document/{hash}/history`, e futuramente `GET /audit/stats`.
@@ -593,7 +677,7 @@ curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \\
 
 **3. Colocar modo manutenção (se aplicável)**
    ```bash
-   echo \'{"status": "maintenance", "until": "2026-06-30T06:00:00+02:00"}\' > /tmp/maintenance.json
+   echo '{"status": "maintenance", "until": "2026-07-07T06:00:00+02:00"}' > /tmp/maintenance.json
    ```
 
 **4. Executar atualização**
@@ -608,32 +692,37 @@ curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \\
 **5. Verificar health check (aguardar 2 minutos)**
    ```bash
    sleep 120
-   curl -f http://localhost:8000/health
+   curl -f https://txeka-ntiyiso-api.onrender.com/health
    ```
 
 **6. Executar smoke tests**
 
    ```bash
-   # Teste 1: Emissão (status code 200, não 201)
-   curl -X POST http://localhost:8000/api/v1/certify \\
-        -H "Authorization: Bearer $TOKEN" \\
+   # Teste 1: Emissão
+   curl -X POST https://txeka-ntiyiso-api.onrender.com/api/v1/certify \
+        -H "Authorization: Bearer $TOKEN" \
         -F "file=@test.pdf" -F "document_type=TEST" -F "institution_id=TXEKA"
    # Esperado: {"success": true, "data": {...}}
 
-   # Teste 2: Verificação (usa "dados_publicos", não "data")
-   curl http://localhost:8000/api/v1/verify/<hash>
-   # Esperado: {"success": true, "status": "VALID", "dados_publicos": {...}}
+   # Teste 2: Verificação
+   curl https://txeka-ntiyiso-api.onrender.com/api/v1/verify/<hash>
+   # Esperado: {"success": true, "status": "VALID", "data": {...}}
 
    # Teste 3: Revogação
-   curl -X POST http://localhost:8000/api/v1/emissions/<doc_id>/revoke \\
-        -H "Authorization: Bearer $TOKEN" \\
-        -d \'{"reason": "Teste pós-manutenção"}\'
+   curl -X POST https://txeka-ntiyiso-api.onrender.com/api/v1/emissions/<doc_id>/revoke \
+        -H "Authorization: Bearer $TOKEN" \
+        -d '{"reason": "Teste pós-manutenção"}'
    # Esperado: {"success": true, "status": "revoked", ...}
 
    # Teste 4: Auditoria (details é string JSON)
-   curl "http://localhost:8000/api/v1/audit/logs?limit=5" \\
+   curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=5" \
         -H "Authorization: Bearer $ADMIN_TOKEN"
-   # Esperado: {"success": true, "count": 5, "logs": [{..., "details": "{\\"...\\"}"}]}
+   # Esperado: {"success": true, "count": 5, "logs": [{..., "details": "{\"...\"}"}]}
+
+   # Teste 5: Dashboard institucional (Fase 2)
+   curl https://txeka-ntiyiso-api.onrender.com/api/v1/institutions/me/dashboard \
+        -H "Authorization: Bearer $TOKEN"
+   # Esperado: {"success": true, "credits": ..., "documents": ..., ...}
    ```
 
 **7. Notificar conclusão**
@@ -687,7 +776,7 @@ T+30min   SE PERSISTIR:
 
 T+60min   PÓS-RESOLUÇÃO:
           → Verificar integridade de todos os dados
-          → Executar smoke tests completos (verificar dados_publicos, details JSON)
+          → Executar smoke tests completos
           → Publicar relatório de incidente
           → Agendar post-mortem (24h)
 ```
@@ -739,7 +828,7 @@ T+10min   REVOGAÇÃO IMEDIATA:
           POST /api/v1/emissions/{doc_id}/revoke
           {
             "reason": "Documento fraudulento detectado em auditoria interna. "
-                      "Referência: Ticket #2026-06-30-001"
+                      "Referência: Ticket #2026-07-001"
           }
 
 T+15min   NOTIFICAÇÃO:
@@ -915,17 +1004,17 @@ docker exec -it txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
 # Estatísticas da base de dados
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
 SELECT schemaname, tablename,
-       pg_size_pretty(pg_total_relation_size(schemaname||\'.\'||tablename)) AS size
+       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
 FROM pg_tables
-WHERE schemaname=\'public\'
-ORDER BY pg_total_relation_size(schemaname||\'.\'||tablename) DESC;
+WHERE schemaname='public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 "
 
 # Conexões ativas
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "
 SELECT pid, usename, application_name, client_addr, state, query_start, query
 FROM pg_stat_activity
-WHERE state != \'idle\'
+WHERE state != 'idle'
 ORDER BY query_start;
 "
 
@@ -941,6 +1030,7 @@ LIMIT 10;
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "VACUUM ANALYZE;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE documents;"
 docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE audit_logs;"
+docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE institutions;"
 ```
 
 ### Backup
@@ -948,7 +1038,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "REINDEX TABLE
 ```bash
 # Backup manual imediato
 DATE=$(date +%Y%m%d_%H%M%S)
-docker exec txeka-ntiyiso-db pg_dump -U postgres -d txeka_ntiyiso --clean --if-exists | \\
+docker exec txeka-ntiyiso-db pg_dump -U postgres -d txeka_ntiyiso --clean --if-exists | \
   gzip > /var/backups/txeka/db_$DATE.sql.gz
 
 # Verificar backup
@@ -958,7 +1048,7 @@ gunzip -t /var/backups/txeka/db_*.sql.gz
 ls -la /var/backups/txeka/ | tail -10
 
 # Restaurar backup
-gunzip -c /var/backups/txeka/db_YYYYMMDD_HHMMSS.sql.gz | \\
+gunzip -c /var/backups/txeka/db_YYYYMMDD_HHMMSS.sql.gz | \
   docker exec -i txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso
 ```
 
@@ -989,30 +1079,44 @@ ps aux | grep postgres
 
 ```bash
 # Health check (verifica timezone CAT)
-curl -s http://localhost:8000/health | jq .
+curl -s https://txeka-ntiyiso-api.onrender.com/health | jq .
 
 # Estatísticas (admin) — placeholder, retorna note
-curl -s http://localhost:8000/api/v1/audit/stats \\
+curl -s https://txeka-ntiyiso-api.onrender.com/api/v1/audit/stats \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 
-# Emitir documento (status 200, não 201)
-curl -X POST http://localhost:8000/api/v1/certify \\
-  -H "Authorization: Bearer $TOKEN" \\
+# Emitir documento
+curl -X POST https://txeka-ntiyiso-api.onrender.com/api/v1/certify \
+  -H "Authorization: Bearer $TOKEN" \
   -F "file=@test.pdf" -F "document_type=TEST" -F "institution_id=TXEKA"
 
-# Verificar documento (usa "dados_publicos", não "data")
-curl http://localhost:8000/api/v1/verify/<hash>
+# Emitir em bulk (B2B/B2G)
+curl -X POST https://txeka-ntiyiso-api.onrender.com/api/v1/certify/bulk \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"documents": [{"file": "base64...", "document_type": "CERT"}, ...]}'
 
-# Verificar documento revogado (revoked: true)
-curl http://localhost:8000/api/v1/verify/<hash_revogado>
+# Verificar documento
+curl https://txeka-ntiyiso-api.onrender.com/api/v1/verify/<hash>
+
+# Verificar documento revogado
+curl https://txeka-ntiyiso-api.onrender.com/api/v1/verify/<hash_revogado>
+
+# Dashboard institucional (Fase 2)
+curl https://txeka-ntiyiso-api.onrender.com/api/v1/institutions/me/dashboard \
+  -H "Authorization: Bearer $TOKEN"
+
+# Créditos disponíveis (Fase 2)
+curl https://txeka-ntiyiso-api.onrender.com/api/v1/institutions/me/credits \
+  -H "Authorization: Bearer $TOKEN"
 
 # Auditoria (details é string JSON — usar fromjson no jq)
-curl "http://localhost:8000/api/v1/audit/logs?limit=5" \\
-  -H "Authorization: Bearer $ADMIN_TOKEN" | \\
-  jq \'.logs[] | {action, user: .user_email, doc_id: (.details | fromjson | .doc_id)}\'
+curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=5" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | \
+  jq '.logs[] | {action, user: .user_email, doc_id: (.details | fromjson | .doc_id)}'
 ```
 
 ---
 
-> **Txeka Ntiyiso — Runbook de Operações v1.1** 🇲🇿
-> Baseado em testes reais de produção (2026-06-30) | Alinhado com Lei 3/2017, Decreto 59/2019 e Resolução 69/2021 (PENSC)
+> **Txeka Ntiyiso — Runbook de Operações v2.0** 🇲🇿
+> Baseado em testes reais de produção (07/07/2026) | Alinhado com Lei 3/2017, Decreto 59/2019 e Resolução 69/2021 (PENSC)
