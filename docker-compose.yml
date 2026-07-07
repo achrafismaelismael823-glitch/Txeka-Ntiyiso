@@ -1,7 +1,12 @@
 # ============================================================
 # TXEKA NTIYISO - Docker Compose
-# Ambiente de Desenvolvimento e Produção
+# Infraestrutura tecnológica nacional de verificação da
+# integridade e autenticidade documental
+#
+# Ambiente: Desenvolvimento e Produção Nacional
 # Fuso horário: CAT (UTC+2) - Moçambique
+# Conformidade: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
+# Versão: 2.0.0
 # ============================================================
 
 version: '3.9'
@@ -11,33 +16,33 @@ services:
     image: postgres:15-alpine
     container_name: txeka-ntiyiso-db
     restart: unless-stopped
-    
+
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-txeka_ntiyiso}
       TZ: Africa/Maputo
       PGTZ: Africa/Maputo
-    
+
     ports:
       - "5432:5432"
-    
+
     volumes:
       - txeka-data:/var/lib/postgresql/data
-    
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-txeka_ntiyiso}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
-    
+
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 512M
-    
+
     networks:
       - txeka-network
 
@@ -47,10 +52,10 @@ services:
       dockerfile: Dockerfile
     container_name: txeka-ntiyiso-api
     restart: unless-stopped
-    
+
     ports:
       - "8000:8000"
-    
+
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-true}
@@ -59,7 +64,7 @@ services:
       TZ: Africa/Maputo
       LANG: pt_MZ.UTF-8
       LC_ALL: pt_MZ.UTF-8
-      
+
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/txeka_ntiyiso}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-prod}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-TXEKA-NTIYISO-2026-k3ab9sGze6Igc1u8Q5@i+j0#0KX0rBzj}
@@ -67,35 +72,63 @@ services:
       BASE_URL: ${BASE_URL:-http://localhost:8000}
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
       RATE_LIMIT_PERIOD_SECONDS: ${RATE_LIMIT_PERIOD_SECONDS:-60}
-    
+
+      # Fase 2: Multi-tenancy e controlo de créditos
+      ENABLE_MULTI_TENANT: ${ENABLE_MULTI_TENANT:-true}
+      CREDIT_CONSUMPTION_ENABLED: ${CREDIT_CONSUMPTION_ENABLED:-true}
+
     volumes:
       - .:/app:ro
       - txeka-logs:/app/logs
-    
+
     command: >
       sh -c "cd /app/api-gateway &&
              poetry run alembic upgrade head &&
              poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
-    
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    
+
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 512M
-    
+
     networks:
       - txeka-network
-    
+
     depends_on:
       db:
         condition: service_healthy
+
+  # Futuro: Agregação de logs (Fase 3)
+  # loki:
+  #   image: grafana/loki:2.9.0
+  #   container_name: txeka-ntiyiso-loki
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./config/loki.yml:/etc/loki/local-config.yaml
+  #   ports:
+  #     - "3100:3100"
+  #   networks:
+  #     - txeka-network
+
+  # Futuro: Monitoramento (Fase 3)
+  # prometheus:
+  #   image: prom/prometheus:v2.47.0
+  #   container_name: txeka-ntiyiso-prometheus
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   ports:
+  #     - "9090:9090"
+  #   networks:
+  #     - txeka-network
 
 networks:
   txeka-network:
