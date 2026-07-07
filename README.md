@@ -5,7 +5,7 @@
 <h1 align="center">Txeka Ntiyiso</h1>
 
 <p align="center">
-  <strong>Infraestrutura Tecnológica para Verificação da Integridade de Documentos Digitais</strong>
+  <strong>Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental</strong>
 </p>
 
 <p align="center">
@@ -23,9 +23,35 @@
 
 O **Txeka Ntiyiso** transforma processos de validação manuais — que demoram dias, exigem deslocações e custam milhares de Meticais — em **auditorias digitais instantâneas de menos de 100 milissegundos**.
 
-Basta de carimbos duvidosos. Basta de burocracia. Verificação criptográfica da integridade e autenticidade, sem expor um único dado pessoal.
+Substitua processos manuais por validação criptográfica da integridade documental, sem expor um único dado pessoal.
 
 > **Como funciona:** A instituição emite o documento ➡️ o sistema gera uma **impressão digital criptográfica (hash SHA-256)** + um **QR code** verificável ➡️ qualquer parceiro ou cidadão aponta a câmara e confirma na hora se o documento é autêntico.
+
+---
+
+## Missão
+
+Fortalecer a confiança nas transações documentais através de uma infraestrutura digital segura, interoperável e alinhada com a legislação moçambicana.
+
+---
+
+## Visão
+
+Tornar-se a infraestrutura nacional de referência para verificação da integridade documental em Moçambique.
+
+---
+
+## Princípios da Plataforma
+
+| Princípio | Descrição |
+|-----------|-----------|
+| **Integridade** | Garantia de que o documento não foi alterado desde a emissão |
+| **Autenticidade** | Confirmação da origem e legitimidade do documento |
+| **Rastreabilidade** | Trilha de auditoria completa de todas as operações |
+| **Privacidade por Design** | Processamento exclusivo de hashes, zero exposição de dados pessoais |
+| **Interoperabilidade** | API REST padronizada para integração com sistemas existentes |
+| **Auditabilidade** | Logs imutáveis acessíveis para auditorias internas e externas |
+| **Segurança por Defeito** | Configurações seguras por padrão, sem necessidade de ajustes manuais |
 
 ---
 
@@ -43,7 +69,7 @@ Basta de carimbos duvidosos. Basta de burocracia. Verificação criptográfica d
 ### 💼 Empresas e Banca (B2B)
 *Para KYC, Onboarding de Clientes e Compliance Financeiro*
 
-- **Mitigação da Fraude Documental:** Detete instantaneamente relatórios financeiros, cartas de referência ou diplomas falsificados.
+- **Mitigação da fraude documental:** Detete instantaneamente relatórios financeiros, cartas de referência ou diplomas adulterados.
 - **Integração Relâmpago:** API REST robusta, documentada e pronta para entrar em produção em menos de 24 horas.
 - **Soberania de Dados:** Reduza a dependência de plataformas estrangeiras caras e fature tudo na moeda local.
 
@@ -60,10 +86,10 @@ Basta de carimbos duvidosos. Basta de burocracia. Verificação criptográfica d
 - Sistemas externos cobram em Dólares/Euros e retêm dados confidenciais do país.
 
 **A Nossa Solução:**
-- **Criptografia de Elite:** Baseado em SHA-256. Qualquer alteração ao ficheiro original modifica completamente o hash, tornando a adulteração imediatamente detetável.
+- **Criptografia baseada em SHA-256:** Algoritmo padrão para verificação de integridade de dados. Qualquer alteração ao ficheiro original modifica completamente o hash, tornando a adulteração imediatamente detetável.
 - **Velocidade Extrema:** Resposta em **< 100ms** — ideal para portais de alto tráfego.
 - **Soberania Nacional:** Custos fixos em Meticais e total respeito pelo sigilo de dados do Estado.
-- **Memória de Elefante:** Logs imutáveis projetados para uma retenção legal de **20 anos**, em total conformidade com a legislação vigente.
+- **Retenção de registos:** Registos de auditoria imutáveis com retenção conforme política de conservação definida para a plataforma e requisitos legais aplicáveis.
 
 ---
 
@@ -188,138 +214,149 @@ uvicorn src.main:app --reload
 
 Aceda a `http://localhost:8000/docs` para a documentação Swagger interativa.
 
-Para Instituições (Fase 2 — Lista de Espera)
+### Para Instituições (Fase 2 — Lista de Espera)
 
 Contacte: tech@txeka.co.mz
 
-- Demo estratégica (15 minutos): Apresentação da plataforma às equipas de decisão.
-- Piloto operacional (30 dias, sem custo): Implementação em ambiente de teste da instituição.
-- Integração API: Documentação completa, SDKs e suporte técnico dedicado.
-- Suporte 24/7: Disponibilidade garantida para operações críticas.
+- **Demo estratégica** (15 minutos): Apresentação da plataforma às equipas de decisão.
+- **Piloto operacional** (30 dias, sem custo): Implementação em ambiente de teste da instituição.
+- **Integração API:** Documentação completa, SDKs e suporte técnico dedicado.
+- **Suporte 24/7:** Disponibilidade garantida para operações críticas.
 
 > Nota: O registo de novas instituições está a ser feito manualmente pelo administrador durante a Fase 2. Em breve, o processo será automatizado via portal de administração.
 
 ---
 
-# Endpoints da API
+## Endpoints da API
 
-🔐 Autenticação
+### 🔐 Autenticação
 
-Método	Endpoint	Descrição	Acesso	
-`POST`	`/api/v1/auth/admin/login`	Login administrador (token 90 dias)	Admin	
-`POST`	`/api/v1/auth/login`	Login instituição (token 30 dias)	Institution	
+| Método | Endpoint | Descrição | Acesso |
+|--------|----------|-----------|--------|
+| `POST` | `/api/v1/auth/admin/login` | Login administrador (token 90 dias) | Admin |
+| `POST` | `/api/v1/auth/login` | Login instituição (token 30 dias) | Institution |
 
-📄 Emissão de Documentos
+### 📄 Emissão de Documentos
 
-Método	Endpoint	Descrição	Acesso	
-`POST`	`/api/v1/certify`	Emitir documento único (PDF)	Institution	
-`POST`	`/api/v1/certify/bulk`	Emitir múltiplos documentos em lote (B2B/B2G)	Institution	
+| Método | Endpoint | Descrição | Acesso |
+|--------|----------|-----------|--------|
+| `POST` | `/api/v1/certify` | Emitir documento único (PDF) | Institution |
+| `POST` | `/api/v1/certify/bulk` | Emitir múltiplos documentos em lote (B2B/B2G) | Institution |
 
-🔍 Verificação Pública
+### 🔍 Verificação Pública
 
-Método	Endpoint	Descrição	Acesso	
-`GET`	`/api/v1/verify/{hash}`	Verificar documento (consulta rápida)	Público	
-`POST`	`/api/v1/verify`	Verificar documento (validação B2B/B2G)	Público	
+| Método | Endpoint | Descrição | Acesso |
+|--------|----------|-----------|--------|
+| `GET` | `/api/v1/verify/{hash}` | Verificar documento (consulta rápida) | Público |
+| `POST` | `/api/v1/verify` | Verificar documento (validação B2B/B2G) | Público |
 
-🏢 Dashboard Institucional
+### 🏢 Dashboard Institucional
 
-Método	Endpoint	Descrição	Acesso	
-`GET`	`/api/v1/institutions/me/dashboard`	Dashboard da instituição (créditos, documentos)	Institution	
-`GET`	`/api/v1/institutions/me/credits`	Créditos disponíveis e histórico	Institution	
+| Método | Endpoint | Descrição | Acesso |
+|--------|----------|-----------|--------|
+| `GET` | `/api/v1/institutions/me/dashboard` | Dashboard da instituição (créditos, documentos) | Institution |
+| `GET` | `/api/v1/institutions/me/credits` | Créditos disponíveis e histórico | Institution |
 
-🛡️ Administração & Auditoria
+### 🛡️ Administração & Auditoria
 
-Método	Endpoint	Descrição	Acesso	
-`POST`	`/api/v1/emissions/{doc_id}/revoke`	Revogar documento (invalidação legal)	Admin / Institution	
-`GET`	`/api/v1/audit/logs`	Logs de auditoria imutáveis	Admin	
-`GET`	`/api/v1/audit/document/{hash}/history`	Rasto cronológico do documento	Admin / Institution	
-`GET`	`/api/v1/audit/stats`	Métricas e volume de validações (Fase 3)	Admin	
+| Método | Endpoint | Descrição | Acesso |
+|--------|----------|-----------|--------|
+| `POST` | `/api/v1/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin / Institution |
+| `GET` | `/api/v1/audit/logs` | Logs de auditoria imutáveis | Admin |
+| `GET` | `/api/v1/audit/document/{hash}/history` | Rasto cronológico do documento | Admin / Institution |
+| `GET` | `/api/v1/audit/stats` | Métricas e volume de validações (Fase 3) | Admin |
 
 > Documentação interativa completa disponível em `/docs` ou `/redoc`.
 
 ---
 
-**Índice de Documentação Interna**
+## Índice de Documentação Interna
 
 Para especificações detalhadas e manuais operacionais, consulte a nossa estrutura em `doc/`:
 
-- Desenvolvimento & Integração: [Referência da API](doc/guides/API_REFERENCE.md) · [Arquitetura Técnica](doc/technical/TECHNICAL.md)
-- Operações Institucionais: [Manual do Utilizador](doc/guides/USER_GUIDE.md) · [Estratégia de Implantação](doc/technical/DEPLOYMENT.md)
-- Jurídico & Compliance: [Dossiê de Conformidade Legal](doc/legal/COMPLIANCE.md) · [Declaração de Posicionamento](POSITIONING.md)
-- Segurança & DevOps: [Runbook de Produção](doc/technical/RUNBOOK.md) · [Políticas de Segurança Cibernética](doc/legal/SECURITY.md)
+- **Desenvolvimento & Integração:** [Referência da API](doc/guides/API_REFERENCE.md) · [Arquitetura Técnica](doc/technical/TECHNICAL.md)
+- **Operações Institucionais:** [Manual do Utilizador](doc/guides/USER_GUIDE.md) · [Estratégia de Implantação](doc/technical/DEPLOYMENT.md)
+- **Jurídico & Compliance:** [Dossiê de Conformidade Legal](doc/legal/COMPLIANCE.md) · [Declaração de Posicionamento](POSITIONING.md)
+- **Segurança & DevOps:** [Runbook de Produção](doc/technical/RUNBOOK.md) · [Políticas de Segurança Cibernética](doc/legal/SECURITY.md)
 
 ---
 
-# Conformidade Legal e Retenção de Dados
+## Conformidade Legal e Retenção de Dados
 
 O Txeka Ntiyiso cumpre integralmente o regime jurídico moçambicano de validação eletrónica:
 
-Legislação	Âmbito	Alinhamento Txeka Ntiyiso	
-Lei n.º 3/2017	Transações Eletrónicas de Moçambique	Integridade, autenticidade e não-repúdio via hashes imutáveis	
-Decreto n.º 59/2019	Serviços de Validação Cronológica e Eletrónica	Retenção mínima de 20 anos; trilha de auditoria completa	
+| Legislação | Âmbito | Alinhamento Txeka Ntiyiso |
+|------------|--------|---------------------------|
+| Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade, autenticidade e não-repúdio via hashes imutáveis |
+| Decreto n.º 59/2019 | Serviços de Validação Cronológica e Eletrónica | Retenção mínima de 20 anos; trilha de auditoria completa |
 
-- Proteção de Dados: Em total conformidade com as garantias de privacidade previstas na Lei n.º 3/2017. A arquitetura Zero-Knowledge elimina por completo o processamento de dados pessoais sensíveis em servidores centrais.
-- Retenção de Registos: Os hashes e logs de auditoria imutáveis são conservados de forma redundante pelo período mínimo de 20 anos, conforme exigido pelo Decreto n.º 59/2019.
-
----
-
-**Roadmap Estratégico**
-
-✅ Fase 1 — Concluída
-
-Período	Estado	Entregáveis	
-Q1 2026	✅ Concluída	MVP core validado: emissão, verificação, revogação, audit logs imutáveis	
+- **Proteção de Dados:** Em total conformidade com as garantias de privacidade previstas na Lei n.º 3/2017. A arquitetura Zero-Knowledge elimina por completo o processamento de dados pessoais sensíveis em servidores centrais.
+- **Retenção de Registos:** Os hashes e logs de auditoria imutáveis são conservados de forma redundante pelo período mínimo de 20 anos, conforme exigido pelo Decreto n.º 59/2019.
 
 ---
 
-🔄 Fase 2 — Em Curso
+## Roadmap Estratégico
 
-Período	Estado	Entregáveis	
-Q2–Q3 2026	🔄 Em curso	Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos	
+### ✅ Fase 1 — Concluída
+
+| Período | Estado | Entregáveis |
+|---------|--------|-------------|
+| Q1 2026 | ✅ Concluída | MVP core validado: emissão, verificação, revogação, audit logs imutáveis |
+
+---
+
+### 🔄 Fase 2 — Em Curso
+
+| Período | Estado | Entregáveis |
+|---------|--------|-------------|
+| Q2–Q3 2026 | 🔄 Em curso | Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos |
 
 > Operacional agora:
-- ✅ Registo de instituições com API key
-- ✅ Login dual (Admin 90d / Institution 30d)
-- ✅ Emissão única PDF com validação rigorosa
-- ✅ Emissão em bulk B2B/B2G
-- ✅ Verificação pública anónima
-- ✅ Audit logs (28+ registos)
-- ✅ Validação PDF: extensão + MIME + magic bytes
-- ✅ Multi-tenant
-- 🔄 Portal web React (em evolução)
+> - ✅ Registo de instituições com API key
+> - ✅ Login dual (Admin 90d / Institution 30d)
+> - ✅ Emissão única PDF com validação rigorosa
+> - ✅ Emissão em bulk B2B/B2G
+> - ✅ Verificação pública anónima
+> - ✅ Audit logs (28+ registos)
+> - ✅ Validação PDF: extensão + MIME + magic bytes
+> - ✅ Multi-tenant
+> - 🔄 Portal web React (em evolução)
 
 ---
 
-⏳ Fase 3 — Planeada
+### ⏳ Fase 3 — Planeada
 
-Período	Estado	Entregáveis	
-Q3 2026	⏳ Planeada	Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos	
-
----
-
-⏳ Fase 4 — Planeada
-
-Período	Estado	Entregáveis	
-Q4 2026	⏳ Planeada	Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial: 2FA, OAuth2, ML fraud detection	
+| Período | Estado | Entregáveis |
+|---------|--------|-------------|
+| Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
 
 ---
 
-📊 Números Que Falam Por Si
+### ⏳ Fase 4 — Planeada
 
-Métrica	Valor	
-⏱️ Tempo de Validação	< 100ms	
-🛡️ Algoritmo Core	SHA-256 Criptográfico	
-💾 Dados Pessoais Armazenados	Zero (0%)	
-⏳ Retenção de Trilha	20 anos	
-🌍 Cobertura Regional	Pronto para escala imediata em Maputo, Beira, Nampula e resto do país	
+| Período | Estado | Entregáveis |
+|---------|--------|-------------|
+| Q4 2026 | ⏳ Planeada | Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial: 2FA, OAuth2, ML fraud detection |
 
 ---
 
-Suporte e Contacto
+## 📊 Números Que Falam Por Si
 
-- Email: tech@txeka.co.mz
-- GitHub Issues: [github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues](https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues)
-- Status do Sistema: [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health)
+| Métrica | Valor |
+|---------|-------|
+| ⏱️ Tempo de Validação | < 100ms |
+| 🛡️ Algoritmo Core | SHA-256 Criptográfico |
+| 💾 Dados Pessoais Armazenados | Zero (0%) |
+| ⏳ Retenção de Trilha | 20 anos |
+| 🌍 Cobertura Regional | Pronto para escala imediata em Maputo, Beira, Nampula e resto do país |
+
+---
+
+## Suporte e Contacto
+
+- **Email:** tech@txeka.co.mz
+- **GitHub Issues:** [github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues](https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues)
+- **Status do Sistema:** [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health)
 
 ---
 
