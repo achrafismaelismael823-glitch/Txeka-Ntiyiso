@@ -29,7 +29,11 @@ if not JWT_SECRET_KEY or JWT_SECRET_KEY == "dev-secret-key":
     logger.warning("JWT_SECRET_KEY not configured or insecure. Using fallback.")
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "txeka-fallback-secret-key-change-immediately")
 
-JWT_EXPIRATION_HOURS = 24
+# Expirações por perfil
+JWT_EXPIRATION_HOURS = 24          # Fallback geral
+JWT_EXPIRATION_DAYS_ADMIN = 90     # Admin: 90 dias
+JWT_EXPIRATION_DAYS_INSTITUTION = 30  # Institution: 30 dias
+
 ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
 
 
@@ -51,8 +55,9 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None
 ) -> str:
     """Gera JWT com claims: sub, email, id, role."""
+    # Usa JWT_EXPIRATION_HOURS 
     if expires_delta is None:
-        expires_delta = timedelta(hours=AuthConfig.EXPIRATION_HOURS)
+        expires_delta = timedelta(hours=JWT_EXPIRATION_HOURS)
     expire = datetime.now(timezone.utc) + expires_delta
     now = datetime.now(timezone.utc)
     token_id = user_id or str(uuid.uuid4())

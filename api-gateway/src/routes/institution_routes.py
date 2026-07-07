@@ -39,6 +39,7 @@ async def create_institution(
                 "credits": result["institution"].credits,
                 "status": result["institution"].status,
             },
+            "api_key": result["api_key"],           
             "temp_password": result["temp_password"],
             "message": result["message"]
         }
@@ -205,3 +206,4 @@ async def get_my_credit_history(
         raise HTTPException(status_code=400, detail="Sem instituição associada")
     
     return await InstitutionService.get_credit_history(db, institution_id, skip, limit)
+

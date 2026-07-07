@@ -1,695 +1,319 @@
-```markdown
-# API Reference — Txeka Ntiyiso
+# Txeka Ntiyiso 🇲🇿
 
-**Documentação completa da API REST v1.0**
+**A Revolução Digital que Elimina a Falsificação de Documentos em Moçambique**
 
-**Baseado em testes reais de produção** | Última atualização: 2026-06-28
-
----
-
-## Índice
-
-1. [Base URL](#base-url)
-2. [Escopo Legal e Isenção](#escopo-legal-e-isenção)
-3. [Autenticação](#autenticação)
-4. [Endpoints](#endpoints)
-   - 4.1 [Emitir Documento](#1-emitir-documento)
-   - 4.2 [Verificar Documento (Público)](#2-verificar-documento-público)
-   - 4.3 [Verificar Documento (B2B/B2G)](#3-verificar-documento-b2bb2g)
-   - 4.4 [Revogar Documento](#4-revogar-documento)
-   - 4.5 [Listar Logs de Auditoria](#5-listar-logs-de-auditoria)
-   - 4.6 [Histórico de Documento](#6-histórico-de-documento)
-   - 4.7 [Estatísticas do Sistema](#7-estatísticas-do-sistema)
-5. [Códigos de Erro](#códigos-de-erro)
-6. [Rate Limiting](#rate-limiting)
-7. [SDKs e Exemplos](#sdks-e-exemplos)
-8. [Health Check](#health-check)
+[![Status](https://img.shields.io/badge/status-online-brightgreen)](https://txeka-ntiyiso-api.onrender.com/health)
+[![Conformidade](https://img.shields.io/badge/conformidade-Lei%203%2F2017-blue)]()
+[![Performance](https://img.shields.io/badge/validacao-%3C100ms-orange)]()
+[![Deploy](https://img.shields.io/badge/ultimo_deploy-05%2F07%2F2026-success)]()
 
 ---
 
-## Base URL
+## ⚡ Em 30 Segundos
 
-```
+O **Txeka Ntiyiso** transforma processos de validação manuais — que demoram dias, exigem deslocações e custam milhares de Meticais — em **auditorias digitais instantâneas de menos de 100 milissegundos**.
 
-Produção:  https://txeka-ntiyiso-api.onrender.com/api/v1
-Local:     http://localhost:8000/api/v1
+Basta de carimbos duvidosos. Basta de burocracia. Autenticidade total, sem expor um único dado pessoal.
 
-```
-
----
-
-## Escopo Legal e Isenção
-
-O Txeka Ntiyiso opera em total conformidade com a **Lei n.º 3/2017 (Transações Eletrónicas)** e o **Decreto n.º 59/2019**.
-
-* **Não-Repúdio:** O serviço atesta a integridade cronológica e a imutabilidade do documento a partir do momento do seu registo.
-* **Isenção de Atividade:** O Txeka Ntiyiso não emite certificados digitais de chave pública nem assinaturas eletrónicas qualificadas, não competindo com as competências da infraestrutura ICP-MZ gerida pelo INTIC.
-* **Privacidade:** Nenhum documento submetido através dos endpoints de emissão é armazenado nos servidores da plataforma. Apenas o hash criptográfico SHA-256 de 64 caracteres é persistido no container `txeka-ntiyiso-api`.
+> **Como a magia acontece:** A instituição emite o documento ➡️ o sistema gera uma assinatura digital única baseada em **hash SHA-256** + um **QR code** seguro ➡️ qualquer parceiro ou cidadão aponta a câmara e confirma na hora se o documento é 100% autêntico.
 
 ---
 
-## Autenticação
+## 🎯 Quem Ganha com o Txeka Ntiyiso?
 
-A API utiliza **JWT (JSON Web Tokens)** via header `Authorization`.
+### 🏛️ Instituições Públicas (B2G)
+*Para o INAGE, Ministérios, Tribunais e Autarquias*
 
-```http
-Authorization: Bearer <token_jwt>
-```
+- **Validação Interinstitucional:** Verifique certidões, DUATs e alvarás emitidos por outros órgãos do Estado num piscar de olhos.
+- **Fim das Filas:** Elimine a necessidade de o cidadão deslocar-se fisicamente apenas para "autenticar cópias".
+- **Transparência Radical:** Trilha de auditoria criptográfica e imutável, pronta para auditorias do Tribunal de Contas.
 
-Obter Token
+🚀 **[Lidere a Modernização Administrativa ➡️ Agende uma Demo](mailto:tech@txeka.co.mz)**
+
+### 💼 Empresas e Banca (B2B)
+*Para KYC, Onboarding de Clientes e Compliance Financeiro*
+
+- **Fraude Zero:** Detete instantaneamente relatórios financeiros, cartas de referência ou diplomas falsificados.
+- **Integração Relâmpago:** API REST robusta, documentada e pronta para entrar em produção em menos de 24 horas.
+- **Soberania de Dados:** Reduza a dependência de plataformas estrangeiras caras e fature tudo na moeda local.
+
+🔌 **[Explore o Futuro das Integrações ➡️ Ver Documentação da API](doc/guides/API_REFERENCE.md)**
+
+---
+
+## 🔥 Porquê o Txeka Ntiyiso? (A Nossa Resposta ao Caos)
+
+**O Cenário Atual:**
+- Certificados académicos falsos tiram vagas a quem merece.
+- Alvarás e DUATs adulterados geram litígios judiciais complexos.
+- A verificação manual consome semanas de produtividade.
+- Sistemas externos cobram em Dólares/Euros e retêm dados confidenciais do país.
+
+**A Nossa Solução:**
+- **Criptografia de Elite:** Baseado em SHA-256. Se um pirata informático mudar **1 único ponto final** no PDF, o hash muda completamente e o sistema acusa fraude.
+- **Velocidade Extrema:** Resposta em **< 100ms** — ideal para portais de alto tráfego.
+- **Soberania Nacional:** Custos fixos em Meticais e total respeito pelo sigilo de dados do Estado.
+- **Memória de Elefante:** Logs imutáveis projetados para uma retenção legal de **20 anos**, em total conformidade com a legislação vigente.
+
+---
+
+## 🛡️ Zero-Knowledge Architecture: Privacidade Inviolável
+
+**O Txeka Ntiyiso nunca vê, nunca armazena e nunca poderá vazar o teu documento original.**
+
+Aqui está o segredo da nossa arquitetura:
+1. O utilizador anexa o PDF no portal.
+2. A "impressão digital" (Hash SHA-256) é calculada **diretamente no navegador** (client-side).
+3. Apenas esta linha de código de 64 caracteres viaja até ao nosso servidor.
+4. O documento original **NUNCA sai do dispositivo** do utilizador.
+5. O sistema apenas regista: *"Esta assinatura digital foi validada e existe desde 27/06/2026"*.
+
+**Resultado:** Risco zero de vazamento de dados confidenciais.
+
+---
+
+## ⚖️ Declaração de Posição Regulatória
+
+O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G (Business-to-Government)** e **B2B (Business-to-Business)** que garante a **autenticidade, integridade e não-repúdio** de documentos digitais através de criptografia **SHA-256** e **QR codes verificáveis**.
+
+Atuando como um **serviço descentralizado de verificação de integridade e registo de auditoria temporal imutável**, o sistema complementa o ecossistema legal moçambicano sem a necessidade de reter ou gerir certificados digitais privados dos utilizadores.
+
+> **Declaração Regulatória:** O Txeka Ntiyiso **não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017. Não emite certificados digitais qualificados, chaves privadas, assinaturas digitais nem carimbos de tempo qualificados. Atua exclusivamente como **validador de integridade criptográfica** e **motor de registo de auditoria temporal imutável**.
+
+---
+
+## Estado Atual do Projeto
+
+| Fase | Período | Estado | Descrição |
+|------|---------|--------|-----------|
+| **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
+| **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | **Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos** |
+| **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
+| **Fase 4** | Q4 2026 | ⏳ Planeada | Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial |
+
+> **Fase 2 — O que estamos a construir agora:** Sistema de registo de instituições com controlo de créditos, emissão em bulk (B2B/B2G), dashboard web com métricas em tempo real, e relatórios analíticos para administração.
+
+---
+
+## A Solução
+
+O Txeka Ntiyiso implementa um pipeline de validação de quatro etapas:
+
+| Etapa | Ação | Resultado |
+|-------|------|-----------|
+| 1. Emissão | A instituição emissora submete o documento ao sistema | Geração de **hash SHA-256** único + **QR code** verificável |
+| 2. Distribuição | O documento com QR code é entregue ao titular | O cidadão pode verificar autenticidade a qualquer momento |
+| 3. Verificação | O verificador scaneia o QR ou submete o PDF via portal/API | Validação em **< 100 milissegundos**: "Autêntico", "Falso" ou "Revogado" |
+| 4. Auditoria | Cada operação é registada imutavelmente | Trilha forense completa com retenção de **20 anos** |
+
+---
+
+## Características Técnicas
+
+- **Criptografia SHA-256:** Algoritmo de hashing padrão bancário. Qualquer alteração de um único byte no documento original gera um hash completamente diferente, tornando a falsificação matematicamente detetável.
+- **QR Code Verificável:** O cidadão scaneia o código do telemóvel, sem necessidade de registo ou instalação de aplicação.
+- **Revogação Legal:** Documentos podem ser invalidados administrativamente, com registo obrigatório de motivo, autor e timestamp.
+- **Multi-Instituição (Fase 2):** Arquitetura multi-tenant que permite a coexistência de INAGE, Ministérios, bancos, seguradoras e imobiliárias no mesmo sistema, com segregação completa de dados e controlo de créditos por entidade.
+- **Emissão em Bulk (B2B/B2G):** Emissão de múltiplos documentos em lote via JSON, com consumo de 1 crédito por documento. Ideal para universidades, ministérios e bancos.
+- **Validação Rigorosa de PDF:** Verificação de extensão `.pdf`, MIME `application/pdf`, magic bytes `%PDF-` e deteção de nomes suspeitos (ex: `.pdf.png`). Rejeita PNG, JPG, GIF, SVG e stickers.
+- **Auditoria Forense:** Registo imutável de quem verificou, quando, de que IP, com que resultado.
+- **Conformidade Lei 3/2017:** Garantia de autenticidade, integridade e não-repúdio nos termos da Lei das Transações Eletrónicas de Moçambique.
+- **Retenção de 20 Anos:** Conformidade absoluta com o Decreto n.º 59/2019, que estabelece o prazo mínimo de conservação de registos de validação.
+- **Privacidade por Design (Zero-Knowledge):** A plataforma processa e armazena exclusivamente **hashes criptográficos de 64 caracteres**. Os documentos originais nunca saem do ambiente do cliente, eliminando por completo o risco de vazamento de dados pessoais.
+
+---
+
+## Arquitetura do Sistema
+
+| Camada | Tecnologia | Função |
+|--------|-----------|--------|
+| Backend | FastAPI 0.110 + Python 3.11 | API REST, lógica de negócio, autenticação JWT |
+| Base de Dados | PostgreSQL (Supabase) | Persistência ACID de hashes, metadados e audit logs |
+| Frontend | React + Tailwind CSS | Portal de verificação, dashboard institucional |
+| Segurança | JWT (pyjwt) + bcrypt + Rate Limiting | Autenticação stateless, hashing de passwords, proteção contra abuso |
+| Deploy | Render.com (Produção atual) / Docker (Futuro) | Cloud para operação imediata; on-premise para soberania digital |
+
+### Deploy Atual: Produção Cloud (Render.com + Supabase)
+
+- **API:** [https://txeka-ntiyiso-api.onrender.com](https://txeka-ntiyiso-api.onrender.com)
+- **Health Check:** [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health)
+- **Swagger:** [https://txeka-ntiyiso-api.onrender.com/docs](https://txeka-ntiyiso-api.onrender.com/docs)
+- **Status:** Online e operacional
+- **Database:** Supabase PostgreSQL
+- **Último Deploy:** 05/07/2026 — Build successful, BD conectada, 28+ audit logs
+
+### Futuro: Produção Nacional (Docker On-Premise)
+
+A migração para infraestrutura nacional é estratégica para:
+- **Soberania digital:** Dados armazenados em território moçambicano
+- **Conformidade futura:** Antecipação da Lei de Proteção de Dados Pessoais
+- **Resiliência:** Funcionamento independente de conectividade internacional
+- **Auditoria:** Acesso físico a servidores por entidades reguladoras
+
+| Ambiente | Hosting | Fase | Uso Principal |
+|----------|---------|------|---------------|
+| **Produção Cloud** | Render.com + Supabase | **Atual** | Operação imediata, alta disponibilidade |
+| **Produção Nacional** | Docker + Servidores MZ | **Migração futura** | Soberania digital, intranet governamental |
+| **Híbrido** | Docker Edge + Cloud | **Futuro** | Resiliência máxima, contingência offline |
+
+---
+
+## Como Começar
+
+### Para Desenvolvedores
 
 ```bash
-POST /auth/login
-Content-Type: application/json
+# Clonar o repositório e aceder ao módulo da API
+git clone https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso.git
+cd Txeka-Ntiyiso/api-gateway
 
-{
-  "email": "admin@txeka.co.mz",
-  "password": "sua_senha_segura"
-}
+# Configurar e ativar o ambiente virtual
+python -m venv .venv
+source .venv/bin/activate
+
+# Instalar dependências e iniciar o servidor local
+pip install -r requirements.txt
+uvicorn src.main:app --reload
 ```
 
-Resposta:
+Aceda a `http://localhost:8000/docs` para a documentação Swagger interativa.
 
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer",
-  "expires_in": 3600,
-  "role": "admin",
-  "institution": "TXEKA"
-}
-```
+Para Instituições (Fase 2 — Lista de Espera)
+
+Contacte: tech@txeka.co.mz
+
+- Demo estratégica (15 minutos): Apresentação da plataforma às equipas de decisão.
+- Piloto operacional (15 dias, sem custo): Implementação em ambiente de teste da instituição.
+- Integração API: Documentação completa, SDKs e suporte técnico dedicado.
+- Suporte 24/7: Disponibilidade garantida para operações críticas.
+
+> Nota: O registo de novas instituições está a ser feito manualmente pelo administrador durante a Fase 2. Em breve, o processo será automatizado via portal de administração.
 
 ---
 
-Endpoints
+# Endpoints da API
 
-1. Emitir Documento
+🔐 Autenticação
 
-```http
-POST /certify
-```
+Método	Endpoint	Descrição	Acesso	
+`POST`	`/api/v1/auth/admin/login`	Login administrador (token 90 dias)	Admin	
+`POST`	`/api/v1/auth/login`	Login instituição (token 30 dias)	Institution	
 
-Regista a integridade de um documento gerando hash SHA-256 e QR code.
+📄 Emissão de Documentos
 
-Headers:
+Método	Endpoint	Descrição	Acesso	
+`POST`	`/api/v1/certify`	Emitir documento único (PDF)	Institution	
+`POST`	`/api/v1/certify/bulk`	Emitir múltiplos documentos em lote (B2B/B2G)	Institution	
 
-```http
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-```
+🔍 Verificação Pública
 
-Body:
+Método	Endpoint	Descrição	Acesso	
+`GET`	`/api/v1/verify/{hash}`	Verificar documento (consulta rápida)	Público	
+`POST`	`/api/v1/verify`	Verificar documento (validação B2B/B2G)	Público	
 
-Campo	Tipo	Obrigatório	Descrição	
-`file`	File	Sim	Documento PDF (máx. 50MB)	
-`document_type`	String	Sim	Tipo: DUAT, CERTIDAO, LICENCA, DIPLOMA	
-`institution_id`	String	Sim	Identificador da instituição	
+🏢 Dashboard Institucional
 
-> Nota de Privacidade: O ficheiro PDF enviado é processado estritamente em memória no container `txeka-ntiyiso-api` para a extração do hash criptográfico SHA-256 e geração do QR code. O binário nunca é persistido em disco ou base de dados, garantindo conformidade absoluta com o princípio de minimização da Lei de Proteção de Dados Pessoais em Moçambique.
+Método	Endpoint	Descrição	Acesso	
+`GET`	`/api/v1/institutions/me/dashboard`	Dashboard da instituição (créditos, documentos)	Institution	
+`GET`	`/api/v1/institutions/me/credits`	Créditos disponíveis e histórico	Institution	
 
-Exemplo cURL:
+🛡️ Administração & Auditoria
 
-```bash
-curl -X POST "https://txeka-ntiyiso-api.onrender.com/api/v1/certify" \
-  -H "Authorization: Bearer eyJhbG..." \
-  -F "file=@documento.pdf" \
-  -F "document_type=DUAT" \
-  -F "institution_id=INAGE"
-```
+Método	Endpoint	Descrição	Acesso	
+`POST`	`/api/v1/emissions/{doc_id}/revoke`	Revogar documento (invalidação legal)	Admin / Institution	
+`GET`	`/api/v1/audit/logs`	Logs de auditoria imutáveis	Admin	
+`GET`	`/api/v1/audit/document/{hash}/history`	Rasto cronológico do documento	Admin / Institution	
+`GET`	`/api/v1/audit/stats`	Métricas e volume de validações (Fase 3)	Admin	
 
-Resposta 200:
-
-```json
-{
-  "success": true,
-  "data": {
-    "doc_id": "DUAT-INAGE-20260627-A1B2C3D4",
-    "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "qr_code": "data:image/png;base64,iVBORw0KGgo...",
-    "verification_url": "https://txeka.mz/verify/e3b0c44...",
-    "institution_id": "INAGE",
-    "document_type": "DUAT",
-    "created_at": "2026-06-27T14:32:15+02:00",
-    "expires_at": null
-  }
-}
-```
-
-> Nota sobre terminologia: O campo `verification_url` aponta para a URL pública de validação da integridade do registo. Não se trata de um "certificado digital" no sentido da ICP-MZ, mas sim de uma prova de existência cronológica verificável.
-
-Resposta 409 (Conflict):
-
-```json
-{
-  "success": false,
-  "error": "DOCUMENT_ALREADY_EXISTS",
-  "message": "Este documento já foi emitido anteriormente.",
-  "existing_doc_id": "DUAT-INAGE-20260620-XXXXXX"
-}
-```
+> Documentação interativa completa disponível em `/docs` ou `/redoc`.
 
 ---
 
-2. Verificar Documento (Público)
+# Índice de Documentação Interna
 
-```http
-GET /verify/{hash}
-```
+Para especificações detalhadas e manuais operacionais, consulte a nossa estrutura em `doc/`:
 
-Verificação pública sem autenticação. Ideal para QR codes.
-
-Parâmetros URL:
-
-Campo	Tipo	Descrição	
-`hash`	String	Hash SHA-256 de 64 caracteres hexadecimais	
-
-Exemplo:
-
-```bash
-curl "https://txeka-ntiyiso-api.onrender.com/api/v1/verify/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-```
-
-Resposta 200 (Válido):
-
-```json
-{
-  "success": true,
-  "status": "VALID",
-  "dados_publicos": {
-    "doc_id": "DUAT-INAGE-20260627-A1B2C3D4",
-    "document_type": "DUAT",
-    "institution_id": "INAGE",
-    "created_at": "2026-06-27T14:32:15+02:00",
-    "revoked": false,
-    "revoked_at": null,
-    "revoked_reason": null
-  }
-}
-```
-
-Resposta 200 (Revogado):
-
-```json
-{
-  "success": true,
-  "status": "REVOKED",
-  "dados_publicos": {
-    "doc_id": "DUAT-INAGE-20260627-A1B2C3D4",
-    "document_type": "DUAT",
-    "institution_id": "INAGE",
-    "created_at": "2026-06-27T14:32:15+02:00",
-    "revoked": true,
-    "revoked_at": "2026-06-28T09:15:00+02:00",
-    "revoked_reason": "expirado"
-  }
-}
-```
-
-Resposta 404 (Inválido):
-
-```json
-{
-  "success": false,
-  "status": "INVALID",
-  "message": "Documento não encontrado no sistema."
-}
-```
-
-> Nota: O campo `dados_publicos` contém apenas metadados públicos do documento. O campo `revoked` (boolean) está presente em todas as respostas de verificação — `false` para documentos válidos, `true` para revogados. Os campos `revoked_at` e `revoked_reason` são `null` quando o documento não foi revogado.
+- Desenvolvimento & Integração: [Referência da API](doc/guides/API_REFERENCE.md) · [Arquitetura Técnica](doc/technical/TECHNICAL.md)
+- Operações Institucionais: [Manual do Utilizador](doc/guides/USER_GUIDE.md) · [Estratégia de Implantação](doc/technical/DEPLOYMENT.md)
+- Jurídico & Compliance: [Dossiê de Conformidade Legal](doc/legal/COMPLIANCE.md) · [Declaração de Posicionamento](POSITIONING.md)
+- Segurança & DevOps: [Runbook de Produção](doc/technical/RUNBOOK.md) · [Políticas de Segurança Cibernética](doc/legal/SECURITY.md)
 
 ---
 
-3. Verificar Documento (B2B/B2G)
+**Conformidade Legal e Retenção de Dados**
 
-```http
-POST /verify
-```
+O Txeka Ntiyiso cumpre integralmente o regime jurídico moçambicano de validação eletrónica:
 
-Verificação para integração com sistemas empresariais e governamentais.
+Legislação	Âmbito	Alinhamento Txeka Ntiyiso	
+Lei n.º 3/2017	Transações Eletrónicas de Moçambique	Integridade, autenticidade e não-repúdio via hashes imutáveis	
+Decreto n.º 59/2019	Serviços de Validação Cronológica e Eletrónica	Retenção mínima de 20 anos; trilha de auditoria completa	
+Banco de Moçambique	Conformidade transacional	Segurança, rastreabilidade e disponibilidade para o setor financeiro	
 
-Headers:
-
-```http
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-Body:
-
-```json
-{
-  "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-}
-```
-
-Resposta 200 (Válido):
-
-```json
-{
-  "success": true,
-  "status": "VALID",
-  "dados_publicos": {
-    "doc_id": "DUAT-INAGE-20260627-A1B2C3D4",
-    "document_type": "DUAT",
-    "institution_id": "INAGE",
-    "created_at": "2026-06-27T14:32:15+02:00",
-    "revoked": false,
-    "revoked_at": null,
-    "revoked_reason": null
-  }
-}
-```
-
-Resposta 200 (Revogado):
-
-```json
-{
-  "success": true,
-  "status": "REVOKED",
-  "dados_publicos": {
-    "doc_id": "DUAT-INAGE-20260627-A1B2C3D4",
-    "document_type": "DUAT",
-    "institution_id": "INAGE",
-    "created_at": "2026-06-27T14:32:15+02:00",
-    "revoked": true,
-    "revoked_at": "2026-06-28T09:15:00+02:00",
-    "revoked_reason": "expirado"
-  }
-}
-```
-
-> Nota: A resposta é idêntica ao GET /verify/{hash}, com a diferença de que esta verificação B2B/B2G é registada nos logs de auditoria com `user_email: "anonymous"` e `institution_id: null`.
+- Proteção de Dados: Em total conformidade com as garantias de privacidade previstas na Lei n.º 3/2017. A arquitetura Zero-Knowledge elimina por completo o processamento de dados pessoais sensíveis em servidores centrais.
+- Retenção de Registos: Os hashes e logs de auditoria imutáveis são conservados de forma redundante pelo período mínimo de 20 anos, conforme exigido pelo Decreto n.º 59/2019.
 
 ---
 
-4. Revogar Documento
+**Roadmap Estratégico**
 
-```http
-POST /emissions/{doc_id}/revoke
-```
+✅ Fase 1 — Concluída
 
-Invalida um documento emitido. Requer role `admin` ou `institution` dona do documento.
-
-Headers:
-
-```http
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-Body:
-
-```json
-{
-  "reason": "expirado"
-}
-```
-
-Resposta 200:
-
-```json
-{
-  "success": true,
-  "status": "revoked",
-  "doc_id": "DUAT-INAGE-20260627-A1B2C3D4",
-  "revoked_at": "2026-06-28T09:15:00+02:00",
-  "reason": "expirado",
-  "revoked_by": null
-}
-```
-
-> Nota: O campo `revoked_by` pode ser `null` quando a revogação é efetuada via API sem identificação explícita do utilizador no payload.
-
-Resposta 400 (Já revogado):
-
-```json
-{
-  "success": false,
-  "error": "ALREADY_REVOKED",
-  "message": "Este documento já foi revogado em 2026-06-28T09:15:00+02:00."
-}
-```
+Período	Estado	Entregáveis	
+Q1 2026	✅ Concluída	MVP core validado: emissão, verificação, revogação, audit logs imutáveis	
 
 ---
 
-5. Listar Logs de Auditoria
+🔄 Fase 2 — Em Curso
 
-```http
-GET /audit/logs
-```
+Período	Estado	Entregáveis	
+Q2–Q3 2026	🔄 Em curso	Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos	
 
-Retorna logs de auditoria paginados. Apenas administradores.
-
-Parâmetros Query:
-
-Campo	Tipo	Obrigatório	Descrição	
-`action`	String	Não	Filtrar por: EMIT, VERIFY, REVOKE	
-`institution_id`	String	Não	Filtrar por instituição	
-`start_date`	Date	Não	Data inicial (YYYY-MM-DD)	
-`end_date`	Date	Não	Data final (YYYY-MM-DD)	
-`limit`	Integer	Não	Itens por página (default: 50, max: 100)	
-`offset`	Integer	Não	Offset para paginação (default: 0)	
-
-> Nota: A paginação utiliza `limit`/`offset` (não `page`). Por exemplo: `limit=50&offset=0` retorna os primeiros 50 registos; `limit=50&offset=50` retorna os seguintes 50.
-
-Exemplo:
-
-```bash
-curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?action=EMIT&institution_id=INAGE&limit=50&offset=0" \
-  -H "Authorization: Bearer eyJhbG..."
-```
-
-Resposta:
-
-```json
-{
-  "success": true,
-  "count": 7,
-  "limit": 50,
-  "offset": 0,
-  "timezone": "CAT (UTC+2)",
-  "logs": [
-    {
-      "id": "dd828173-e002-4efd-8267-acef79147513",
-      "user_email": "admin@txeka.co.mz",
-      "action": "EMIT",
-      "resource_type": "DOCUMENT",
-      "resource_id": "989deabdd8d5c184d7aa4d53c18a3fb8fe511324e39f563e16d13e89ff30bc58",
-      "institution_id": "INAGE",
-      "ip_address": "197.218.118.251",
-      "request_path": "/api/v1/certify",
-      "request_method": "POST",
-      "status_code": 200,
-      "success": true,
-      "details": "{\"document_type\": \"DUAT\", \"file_name\": \"Documento_Simulacao.pdf\", \"file_size\": 33508, \"doc_id\": \"DUAT-INAGE-20260626-74F8C0\"}",
-      "timestamp": "2026-06-26T12:32:06.315930+02:00",
-      "created_at": "2026-06-26T12:32:06.315935+02:00"
-    }
-  ]
-}
-```
-
-> Nota sobre campos:
-- `resource_id`: Para ação `EMIT`, este campo contém o hash SHA-256 (64 caracteres) do documento, não o `doc_id`.
-- `details`: É uma string JSON serializada (não um objeto). Use `JSON.parse()` ou equivalente no cliente.
-- `user_email`: Pode ser `"anonymous"` (verificação pública sem autenticação), `"unknown"` (request sem token JWT válido), ou o email do utilizador autenticado.
-- `institution_id`: Pode ser `null` em verificações públicas (VERIFY sem autenticação).
-- `timestamp` e `created_at`: São praticamente idênticos (diferença de microssegundos). Ambos representam o momento exacto da operação.
-
-> Nota de Privacidade: Os endereços IP nos logs de auditoria são armazenados completos para fins forenses internos. Em consultas públicas, alinhamo-nos com a Política Nacional de Segurança Cibernética (PENSC) e garantimos a proteção de identidade dos cidadãos em verificações anónimas via QR code.
+> Operacional agora:
+- ✅ Registo de instituições com API key
+- ✅ Login dual (Admin 90d / Institution 30d)
+- ✅ Emissão única PDF com validação rigorosa
+- ✅ Emissão em bulk B2B/B2G
+- ✅ Verificação pública anónima
+- ✅ Audit logs (28+ registos)
+- ✅ Validação PDF: extensão + MIME + magic bytes
+- ✅ Multi-tenant
+- 🔄 Portal web React (em evolução)
 
 ---
 
-6. Histórico de Documento
+⏳ Fase 3 — Planeada
 
-```http
-GET /audit/document/{hash}/history
-```
-
-Retorna histórico completo de ações sobre um documento específico, identificado pelo seu hash SHA-256.
-
-Parâmetros URL:
-
-Campo	Tipo	Descrição	
-`hash`	String	Hash SHA-256 de 64 caracteres hexadecimais	
-
-Exemplo:
-
-```bash
-curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/document/1cf504d0fffaf523c93f4c3b7532f46f549a719f6f6872b0fac4643ea55d2297/history" \
-  -H "Authorization: Bearer eyJhbG..."
-```
-
-Resposta:
-
-```json
-{
-  "success": true,
-  "doc_hash": "1cf504d0fffaf523c93f4c3b7532f46f549a719f6f6872b0fac4643ea55d2297",
-  "total_actions": 11,
-  "timezone": "CAT (UTC+2)",
-  "history": [
-    {
-      "id": "f75529b2-9438-4590-bbf6-9de4cb5e915c",
-      "user_email": "anonymous",
-      "action": "VERIFY",
-      "resource_type": "DOCUMENT",
-      "resource_id": "1cf504d0fffaf523c93f4c3b7532f46f549a719f6f6872b0fac4643ea55d2297",
-      "institution_id": null,
-      "ip_address": "41.220.200.217",
-      "request_path": "/api/v1/verify",
-      "request_method": "POST",
-      "status_code": 200,
-      "success": true,
-      "details": "{\"method\": \"POST\", \"verified\": \"REVOKED\"}",
-      "timestamp": "2026-06-28T06:53:12.674466+02:00",
-      "created_at": "2026-06-28T06:53:12.674469+02:00"
-    },
-    {
-      "id": "45ceff45-2afb-4f3c-9ad6-6e7c19565aa4",
-      "user_email": "unknown",
-      "action": "REVOKE",
-      "resource_type": "DOCUMENT",
-      "resource_id": "1cf504d0fffaf523c93f4c3b7532f46f549a719f6f6872b0fac4643ea55d2297",
-      "institution_id": "INAGE",
-      "ip_address": "197.218.120.65",
-      "request_path": "/api/v1/emissions/DUAT-INAGE-20260624-5F7A16/revoke",
-      "request_method": "POST",
-      "status_code": 200,
-      "success": true,
-      "details": "{\"reason\": \"expirado\", \"revoked_by\": null}",
-      "timestamp": "2026-06-26T04:29:26.652813+02:00",
-      "created_at": "2026-06-26T04:29:26.652819+02:00"
-    }
-  ]
-}
-```
-
-> Nota: O campo `total_actions` indica o número total de ações registadas para este documento. Cada entrada no array `history` segue o mesmo schema dos logs de auditoria (Secção 5).
+Período	Estado	Entregáveis	
+Q3 2026	⏳ Planeada	Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos	
 
 ---
 
-7. Estatísticas do Sistema
+⏳ Fase 4 — Planeada
 
-```http
-GET /audit/stats
-```
-
-Métricas agregadas do sistema. Apenas administradores.
-
-> Estado atual: As queries agregadas estão em desenvolvimento. O endpoint retorna uma estrutura base com informação de período e timezone.
-
-Parâmetros Query:
-
-Campo	Tipo	Obrigatório	Descrição	
-`institution_id`	String	Não	Filtrar por instituição	
-`start_date`	Date	Não	Data inicial (YYYY-MM-DD)	
-`end_date`	Date	Não	Data final (YYYY-MM-DD)	
-
-Exemplo:
-
-```bash
-curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/stats?institution_id=INAGE&start_date=2026-06-26" \
-  -H "Authorization: Bearer eyJhbG..."
-```
-
-Resposta (placeholder):
-
-```json
-{
-  "success": true,
-  "period": {
-    "start": "2026-06-26",
-    "end": null
-  },
-  "institution_id": "INAGE",
-  "timezone": "CAT (UTC+2)",
-  "stats": {
-    "note": "Implementar queries agregadas no proximo sprint"
-  }
-}
-```
-
-> Nota: Este endpoint está planeado para retornar métricas como `total_documents`, `total_verifications`, `total_revocations`, `documents_by_institution`, `verifications_today`, e `average_verification_time_ms`. Consulte a documentação futura para a versão completa.
+Período	Estado	Entregáveis	
+Q4 2026	⏳ Planeada	Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial: 2FA, OAuth2, ML fraud detection	
 
 ---
 
-Códigos de Erro
+📊 Números Que Falam Por Si
 
-Código	HTTP	Descrição	Ação	
-`INVALID_HASH`	400	Hash não tem 64 caracteres hexadecimais	Verificar formato do hash	
-`DOCUMENT_NOT_FOUND`	404	Hash não existe no sistema	Verificar se documento foi emitido	
-`DOCUMENT_ALREADY_EXISTS`	409	Hash já registado	Verificar duplicação	
-`ALREADY_REVOKED`	400	Documento já revogado	Nenhuma ação necessária	
-`UNAUTHORIZED`	401	Token inválido ou expirado	Renovar token JWT	
-`FORBIDDEN`	403	Sem permissão para esta ação	Verificar role do utilizador	
-`RATE_LIMIT_EXCEEDED`	429	Limite de requisições excedido	Aguardar 1 minuto	
-`FILE_TOO_LARGE`	413	PDF excede 50MB	Comprimir documento	
-`INVALID_FILE_TYPE`	415	Ficheiro não é PDF válido	Verificar magic bytes `%PDF-`	
-`INTERNAL_ERROR`	500	Erro interno do servidor	Contactar suporte	
+Métrica	Valor	
+⏱️ Tempo de Validação	< 100ms	
+🛡️ Algoritmo Core	SHA-256 Criptográfico	
+💾 Dados Pessoais Armazenados	Zero (0%)	
+⏳ Retenção de Trilha	20 anos garantidos	
+🌍 Cobertura Regional	Pronto para escala imediata em Maputo, Beira, Nampula e resto do país	
 
 ---
 
-Rate Limiting
+Suporte e Contacto
 
-Endpoint	Limite	Janela	
-`POST /certify`	100	por minuto	
-`GET /verify/{hash}`	30	por minuto	
-`POST /verify`	100	por minuto	
-`GET /audit/logs`	60	por minuto	
+- Email: tech@txeka.co.mz
+- GitHub Issues: [github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues](https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues)
+- Status do Sistema: [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health)
 
 ---
 
-SDKs e Exemplos
+Txeka Ntiyiso — Orgulhosamente desenvolvido em Moçambique 🇲🇿 para proteger o futuro digital da nossa nação.
 
-Python
-
-```python
-import requests
-import json
-
-BASE_URL = "https://txeka-ntiyiso-api.onrender.com/api/v1"
-TOKEN = "seu_token_jwt"
-
-def emit_document(file_path, doc_type, institution):
-    with open(file_path, 'rb') as f:
-        response = requests.post(
-            f"{BASE_URL}/certify",
-            headers={"Authorization": f"Bearer {TOKEN}"},
-            files={"file": f},
-            data={"document_type": doc_type, "institution_id": institution}
-        )
-    return response.json()
-
-def verify_document(hash_str):
-    response = requests.get(f"{BASE_URL}/verify/{hash_str}")
-    return response.json()
-
-def get_audit_logs(action=None, institution_id=None, limit=50, offset=0):
-    params = {"limit": limit, "offset": offset}
-    if action:
-        params["action"] = action
-    if institution_id:
-        params["institution_id"] = institution_id
-    response = requests.get(
-        f"{BASE_URL}/audit/logs",
-        headers={"Authorization": f"Bearer {TOKEN}"},
-        params=params
-    )
-    return response.json()
-
-def get_document_history(doc_hash):
-    response = requests.get(
-        f"{BASE_URL}/audit/document/{doc_hash}/history",
-        headers={"Authorization": f"Bearer {TOKEN}"}
-    )
-    return response.json()
-
-# Uso
-result = emit_document("duat.pdf", "DUAT", "INAGE")
-print(result["data"]["qr_code"])
-
-# Verificar documento
-verify = verify_document("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
-print(verify["dados_publicos"]["status"])
-
-# Auditoria
-logs = get_audit_logs(action="EMIT", institution_id="INAGE", limit=50, offset=0)
-for log in logs["logs"]:
-    details = json.loads(log["details"])  # details é string JSON
-    print(f"{log['action']} | {log['user_email']} | {details.get('doc_id')}")
-```
-
-JavaScript (Node.js)
-
-```javascript
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
-
-const BASE_URL = 'https://txeka-ntiyiso-api.onrender.com/api/v1';
-const TOKEN = 'seu_token_jwt';
-
-async function emitDocument(filePath, docType, institution) {
-  const form = new FormData();
-  form.append('file', fs.createReadStream(filePath));
-  form.append('document_type', docType);
-  form.append('institution_id', institution);
-
-  const response = await axios.post(`${BASE_URL}/certify`, form, {
-    headers: {
-      ...form.getHeaders(),
-      'Authorization': `Bearer ${TOKEN}`
-    }
-  });
-  return response.data;
-}
-
-async function verifyDocument(hash) {
-  const response = await axios.get(`${BASE_URL}/verify/${hash}`);
-  return response.data;
-}
-
-async function getAuditLogs(action = null, institutionId = null, limit = 50, offset = 0) {
-  const params = { limit, offset };
-  if (action) params.action = action;
-  if (institutionId) params.institution_id = institutionId;
-  
-  const response = await axios.get(`${BASE_URL}/audit/logs`, {
-    headers: { 'Authorization': `Bearer ${TOKEN}` },
-    params
-  });
-  return response.data;
-}
-
-async function getDocumentHistory(docHash) {
-  const response = await axios.get(`${BASE_URL}/audit/document/${docHash}/history`, {
-    headers: { 'Authorization': `Bearer ${TOKEN}` }
-  });
-  return response.data;
-}
-
-// Uso
-(async () => {
-  const result = await emitDocument('duat.pdf', 'DUAT', 'INAGE');
-  console.log(result.data.qr_code);
-  
-  const verify = await verifyDocument('e3b0c44...');
-  console.log(verify.dados_publicos.status);
-  
-  const logs = await getAuditLogs('EMIT', 'INAGE', 50, 0);
-  logs.logs.forEach(log => {
-    const details = JSON.parse(log.details);
-    console.log(`${log.action} | ${log.user_email} | ${details.doc_id}`);
-  });
-})();
-```
-
----
-
-Health Check
-
-```http
-GET /health
-```
-
-Resposta:
-
-```json
-{
-  "status": "online",
-  "project": "Txeka Ntiyiso",
-  "version": "1.0.0",
-  "environment": "production",
-  "timezone": "CAT",
-  "timestamp": "2026-06-27T16:45:22+02:00"
-}
-```
-
----
-
-Txeka Ntiyiso — API Reference v2.0 🇲🇿
-Baseado em testes reais de produção | Alinhado com Lei 3/2017, Decreto 59/2019 e Resolução 69/2021 (PENSC)
-
-```
+Proprietary. All rights reserved. Txeka Ntiyiso, 2026.

@@ -1,6 +1,7 @@
 """
-Emission Routes — Certificação de documentos digitais (DUAT, etc.).
+Emission Routes — Certificação de documentos digitais (CERTIFICADOS, DUAT, etc.).
 🇲🇿 Txeka Ntiyiso: hash SHA-256 + QR code + audit log.
+ACEITA EXCLUSIVAMENTE FICHEIROS PDF.
 """
 
 import logging
@@ -41,14 +42,51 @@ class BulkEmissionInput(BaseModel):
 
 
 def validate_pdf(file: UploadFile, content: bytes) -> None:
-    """Valida formato PDF: extensão, MIME e magic bytes."""
-    filename = file.filename.lower() if file.filename else ""
-    if not filename.endswith(".pdf") or file.content_type != "application/pdf":
-        raise HTTPException(status_code=415, detail="Extensao ou Tipo MIME invalido. Aceita apenas .pdf")
+    """
+    Validação RIGOROSA: aceita EXCLUSIVAMENTE ficheiros PDF.
+    Rejeita PNG, JPG, JPEG, GIF, BMP, WEBP, SVG, stickers e qualquer outro formato.
+    """
+    filename = file.filename if file.filename else ""
+    
+    # 1. Extensão OBRIGATORIAMENTE .pdf (case-insensitive)
+    if not filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=415, 
+            detail="FORMATO_INVALIDO: Apenas ficheiros PDF (.pdf) sao aceites. "
+                   "PNG, JPG, JPEG, GIF, BMP, WEBP, SVG, stickers e outros formatos NAO sao permitidos."
+        )
+    
+    # 2. MIME type OBRIGATORIAMENTE application/pdf
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=415, 
+            detail="TIPO_MIME_INVALIDO: O tipo de conteudo deve ser 'application/pdf'. "
+                   f"Tipo recebido: '{file.content_type}'"
+        )
+    
+    # 3. Magic bytes OBRIGATORIAMENTE %PDF-
     if not content.startswith(PDF_MAGIC):
-        raise HTTPException(status_code=400, detail="Falsificacao de formato. Conteudo nao e PDF valido")
+        raise HTTPException(
+            status_code=400, 
+            detail="CONTEUDO_INVALIDO: O ficheiro nao contem a assinatura PDF valida (%PDF-). "
+                   "Pode estar corrompido ou ser um formato diferente com extensao alterada."
+        )
+    
+    # 4. Tamanho máximo 50MB
     if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="Ficheiro excede o limite de 50MB")
+        raise HTTPException(
+            status_code=413, 
+            detail="TAMANHO_EXCEDIDO: Ficheiro excede o limite de 50MB"
+        )
+    
+    # 5. Verificação extra: proibi extensões duplas suspeitas (ex: .pdf.png)
+    base_name = filename.lower().rsplit('.', 1)[0]
+    if any(ext in base_name for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.zip', '.exe']):
+        raise HTTPException(
+            status_code=415,
+            detail="NOME_SUSPEITO: Nome de ficheiro contem indicio de outro formato. "
+                   "Use apenas .pdf sem outras extensoes no nome."
+        )
 
 
 @router.post("/certify", response_model=EmitResponse)
@@ -60,7 +98,7 @@ async def emit_document(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ) -> EmitResponse:
-    """Emite documento: hash SHA-256 + QR code + audit log."""
+    """Emite documento: hash SHA-256 + QR code + audit log. APENAS PDF."""
     if not file:
         raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
     
@@ -70,7 +108,7 @@ async def emit_document(
     service = EmissionService(db)
     try:
         result = await service.certify_document(
-            institution_id=effective_institution,
+            institution_id=institution_id,
             document_type=document_type,
             file_name=file.filename,
             content=document_bytes.decode('latin-1'),
@@ -92,7 +130,7 @@ async def emit_document(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash=doc_record.doc_hash,
-            institution_id=effective_institution,
+            institution_id=institution_id,
             request=req,
             success=True,
             status_code=200,
@@ -119,7 +157,7 @@ async def emit_document(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
-            institution_id=effective_institution,
+            institution_id=institution_id,
             request=req,
             success=False,
             status_code=e.status_code,
@@ -135,12 +173,12 @@ async def emit_document_bulk(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
-    """Emite múltiplos documentos em lote (B2B/B2G)."""
+    """Emite múltiplos documentos em lote (B2B/B2G). APENAS PDF."""
     service = EmissionService(db)
     try:
         documents_list = [doc.model_dump() for doc in payload.documents]
         result = await service.certify_bulk_documents(
-            institution_id=effective_institution,
+            institution_id=payload.institution_id,  
             documents_list=documents_list,
             issued_by=current_user.get("institution", "system")
         )
@@ -151,7 +189,7 @@ async def emit_document_bulk(
                 session=db,
                 user_email=current_user.get("email", "unknown"),
                 doc_hash=doc.get("hash_sha256", "unknown"),
-                institution_id=effective_institution,
+                institution_id=payload.institution_id,  
                 request=req,
                 success=True,
                 status_code=201,
@@ -169,7 +207,7 @@ async def emit_document_bulk(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
-            institution_id=effective_institution,
+            institution_id=payload.institution_id,  
             request=req,
             success=False,
             status_code=e.status_code,
