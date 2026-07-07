@@ -1,6 +1,6 @@
 # Documentação Técnica — Txeka Ntiyiso
 
-Arquitetura, stack, decisões técnicas e especificações de infraestrutura.
+**Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental**
 
 ---
 
@@ -9,8 +9,11 @@ Arquitetura, stack, decisões técnicas e especificações de infraestrutura.
 Sistema distribuído B2G/B2B com componente principal:
 
 - **API Gateway** (FastAPI + PostgreSQL)
+- **Portal Web** (React + Tailwind CSS)
+- **Motor de Hashing** (SHA-256 client-side/server-side)
+- **Sistema de Auditoria** (logs imutáveis estruturados em JSON)
 
-Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Docker Compose**. A produção cloud atual utiliza Render.com + Supabase; a produção nacional utiliza Docker on-premise.
+Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Docker Compose**. A produção cloud atual utiliza Render.com + Supabase; a produção nacional utiliza Docker on-premise em datacenters moçambicanos.
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
@@ -31,20 +34,20 @@ Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Doc
 
 | Camada | Tecnologia | Versão | Função |
 |--------|-----------|--------|--------|
-| **Backend** | FastAPI | 0.110.0 | Framework web assíncrono |
-| **Linguagem** | Python | 3.11 | Runtime principal |
-| **Database** | PostgreSQL | 15 | Persistência ACID |
-| **Auth** | pyjwt | 2.8.0 | Tokens JWT stateless |
-| **Hashing** | hashlib (SHA-256) | Nativo | Integridade criptográfica |
-| **Passwords** | bcrypt | Futuro | Hashing de passwords |
-| **QR Code** | qrcode + Pillow | 7.4.2 | Geração de QR codes |
-| **Rate Limit** | slowapi | — | Proteção contra abuso |
-| **Logging** | structlog | — | Logs estruturados em JSON |
-| **Container** | Docker | — | Multi-stage build |
-| **Orquestração** | Docker Compose | 3.9 | Ambiente completo |
-| **Frontend** | React + Tailwind | — | Portal web |
-| **Hosting Cloud** | Render.com | — | API em produção |
-| **DB Cloud** | Supabase | — | PostgreSQL gerido |
+| **Backend** | FastAPI | 0.110.0 | Framework web assíncrono, auto-documentação OpenAPI |
+| **Linguagem** | Python | 3.11 | Runtime principal com type hints |
+| **Database** | PostgreSQL | 15 | Persistência ACID, auditoria temporal |
+| **Auth** | pyjwt | 2.8.0 | Tokens JWT stateless com expiração por role |
+| **Hashing** | hashlib (SHA-256) | Nativo | Integridade criptográfica de documentos |
+| **Passwords** | bcrypt | 4.1.0 | Hashing de passwords com 12 rounds |
+| **QR Code** | qrcode + Pillow | 7.4.2 | Geração de QR codes verificáveis |
+| **Rate Limit** | slowapi | 0.1.9 | Proteção contra abuso por IP e API key |
+| **Logging** | structlog | 24.1.0 | Logs estruturados em JSON para auditoria forense |
+| **Container** | Docker | 24.x | Multi-stage build, segurança não-root |
+| **Orquestração** | Docker Compose | 3.9 | Ambiente completo com healthchecks |
+| **Frontend** | React + Tailwind CSS | 18.x | Portal web, dashboard institucional |
+| **Hosting Cloud** | Render.com | — | API em produção (fase atual) |
+| **DB Cloud** | Supabase | — | PostgreSQL gerido com backups automáticos |
 
 ---
 
@@ -73,6 +76,49 @@ CREATE TABLE documents (
 CREATE INDEX idx_doc_hash ON documents(doc_hash);
 CREATE INDEX idx_institution_id ON documents(institution_id);
 CREATE INDEX idx_created_at ON documents(created_at);
+CREATE INDEX idx_revoked ON documents(revoked) WHERE revoked = TRUE;
+```
+
+#### `institutions` (Fase 2 — Em curso)
+
+```sql
+CREATE TABLE institutions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    api_key VARCHAR(255) UNIQUE NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'institution',
+    credits INTEGER DEFAULT 0,
+    credits_used INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_login TIMESTAMP
+);
+
+CREATE INDEX idx_institution_api_key ON institutions(api_key);
+CREATE INDEX idx_institution_active ON institutions(is_active) WHERE is_active = TRUE;
+```
+
+#### `users` (Fase 2 — Em curso)
+
+```sql
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'institution',
+    institution_id VARCHAR(50),
+    token_expiry_days INTEGER DEFAULT 30,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_login TIMESTAMP,
+    FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
+);
+
+CREATE INDEX idx_user_email ON users(email);
+CREATE INDEX idx_user_role ON users(role);
+CREATE INDEX idx_user_institution ON users(institution_id);
 ```
 
 #### `audit_logs`
@@ -97,65 +143,135 @@ CREATE TABLE audit_logs (
 CREATE INDEX idx_audit_timestamp ON audit_logs(timestamp);
 CREATE INDEX idx_audit_action ON audit_logs(action);
 CREATE INDEX idx_audit_institution ON audit_logs(institution_id);
+CREATE INDEX idx_audit_ip_masked ON audit_logs(ip_address);
 ```
 
-#### `users` (Fase 2 — Futuro)
+#### `credit_transactions` (Fase 2 — Em curso)
 
 ```sql
-CREATE TABLE users (
+CREATE TABLE credit_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255),
-    role VARCHAR(20) NOT NULL DEFAULT 'institution',
-    institution_id VARCHAR(50),
-    is_active BOOLEAN DEFAULT TRUE,
+    institution_id VARCHAR(50) NOT NULL,
+    amount INTEGER NOT NULL,
+    type VARCHAR(20) NOT NULL, -- 'purchase', 'consumption', 'refund'
+    document_id VARCHAR(100),
+    description TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
-    last_login TIMESTAMP
+    FOREIGN KEY (institution_id) REFERENCES institutions(institution_id)
 );
+
+CREATE INDEX idx_credit_institution ON credit_transactions(institution_id);
+CREATE INDEX idx_credit_type ON credit_transactions(type);
 ```
 
 ---
 
 ## 4. Fluxos de Operação
 
-### 4.1 Emissão
+### 4.1 Emissão (Documento Único)
 
 ```
-Cliente ──POST /certify (PDF)──▶ API
-                                    │
-                                    ▼
-                              ┌─────────────┐
-                              │ Validação   │
-                              │ (tipo, tam, │
-                              │  magic bytes)│
-                              └──────┬──────┘
-                                     ▼
-                              ┌─────────────┐
-                              │ SHA-256     │
-                              │ (PDF bytes) │
-                              └──────┬──────┘
-                                     ▼
-                              ┌─────────────┐
-                              │ Hash existe?│──SIM──▶ 409 Conflict
-                              └──────┬──────┘
-                                     NÃO
-                                     ▼
-                              ┌─────────────┐
-                              │ Gerar QR    │
-                              │ + registo BD│
-                              └──────┬──────┘
-                                     ▼
-                              ┌─────────────┐
-                              │ Audit log   │
-                              │ EMIT        │
-                              └──────┬──────┘
-                                     ▼
-                              201 Created
+Cliente ──POST /certify (PDF + JWT)──▶ API
+                                          │
+                                          ▼
+                                    ┌─────────────┐
+                                    │ Validação   │
+                                    │ JWT + role  │
+                                    │ (institution│
+                                    │  ou admin)  │
+                                    └──────┬──────┘
+                                           ▼
+                                    ┌─────────────┐
+                                    │ Validação   │
+                                    │ PDF: tipo,  │
+                                    │ tamanho,    │
+                                    │ magic bytes │
+                                    │ (%PDF-)     │
+                                    └──────┬──────┘
+                                           ▼
+                                    ┌─────────────┐
+                                    │ SHA-256     │
+                                    │ (PDF bytes) │
+                                    └──────┬──────┘
+                                           ▼
+                                    ┌─────────────┐
+                                    │ Hash existe?│──SIM──▶ 409 Conflict
+                                    └──────┬──────┘
+                                           NÃO
+                                           ▼
+                                    ┌─────────────┐
+                                    │ Consumir 1  │
+                                    │ crédito da  │
+                                    │ instituição │
+                                    └──────┬──────┘
+                                           ▼
+                                    ┌─────────────┐
+                                    │ Gerar QR    │
+                                    │ + registo BD│
+                                    └──────┬──────┘
+                                           ▼
+                                    ┌─────────────┐
+                                    │ Audit log   │
+                                    │ EMIT        │
+                                    └──────┬──────┘
+                                           ▼
+                                    201 Created
 ```
 
 **Tempo esperado:** < 500ms
 
-### 4.2 Verificação (Pública)
+### 4.2 Emissão em Bulk (B2B/B2G)
+
+```
+Cliente ──POST /certify/bulk (JSON + JWT)──▶ API
+                                                  │
+                                                  ▼
+                                            ┌─────────────┐
+                                            │ Validação   │
+                                            │ JWT + role  │
+                                            │ institution │
+                                            └──────┬──────┘
+                                                   ▼
+                                            ┌─────────────┐
+                                            │ Array de    │
+                                            │ documentos  │
+                                            │ (base64 PDF)│
+                                            └──────┬──────┘
+                                                   ▼
+                                            ┌─────────────┐
+                                            │ Para cada   │
+                                            │ documento:  │
+                                            │ - Validar   │
+                                            │ - Hash      │
+                                            │ - Consumir  │
+                                            │   crédito   │
+                                            └──────┬──────┘
+                                                   ▼
+                                            ┌─────────────┐
+                                            │ Verificar   │
+                                            │ créditos    │
+                                            │ suficientes │
+                                            │ (n docs)    │
+                                            └──────┬──────┘
+                                                   ▼
+                                            ┌─────────────┐
+                                            │ Transação   │
+                                            │ atómica:    │
+                                            │ tudo ou     │
+                                            │ nada        │
+                                            └──────┬──────┘
+                                                   ▼
+                                            ┌─────────────┐
+                                            │ Audit log   │
+                                            │ BULK_EMIT   │
+                                            └──────┬──────┘
+                                                   ▼
+                                            201 Created + array
+```
+
+**Tempo esperado:** < 2s para 100 documentos
+
+### 4.3 Verificação (Pública)
 
 ```
 Cliente ──GET /verify/{hash}──▶ API
@@ -163,7 +279,8 @@ Cliente ──GET /verify/{hash}──▶ API
                                    ▼
                              ┌────────────┐
                              │ Validação  │
-                             │ (64 chars) │
+                             │ (64 chars  │
+                             │ hex)       │
                              └─────┬──────┘
                                    ▼
                              ┌────────────┐
@@ -188,63 +305,73 @@ Cliente ──GET /verify/{hash}──▶ API
 
 **Tempo esperado:** < 100ms
 
-### 4.3 Verificação (B2B/B2G)
+### 4.4 Verificação (B2B/B2G)
 
 ```
-Cliente ──POST /verify (JSON)──▶ API
-                                      │
-                                      ▼
-                                ┌─────────────┐
-                                │ .strip()    │
-                                │ no hash     │
-                                └──────┬──────┘
-                                       ▼
-                                Mesma lógica pública
-                                       │
-                                       ▼
-                                Audit log VERIFY
+Cliente ──POST /verify (JSON + API Key)──▶ API
+                                              │
+                                              ▼
+                                        ┌─────────────┐
+                                        │ Validar     │
+                                        │ API Key     │
+                                        │ (institution)│
+                                        └──────┬──────┘
+                                               ▼
+                                        ┌─────────────┐
+                                        │ .strip()    │
+                                        │ no hash     │
+                                        └──────┬──────┘
+                                               ▼
+                                        Mesma lógica pública
+                                               │
+                                               ▼
+                                        Audit log VERIFY
+                                        + institution_id
 ```
 
-### 4.4 Revogação
+### 4.5 Revogação
 
 ```
-Admin ──POST /emissions/{id}/revoke + JWT──▶ API
-                                                  │
-                                                  ▼
-                                            ┌─────────────┐
-                                            │ Valida role │
-                                            │ (admin/inst)│
-                                            └──────┬──────┘
-                                                   ▼
-                                            ┌─────────────┐
-                                            │ Query doc   │
-                                            └──────┬──────┘
-                                                   ▼
-                                          ┌────────┴────────┐
-                                          │                 │
-                                       Não existe      Já revogado
-                                          │                 │
-                                          ▼                 ▼
-                                        404           already_revoked
-                                          │
-                                          │
-                                          │    ┌─────────────┐
-                                          └───▶│ Update BD   │
-                                               │ revoked=TRUE│
-                                               │ + reason    │
-                                               └──────┬──────┘
+Admin/Inst ──POST /emissions/{id}/revoke + JWT──▶ API
+                                                      │
                                                       ▼
-                                               ┌─────────────┐
-                                               │ Audit log   │
-                                               │ REVOKE      │
-                                               └──────┬──────┘
-                                                      ▼
-                                               200 OK revoked
+                                                ┌─────────────┐
+                                                │ Valida role │
+                                                │ (admin ou   │
+                                                │  institution│
+                                                │  dono)      │
+                                                └──────┬──────┘
+                                                       ▼
+                                                ┌─────────────┐
+                                                │ Query doc   │
+                                                └──────┬──────┘
+                                                       ▼
+                                              ┌────────┴────────┐
+                                              │                 │
+                                           Não existe      Já revogado
+                                              │                 │
+                                              ▼                 ▼
+                                            404           already_revoked
+                                              │
+                                              │
+                                              │    ┌─────────────┐
+                                              └───▶│ Update BD   │
+                                                   │ revoked=TRUE│
+                                                   │ + reason    │
+                                                   │ + autor     │
+                                                   └──────┬──────┘
+                                                          ▼
+                                                   ┌─────────────┐
+                                                   │ Audit log   │
+                                                   │ REVOKE      │
+                                                   └──────┬──────┘
+                                                          ▼
+                                                   200 OK revoked
 ```
 
 **Tempo esperado:** < 150ms
 
-### 4.5 Auditoria
+### 4.6 Auditoria
 
 ```
 Admin ──GET /audit/logs + JWT──▶ API
@@ -252,14 +379,21 @@ Admin ──GET /audit/logs + JWT──▶ API
                                       ▼
                                 ┌─────────────┐
                                 │ Filtros     │
-                                │ opcionais   │
+                                │ opcionais:  │
+                                │ - data      │
+                                │ - ação      │
+                                │ - instituição│
+                                │ - IP        │
                                 └──────┬──────┘
                                        ▼
                                 ┌─────────────┐
-                                │ Query paginada│
+                                │ Query       │
+                                │ paginada    │
+                                │ (limit/     │
+                                │  offset)    │
                                 └──────┬──────┘
                                        ▼
-                                200 OK + logs
+                                200 OK + logs JSON
 ```
 
 ---
@@ -309,13 +443,20 @@ Admin ──GET /audit/logs + JWT──▶ API
 }
 ```
 
-### 5.3 Roles
+### 5.3 Sistema Dual de Login
+
+| Tipo | Endpoint | Expiração | Acesso | Uso |
+|------|----------|-----------|--------|-----|
+| **Admin** | `/api/v1/auth/admin/login` | 90 dias | Sistema completo: emit, revoke, manage_institutions, audit_logs | Equipa Txeka, gestão de plataforma |
+| **Instituição** | `/api/v1/auth/login` | 30 dias | emit, verify, dashboard próprio | INAGE, bancos, universidades |
+
+### 5.4 Roles e Permissões
 
 ```python
 ROLES = {
-    "system":    ["verify", "emit", "revoke"],
-    "admin":     ["verify", "emit", "revoke", "manage_institutions"],
-    "institution": ["emit", "verify"],
+    "system":    ["verify", "emit", "revoke", "manage_institutions", "audit_logs"],
+    "admin":     ["verify", "emit", "revoke", "manage_institutions", "audit_logs"],
+    "institution": ["emit", "verify", "dashboard", "credits"],
     "citizen":   ["verify"]
 }
 ```
@@ -324,42 +465,102 @@ ROLES = {
 
 ---
 
-## 6. Segurança
+## 6. Multi-Tenancy e Controlo de Créditos
 
-### 6.1 Criptografia
+### 6.1 Arquitetura Multi-Tenant
+
+Cada instituição opera num **tenant isolado** lógico:
+
+- `institution_id` em todas as tabelas (documents, audit_logs, credit_transactions)
+- Filtro automático em queries: `WHERE institution_id = 'INAGE'`
+- API keys únicas por instituição
+- Dashboard segregado por tenant
+
+### 6.2 Controlo de Créditos
+
+| Operação | Consumo | Descrição |
+|----------|---------|-----------|
+| Emissão única | 1 crédito | Por documento individual |
+| Emissão em bulk | N créditos | 1 por documento no array |
+| Verificação | 0 créditos | Gratuito para todos |
+| Revogação | 0 créditos | Operação administrativa |
+
+**Fluxo de créditos:**
+```
+Instituição ──compra créditos──▶ Admin
+                                      │
+                                      ▼
+                                ┌─────────────┐
+                                │ credit_     │
+                                │ transactions│
+                                │ type:       │
+                                │ 'purchase'  │
+                                └──────┬──────┘
+                                       ▼
+                                institutions.credits += N
+                                       │
+                                Emissão de documento
+                                       │
+                                institutions.credits -= 1
+                                       │
+                                credit_transactions
+                                type: 'consumption'
+```
+
+---
+
+## 7. Segurança
+
+### 7.1 Criptografia
 
 | Algoritmo | Tipo | Uso | Força |
 |-----------|------|-----|-------|
-| **SHA-256** | Hash criptográfico | Hash do PDF binário | Militar (256 bits) |
+| **SHA-256** | Hash criptográfico | Hash do PDF binário | 256 bits — padrão bancário |
 | **JWT (HS256)** | HMAC + SHA-256 | Autenticação stateless | Alta (secret em .env) |
-| **bcrypt** | Password hashing | Login de utilizadores (futuro) | 12 rounds (~100ms) |
+| **bcrypt** | Password hashing | Login de utilizadores | 12 rounds (~100ms) |
 | **TLS 1.3** | Transporte | HTTPS obrigatório | Padrão bancário |
 
-### 6.2 Validação de Entrada
+### 7.2 Validação de Entrada
 
-| Regra | Implementação |
-|-------|--------------|
-| Formato | Exclusivamente PDF (.pdf) |
-| MIME | `application/pdf` |
-| Magic bytes | `%PDF-` (mitiga falsificação de extensão) |
-| Limite | < 50MB |
-| Rate limiting | 100 req/min por IP (público) / 1000 req/min (B2B) |
+| Regra | Implementação | Mitigação |
+|-------|--------------|-----------|
+| Formato | Exclusivamente PDF (.pdf) | Rejeita .png, .jpg, .svg disfarçados |
+| MIME | `application/pdf` | Content-Type spoofing |
+| Magic bytes | `%PDF-` (primeiros 4 bytes) | Falsificação de extensão |
+| Limite | < 50MB | DoS por upload massivo |
+| Nome suspeito | Rejeita `.pdf.png`, `.pdf.exe` | Double extension attacks |
+| Rate limiting | 100 req/min (público) / 1000 req/min (B2B) | Brute force, scraping |
 
-### 6.3 CORS
+### 7.3 Rate Limiting por Tier
+
+| Tier | Limite | Janela | Uso |
+|------|--------|--------|-----|
+| **Público** | 100 req/min | 60s | Verificação anónima via portal |
+| **B2B/B2G** | 1000 req/min | 60s | Integração API com API key |
+| **Admin** | 500 req/min | 60s | Gestão e auditoria |
+| **Bulk** | 100 docs/min | 60s | Emissão em lote |
+
+### 7.4 CORS
 
 ```python
 ALLOWED_ORIGINS = [
+    # Desenvolvimento local
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://txeka-ntiyiso-portal.onrender.com"
+    # Produção cloud atual
+    "https://txeka-ntiyiso-portal.onrender.com",
+    # Futuro: domínio próprio
+    "https://txekantiyiso.co.mz",
+    "https://www.txekantiyiso.co.mz",
+    "https://api.txekantiyiso.co.mz",
 ]
 ```
 
 ---
 
-## 7. Deploy e Containerização
+## 8. Deploy e Containerização
 
-### 7.1 Dockerfile (Multi-Stage Build)
+### 8.1 Dockerfile (Multi-Stage Build)
 
 O Dockerfile utiliza **multi-stage build** para otimizar segurança e tamanho:
 
@@ -372,7 +573,7 @@ O Dockerfile utiliza **multi-stage build** para otimizar segurança e tamanho:
 - Healthcheck a cada 30s com 3 retries
 - 4 workers Uvicorn para concorrência
 
-### 7.2 Docker Compose
+### 8.2 Docker Compose
 
 Orquestração completa com 2 serviços:
 
@@ -388,7 +589,7 @@ Orquestração completa com 2 serviços:
 - Resource limits em ambos os serviços
 - Variáveis de ambiente via `.env` (segredos nunca hardcoded)
 
-### 7.3 Deploy Pipeline
+### 8.3 Deploy Pipeline
 
 **Desenvolvimento Local:**
 ```bash
@@ -417,21 +618,23 @@ sudo docker-compose up -d --build
 
 ---
 
-## 8. Performance
+## 9. Performance
 
-| Operação | Tempo Médio | P95 | P99 |
-|----------|-------------|-----|-----|
-| **Emit** | 450ms | 600ms | 850ms |
-| **Verify** | 85ms | 120ms | 180ms |
-| **Revoke** | 120ms | 180ms | 250ms |
-| **Audit Logs** | 200ms | 350ms | 500ms |
-| **Health Check** | 15ms | 25ms | 40ms |
+| Operação | Tempo Médio | P95 | P99 | Notas |
+|----------|-------------|-----|-----|-------|
+| **Emit** | 450ms | 600ms | 850ms | Inclui validação PDF + hash + QR |
+| **Emit Bulk (100 docs)** | 1.8s | 2.5s | 3.5s | Transação atómica |
+| **Verify** | 85ms | 120ms | 180ms | Query indexada por hash |
+| **Revoke** | 120ms | 180ms | 250ms | Update + audit |
+| **Audit Logs** | 200ms | 350ms | 500ms | Com filtros e paginação |
+| **Health Check** | 15ms | 25ms | 40ms | Sem query à BD |
+| **Dashboard** | 300ms | 500ms | 800ms | Agregação de métricas |
 
 ---
 
-## 9. Monitoramento
+## 10. Monitoramento
 
-### 9.1 Logs (structlog JSON)
+### 10.1 Logs (structlog JSON)
 
 ```json
 {
@@ -439,12 +642,13 @@ sudo docker-compose up -d --build
   "doc_id": "DUAT-INAGE-20260626-XXXXXX",
   "user_email": "admin@txeka.co.mz",
   "institution_id": "INAGE",
+  "credits_remaining": 145,
   "timestamp": "2026-06-27T08:44:00+02:00",
   "environment": "production"
 }
 ```
 
-### 9.2 Health Check
+### 10.2 Health Check
 
 ```json
 GET /health
@@ -453,25 +657,28 @@ GET /health
   "project": "Txeka Ntiyiso",
   "version": "1.0.0",
   "environment": "production",
-  "timestamp": "2026-06-27T08:44:00+02:00"
+  "timestamp": "2026-06-27T08:44:00+02:00",
+  "database": "connected",
+  "uptime_seconds": 86400
 }
 ```
 
-### 9.3 Métricas Futuras (Prometheus + Grafana)
+### 10.3 Métricas Futuras (Prometheus + Grafana)
 
-| Métrica | Alerta |
-|---------|--------|
-| Latência P95 > 500ms | Warning |
-| Erros 5xx > 1% | Critical |
-| CPU > 80% | Warning |
-| Disco > 85% | Critical |
-| Conexões DB > 80% | Warning |
+| Métrica | Alerta | Severidade |
+|---------|--------|------------|
+| Latência P95 > 500ms | Warning | 🟡 |
+| Erros 5xx > 1% | Critical | 🔴 |
+| CPU > 80% | Warning | 🟡 |
+| Disco > 85% | Critical | 🔴 |
+| Conexões DB > 80% | Warning | 🟡 |
+| Créditos instituição < 10 | Warning | 🟡 |
 
 ---
 
-## 10. Decisões Arquiteturais
+## 11. Decisões Arquiteturais
 
-### 10.1 Por que FastAPI?
+### 11.1 Por que FastAPI?
 
 | Critério | FastAPI | Django | Flask |
 |----------|---------|--------|-------|
@@ -483,7 +690,7 @@ GET /health
 
 **Decisão:** FastAPI oferece performance (uvicorn + asyncio) e documentação automática sem boilerplate.
 
-### 10.2 Por que PostgreSQL?
+### 11.2 Por que PostgreSQL?
 
 | Critério | PostgreSQL | MongoDB |
 |----------|-----------|---------|
@@ -495,7 +702,7 @@ GET /health
 
 **Decisão:** PostgreSQL com Supabase oferece ACID + auditoria + escalabilidade sem custo inicial.
 
-### 10.3 Por que SHA-256 em vez de Blockchain?
+### 11.3 Por que SHA-256 em vez de Blockchain?
 
 | Critério | SHA-256 + BD | Blockchain |
 |----------|-------------|------------|
@@ -507,7 +714,7 @@ GET /health
 
 **Decisão:** SHA-256 com PostgreSQL oferece imutabilidade via audit logs sem complexidade de blockchain.
 
-### 10.4 Zero-Knowledge: Client-Side vs Server-Side Hashing
+### 11.4 Zero-Knowledge: Client-Side vs Server-Side Hashing
 
 | Abordagem | Privacidade | Complexidade | Conformidade |
 |-----------|------------|--------------|--------------|
@@ -518,13 +725,13 @@ GET /health
 
 ---
 
-## 11. Roadmap Técnico
+## 12. Roadmap Técnico
 
-| Fase | Período | Itens |
-|------|---------|-------|
-| **Fase 2** (Atual) | Q2–Q3 2026 | Dashboard Web, registo de instituições, relatórios analíticos, controlo de créditos |
-| **Fase 3** | Q3 2026 | 2FA (TOTP), OAuth2, queries agregadas `/audit/stats`, SDK Python/JS |
-| **Fase 4** | Q4 2026 | ML fraud detection, multi-idioma (PT/EN), mobile app, API v2 |
+| Fase | Período | Itens Técnicos |
+|------|---------|----------------|
+| **Fase 2** (Atual) | Q2–Q3 2026 | Dashboard Web React, registo de instituições, emissão em bulk, controlo de créditos, relatórios analíticos, multi-tenant completo |
+| **Fase 3** | Q3 2026 | 2FA (TOTP), OAuth2, queries agregadas `/audit/stats`, SDK Python/JS, Go-to-market técnico |
+| **Fase 4** | Q4 2026 | ML fraud detection, multi-idioma (PT/EN), mobile app, API v2, escala empresarial |
 
 ---
 
