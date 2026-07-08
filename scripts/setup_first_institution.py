@@ -36,7 +36,20 @@ async def main():
     if db_url.startswith("postgresql://") and "asyncpg" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
     
-    engine = create_async_engine(db_url, echo=False)
+    # ✅ FIX CRITICO: Desativa prepared statements para compatibilidade com PgBouncer
+    # Render atualizou para pool_mode=transaction, que descarta statements a cada transação
+    # statement_cache_size=0 previne DuplicatePreparedStatementError
+    engine = create_async_engine(
+        db_url,
+        echo=False,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+            "command_timeout": 60,
+        },
+    )
     AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     
     async with AsyncSessionLocal() as db:
