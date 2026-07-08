@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Setup First Institution — cria a primeira instituição.
 Usage: python scripts/setup_first_institution.py --id INAGE --name "..." --email ... --credits 500
