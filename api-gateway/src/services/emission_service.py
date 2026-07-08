@@ -66,7 +66,7 @@ class EmissionService:
             institution_id=institution_id,
             file_name=file_name,
             issued_by=issued_by,
-            certificate_url=f"https://verify.txekantiyiso.gov.mz/{doc_id}",
+            certificate_url=f"https://verify.txekantiyiso.co.mz/{doc_id}",
             qr_code=f"QR_{doc_id}"
         )
         self.db.add(document)
@@ -115,7 +115,7 @@ class EmissionService:
                 institution_id=institution_id,
                 file_name=doc_data.get("file_name"),
                 issued_by=issued_by,
-                certificate_url=f"https://verify.txekantiyiso.gov.mz/{doc_id}",
+                certificate_url=f"https://verify.txekantiyiso.co.mz/{doc_id}",
                 qr_code=f"QR_{doc_id}"
             )
             self.db.add(new_doc)
