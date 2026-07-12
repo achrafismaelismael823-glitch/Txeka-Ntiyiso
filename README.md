@@ -13,8 +13,14 @@
     <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build"/>
   </a>
   <img src="https://img.shields.io/badge/conformidade-Lei%203%2F2017-blue" alt="Conformidade"/>
-  <img src="https://img.shields.io/badge/validacao-%3C100ms-orange" alt="Performance"/>
+  <img src="https://img.shields.io/badge/desempenho-%3C100ms%20(producao)-orange" alt="Performance"/>
   <img src="https://img.shields.io/badge/versao-1.2.0-blueviolet" alt="Versão"/>
+  <img src="https://img.shields.io/badge/licenca-Proprietaria-red" alt="Licença"/>
+  <br/>
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi&logoColor=white" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"/>
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" alt="Docker"/>
 </p>
 
 ---
@@ -23,25 +29,17 @@
 
 O **Txeka Ntiyiso** transforma processos de validação manuais — que demoram dias, exigem deslocações e custam milhares de Meticais — em **auditorias digitais instantâneas de menos de 100 milissegundos**.
 
-Substitua processos manuais por validação criptográfica da integridade documental, sem expor um único dado pessoal.
+A digitalização dos serviços públicos e privados em Moçambique aumenta a necessidade de mecanismos confiáveis para verificar documentos eletrónicos. O Txeka Ntiyiso responde a este desafio oferecendo uma infraestrutura de verificação baseada em criptografia, preparada para integração entre instituições.
 
 > **Como funciona:** A instituição emite o documento ➡️ o sistema gera uma **impressão digital criptográfica (hash SHA-256)** + um **QR code** verificável ➡️ qualquer parceiro ou cidadão aponta a câmara e confirma na hora se o documento é autêntico.
 
 ---
 
-## Missão
+## Missão, Visão e Princípios
 
-Fortalecer a confiança nas transações documentais através de uma infraestrutura digital segura, interoperável e alinhada com a legislação moçambicana.
+**Missão:** Fortalecer a confiança nas transações documentais através de uma infraestrutura digital segura, interoperável e alinhada com a legislação moçambicana.
 
----
-
-## Visão
-
-Tornar-se a infraestrutura nacional de referência para verificação da integridade documental em Moçambique.
-
----
-
-## Princípios da Plataforma
+**Visão:** Tornar-se a infraestrutura nacional de referência para verificação da integridade documental em Moçambique.
 
 | Princípio | Descrição |
 |-----------|-----------|
@@ -77,120 +75,101 @@ Tornar-se a infraestrutura nacional de referência para verificação da integri
 
 ---
 
-## 🔥 Porquê o Txeka Ntiyiso? (A Nossa Resposta ao Caos)
+## 🔥 Porquê o Txeka Ntiyiso?
 
-**O Cenário Atual:**
-- Certificados académicos falsos tiram vagas a quem merece.
-- Alvarás e DUATs adulterados geram litígios judiciais complexos.
-- A verificação manual consome semanas de produtividade.
-- Sistemas externos cobram em Dólares/Euros e retêm dados confidenciais do país.
+**O Cenário Atual:** Certificados académicos falsos, alvarás e DUATs adulterados, verificação manual que consome semanas, e plataformas externas que cobram em Dólares/Euros retendo dados confidenciais do país.
 
 **A Nossa Solução:**
-- **Criptografia baseada em SHA-256:** Algoritmo padrão para verificação de integridade de dados. Qualquer alteração ao ficheiro original modifica completamente o hash, tornando a adulteração imediatamente detetável.
-- **Velocidade Extrema:** Resposta em **< 100ms** — ideal para portais de alto tráfego.
+- **Criptografia SHA-256:** Algoritmo criptográfico amplamente adotado na indústria. Qualquer alteração ao ficheiro original modifica completamente o hash, tornando a adulteração imediatamente detetável.
+- **Velocidade Extrema:** Desempenho típico inferior a 100 ms em ambiente de produção.
 - **Soberania Nacional:** Custos fixos em Meticais e total respeito pelo sigilo de dados do Estado.
-- **Retenção de registos:** Registos de auditoria imutáveis com retenção conforme política de conservação definida para a plataforma e requisitos legais aplicáveis.
+- **Retenção de 20 anos:** Registos de auditoria imutáveis conforme Decreto n.º 59/2019.
 
 ---
 
-## 🛡️ Zero-Knowledge Architecture: Privacidade por Design
+## 🛡️ Zero-Knowledge: Privacidade por Design
 
 O Txeka Ntiyiso foi concebido para que os documentos originais permaneçam no dispositivo do utilizador. A plataforma processa apenas o hash criptográfico necessário para a verificação da integridade documental.
 
-Aqui está o funcionamento da nossa arquitetura:
 1. O utilizador anexa o PDF no portal.
-2. A "impressão digital" (Hash SHA-256) é calculada **diretamente no navegador** (client-side).
-3. Apenas esta linha de código de 64 caracteres viaja até ao nosso servidor.
-4. O documento original **não sai do dispositivo** do utilizador.
-5. O sistema apenas regista: *"Esta impressão digital foi validada e existe desde 27/06/2026"*.
+2. O Hash SHA-256 é calculado **diretamente no navegador** (client-side).
+3. Apenas a linha de 64 caracteres viaja até ao servidor.
+4. O documento original **não sai do dispositivo**.
+5. O sistema regista: *"Esta impressão digital foi validada e existe desde 27/06/2026"*.
 
-**Resultado:** O risco de vazamento de dados confidenciais é eliminado na origem, por construção.
+**Resultado:** O risco de exposição de dados confidenciais é minimizado na origem, por construção arquitetural.
 
 ---
 
 ## ⚖️ Declaração de Posição Regulatória
 
-O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G (Business-to-Government)** e **B2B (Business-to-Business)** que garante a **autenticidade, integridade e não-repúdio** de documentos digitais através de criptografia **SHA-256** e **QR codes verificáveis**.
-
-Atuando como um **serviço descentralizado de verificação de integridade e registo de auditoria temporal imutável**, o sistema complementa o ecossistema legal moçambicano sem a necessidade de reter ou gerir certificados digitais privados dos utilizadores.
+O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que garante a **autenticidade, integridade e não-repúdio** de documentos digitais através de criptografia **SHA-256** e **QR codes verificáveis**.
 
 > **Declaração Regulatória:** O Txeka Ntiyiso **não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017. Não emite certificados digitais qualificados, chaves privadas, assinaturas digitais nem carimbos de tempo qualificados. Atua exclusivamente como **validador de integridade criptográfica** e **motor de registo de auditoria temporal imutável**.
 
 ---
 
-## Estado Atual do Projeto
+## 🏗️ Arquitetura e Pipeline
 
-| Fase | Período | Estado | Descrição |
-|------|---------|--------|-----------|
-| **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
-| **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos |
-| **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
-| **Fase 4** | Q4 2026 | ⏳ Planeada | Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial |
-
-> **Fase 2 — O que estamos a construir agora:** Sistema de registo de instituições com controlo de créditos, emissão em bulk (B2B/B2G), dashboard web com métricas em tempo real, e relatórios analíticos para administração.
-
----
-
-## A Solução
-
-O Txeka Ntiyiso implementa um pipeline de validação de quatro etapas:
-
-| Etapa | Ação | Resultado |
-|-------|------|-----------|
-| 1. Emissão | A instituição emissora submete o documento ao sistema | Geração de **hash SHA-256** único + **QR code** verificável |
-| 2. Distribuição | O documento com QR code é entregue ao titular | O cidadão pode verificar autenticidade a qualquer momento |
-| 3. Verificação | O verificador scaneia o QR ou submete o PDF via portal/API | Validação em **< 100 milissegundos**: "Autêntico", "Falso" ou "Revogado" |
-| 4. Auditoria | Cada operação é registada imutavelmente | Trilha forense completa com retenção de **20 anos** |
-
----
-
-## Características Técnicas
-
-- **Criptografia SHA-256:** Algoritmo de hashing padrão bancário. Qualquer alteração de um único byte no documento original gera um hash completamente diferente, tornando a falsificação matematicamente detetável.
-- **QR Code Verificável:** O cidadão scaneia o código do telemóvel, sem necessidade de registo ou instalação de aplicação.
-- **Revogação Legal:** Documentos podem ser invalidados administrativamente, com registo obrigatório de motivo, autor e timestamp.
-- **Multi-Instituição (Fase 2):** Arquitetura multi-tenant que permite a coexistência de INAGE, Ministérios, bancos, seguradoras e imobiliárias no mesmo sistema, com segregação completa de dados e controlo de créditos por entidade.
-- **Emissão em Bulk (B2B/B2G):** Emissão de múltiplos documentos em lote via JSON, com consumo de 1 crédito por documento. Ideal para universidades, ministérios e bancos.
-- **Validação Rigorosa de PDF:** Verificação de extensão `.pdf`, MIME `application/pdf`, magic bytes `%PDF-` e deteção de nomes suspeitos (ex: `.pdf.png`). Rejeita PNG, JPG, GIF, SVG e stickers.
-- **Auditoria Forense:** Registo imutável de quem verificou, quando, de que IP, com que resultado.
-- **Conformidade Lei 3/2017:** Desenvolvido em conformidade com os princípios e requisitos aplicáveis da legislação moçambicana relativos à integridade, autenticidade e rastreabilidade documental.
-- **Retenção de 20 Anos:** Arquitetura preparada para retenção de registos por até 20 anos, conforme os requisitos legais aplicáveis.
-- **Privacidade por Design (Zero-Knowledge):** A plataforma processa e armazena exclusivamente **hashes criptográficos de 64 caracteres**. Os documentos originais nunca saem do ambiente do cliente, eliminando por completo o risco de vazamento de dados pessoais.
-
----
-
-## Arquitetura do Sistema
+```
+  PDF / Documento Original
+           │
+           ▼
+   ┌───────────────┐
+   │  Client-Side  │  ← Hash SHA-256 calculado no navegador
+   │   SHA-256     │
+   └───────┬───────┘
+           │  Hash (64 chars)
+           ▼
+   ┌───────────────┐
+   │  API REST     │  ← FastAPI + Python 3.11 + JWT + Rate Limiting
+   │  Txeka Ntiyiso│
+   └───────┬───────┘
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+┌─────────┐  ┌──────────────┐
+│PostgreSQL│  │  Audit Logs  │  ← Trilha forense imutável (20 anos)
+│Supabase  │  │   Imutáveis  │
+└────┬────┘  └──────────────┘
+     │
+     ▼
+┌─────────────┐
+│  QR Code    │  ← Verificável por qualquer cidadão via telemóvel
+│ Verificável │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────┐
+│ Verificação     │  ← Pública, anónima, < 100 ms
+│ Pública / API   │
+└─────────────────┘
+```
 
 | Camada | Tecnologia | Função |
 |--------|-----------|--------|
 | Backend | FastAPI 0.110 + Python 3.11 | API REST, lógica de negócio, autenticação JWT |
 | Base de Dados | PostgreSQL (Supabase) | Persistência ACID de hashes, metadados e audit logs |
 | Frontend | React + Tailwind CSS | Portal de verificação, dashboard institucional |
-| Segurança | JWT (pyjwt) + bcrypt + Rate Limiting | Autenticação stateless, hashing de passwords, proteção contra abuso |
-| Deploy | Render.com (Produção atual) / Docker (Futuro) | Cloud para operação imediata; on-premise para soberania digital |
+| Segurança | JWT + bcrypt + Rate Limiting | Autenticação stateless, proteção contra abuso |
+| Deploy | Render.com (Atual) / Docker (Futuro) | Cloud imediata; on-premise para soberania digital |
 
-### Deploy Atual: Produção Cloud (Render.com + Supabase)
+**Produção Atual:** [API](https://txeka-ntiyiso-api.onrender.com) · [Health](https://txeka-ntiyiso-api.onrender.com/health) · [Swagger](https://txeka-ntiyiso-api.onrender.com/docs) · Último deploy: 05/07/2026
 
-- **API:** [https://txeka-ntiyiso-api.onrender.com](https://txeka-ntiyiso-api.onrender.com)
-- **Health Check:** [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health)
-- **Swagger:** [https://txeka-ntiyiso-api.onrender.com/docs](https://txeka-ntiyiso-api.onrender.com/docs)
-- **Status:** Online e operacional
-- **Database:** Supabase PostgreSQL
-- **Último Deploy:** 05/07/2026 — Build successful, BD conectada, 28+ audit logs
+**Futuro:** Migração para infraestrutura nacional (Docker on-premise) para soberania digital, conformidade com a Lei de Proteção de Dados Pessoais e resiliência independente de conectividade internacional.
 
-### Futuro: Produção Nacional (Docker On-Premise)
+---
 
-A migração para infraestrutura nacional é estratégica para:
-- **Soberania digital:** Dados armazenados em território moçambicano
-- **Conformidade futura:** Antecipação da Lei de Proteção de Dados Pessoais
-- **Resiliência:** Funcionamento independente de conectividade internacional
-- **Auditoria:** Acesso físico a servidores por entidades reguladoras
+## Estado Atual e Roadmap
 
-| Ambiente | Hosting | Fase | Uso Principal |
-|----------|---------|------|---------------|
-| **Produção Cloud** | Render.com + Supabase | **Atual** | Operação imediata, alta disponibilidade |
-| **Produção Nacional** | Docker + Servidores MZ | **Migração futura** | Soberania digital, intranet governamental |
-| **Híbrido** | Docker Edge + Cloud | **Futuro** | Resiliência máxima, contingência offline |
+| Fase | Período | Estado | Entregáveis |
+|------|---------|--------|-------------|
+| **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
+| **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos |
+| **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
+| **Fase 4** | Q4 2026 | ⏳ Planeada | Dashboard por perfil + Escala empresarial: 2FA, OAuth2, ML fraud detection |
+
+> **Fase 2 — Operacional agora:** Registo de instituições com API key, login dual (Admin/Institution), emissão única e em bulk, verificação pública anónima, audit logs, validação rigorosa de PDF e arquitetura multi-tenant.
 
 ---
 
@@ -199,15 +178,9 @@ A migração para infraestrutura nacional é estratégica para:
 ### Para Desenvolvedores
 
 ```bash
-# Clonar o repositório e aceder ao módulo da API
 git clone https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso.git
 cd Txeka-Ntiyiso/api-gateway
-
-# Configurar e ativar o ambiente virtual
-python -m venv .venv
-source .venv/bin/activate
-
-# Instalar dependências e iniciar o servidor local
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn src.main:app --reload
 ```
@@ -216,63 +189,38 @@ Aceda a `http://localhost:8000/docs` para a documentação Swagger interativa.
 
 ### Para Instituições (Fase 2 — Lista de Espera)
 
-Contacte: tech@txeka.co.mz
+Contacte: **geral.txekantiyiso@gmail.com**
 
-- **Demo estratégica** (15 minutos): Apresentação da plataforma às equipas de decisão.
-- **Piloto operacional** (30 dias, sem custo): Implementação em ambiente de teste da instituição.
-- **Integração API:** Documentação completa, SDKs e suporte técnico dedicado.
-- **Suporte 24/7:** Disponibilidade garantida para operações críticas.
+- **Demo estratégica** (15 minutos) · **Piloto operacional** (15 dias, sem custo) · **Integração API** com suporte técnico dedicado · **Suporte 24/7**
 
-> Nota: O registo de novas instituições está a ser feito manualmente pelo administrador durante a Fase 2. Em breve, o processo será automatizado via portal de administração.
+> Nota: O registo de novas instituições está a ser feito manualmente durante a Fase 2. Em breve, o processo será automatizado via portal de administração.
 
 ---
 
 ## Endpoints da API
 
-### 🔐 Autenticação
+| Categoria | Método | Endpoint | Descrição | Acesso |
+|-----------|--------|----------|-----------|--------|
+| Auth | `POST` | `/api/v1/auth/admin/login` | Login administrador (token 90 dias) | Admin |
+| Auth | `POST` | `/api/v1/auth/login` | Login instituição (token 30 dias) | Institution |
+| Emissão | `POST` | `/api/v1/certify` | Emitir documento único (PDF) | Institution |
+| Emissão | `POST` | `/api/v1/certify/bulk` | Emitir múltiplos documentos em lote | Institution |
+| Verificação | `GET` | `/api/v1/verify/{hash}` | Verificar documento (consulta rápida) | Público |
+| Verificação | `POST` | `/api/v1/verify` | Verificar documento (validação B2B/B2G) | Público |
+| Dashboard | `GET` | `/api/v1/institutions/me/dashboard` | Dashboard da instituição | Institution |
+| Dashboard | `GET` | `/api/v1/institutions/me/credits` | Créditos disponíveis e histórico | Institution |
+| Admin | `POST` | `/api/v1/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin / Institution |
+| Admin | `GET` | `/api/v1/audit/logs` | Logs de auditoria imutáveis | Admin |
+| Admin | `GET` | `/api/v1/audit/document/{hash}/history` | Rasto cronológico do documento | Admin / Institution |
+| Admin | `GET` | `/api/v1/audit/stats` | Métricas e volume de validações (Fase 3) | Admin |
 
-| Método | Endpoint | Descrição | Acesso |
-|--------|----------|-----------|--------|
-| `POST` | `/api/v1/auth/admin/login` | Login administrador (token 90 dias) | Admin |
-| `POST` | `/api/v1/auth/login` | Login instituição (token 30 dias) | Institution |
-
-### 📄 Emissão de Documentos
-
-| Método | Endpoint | Descrição | Acesso |
-|--------|----------|-----------|--------|
-| `POST` | `/api/v1/certify` | Emitir documento único (PDF) | Institution |
-| `POST` | `/api/v1/certify/bulk` | Emitir múltiplos documentos em lote (B2B/B2G) | Institution |
-
-### 🔍 Verificação Pública
-
-| Método | Endpoint | Descrição | Acesso |
-|--------|----------|-----------|--------|
-| `GET` | `/api/v1/verify/{hash}` | Verificar documento (consulta rápida) | Público |
-| `POST` | `/api/v1/verify` | Verificar documento (validação B2B/B2G) | Público |
-
-### 🏢 Dashboard Institucional
-
-| Método | Endpoint | Descrição | Acesso |
-|--------|----------|-----------|--------|
-| `GET` | `/api/v1/institutions/me/dashboard` | Dashboard da instituição (créditos, documentos) | Institution |
-| `GET` | `/api/v1/institutions/me/credits` | Créditos disponíveis e histórico | Institution |
-
-### 🛡️ Administração & Auditoria
-
-| Método | Endpoint | Descrição | Acesso |
-|--------|----------|-----------|--------|
-| `POST` | `/api/v1/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin / Institution |
-| `GET` | `/api/v1/audit/logs` | Logs de auditoria imutáveis | Admin |
-| `GET` | `/api/v1/audit/document/{hash}/history` | Rasto cronológico do documento | Admin / Institution |
-| `GET` | `/api/v1/audit/stats` | Métricas e volume de validações (Fase 3) | Admin |
-
-> Documentação interativa completa disponível em `/docs` ou `/redoc`.
+> Documentação interativa completa disponível em `/docs` ou `/redoc`. Para especificações detalhadas, consulte a [Referência da API](doc/guides/API_REFERENCE.md).
 
 ---
 
 ## Índice de Documentação Interna
 
-Para especificações detalhadas e manuais operacionais, consulte a nossa estrutura em `doc/`:
+Para especificações detalhadas, manuais operacionais e documentação técnica completa, consulte a estrutura em `doc/`:
 
 - **Desenvolvimento & Integração:** [Referência da API](doc/guides/API_REFERENCE.md) · [Arquitetura Técnica](doc/technical/TECHNICAL.md)
 - **Operações Institucionais:** [Manual do Utilizador](doc/guides/USER_GUIDE.md) · [Estratégia de Implantação](doc/technical/DEPLOYMENT.md)
@@ -285,52 +233,13 @@ Para especificações detalhadas e manuais operacionais, consulte a nossa estrut
 
 O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos aplicáveis da legislação moçambicana relativos à integridade, autenticidade e rastreabilidade documental.
 
-| Legislação | Âmbito | Alinhamento Txeka Ntiyiso |
-|------------|--------|---------------------------|
+| Legislação | Âmbito | Alinhamento |
+|------------|--------|-------------|
 | Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade, autenticidade e não-repúdio via hashes imutáveis |
 | Decreto n.º 59/2019 | Serviços de Validação Cronológica e Eletrónica | Retenção mínima de 20 anos; trilha de auditoria completa |
 
-- **Proteção de Dados:** Em total conformidade com as garantias de privacidade previstas na Lei n.º 3/2017. A arquitetura Zero-Knowledge elimina por completo o processamento de dados pessoais sensíveis em servidores centrais.
-- **Retenção de Registos:** Os hashes e logs de auditoria imutáveis são conservados de forma redundante pelo período mínimo de 20 anos, conforme exigido pelo Decreto n.º 59/2019.
-
----
-
-## Roadmap Estratégico
-
-### ✅ Fase 1 — Concluída
-
-| Período | Estado | Entregáveis |
-|---------|--------|-------------|
-| Q1 2026 | ✅ Concluída | MVP core validado: emissão, verificação, revogação, audit logs imutáveis |
-
-### 🔄 Fase 2 — Em Curso
-
-| Período | Estado | Entregáveis |
-|---------|--------|-------------|
-| Q2–Q3 2026 | 🔄 Em curso | Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos |
-
-> Operacional agora:
-> - ✅ Registo de instituições com API key
-> - ✅ Login dual (Admin 90d / Institution 30d)
-> - ✅ Emissão única PDF com validação rigorosa
-> - ✅ Emissão em bulk B2B/B2G
-> - ✅ Verificação pública anónima
-> - ✅ Audit logs (28+ registos)
-> - ✅ Validação PDF: extensão + MIME + magic bytes
-> - ✅ Multi-tenant
-> - 🔄 Portal web React (em evolução)
-
-### ⏳ Fase 3 — Planeada
-
-| Período | Estado | Entregáveis |
-|---------|--------|-------------|
-| Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
-
-### ⏳ Fase 4 — Planeada
-
-| Período | Estado | Entregáveis |
-|---------|--------|-------------|
-| Q4 2026 | ⏳ Planeada | Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial: 2FA, OAuth2, ML fraud detection |
+- **Proteção de Dados:** A arquitetura Zero-Knowledge reduz drasticamente o processamento de dados pessoais sensíveis em servidores centrais.
+- **Retenção:** Hashes e logs de auditoria imutáveis conservados de forma redundante pelo período mínimo de 20 anos.
 
 ---
 
@@ -338,7 +247,7 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 | Métrica | Valor |
 |---------|-------|
-| ⏱️ Tempo de Validação | < 100ms |
+| ⏱️ Tempo de Validação | Desempenho típico < 100 ms em produção |
 | 🛡️ Algoritmo Core | SHA-256 Criptográfico |
 | 💾 Dados Pessoais Armazenados | Zero (0%) |
 | ⏳ Retenção de Trilha | 20 anos |
@@ -346,9 +255,10 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 ---
 
+
 ## Suporte e Contacto
 
-- **Email:** tech@txeka.co.mz
+- **Email:** geral.txekantiyiso@gmail.com
 - **GitHub Issues:** [github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues](https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues)
 - **Status do Sistema:** [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health)
 
