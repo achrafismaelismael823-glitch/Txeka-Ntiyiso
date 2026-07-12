@@ -1,6 +1,36 @@
 # Documentação Técnica — Txeka Ntiyiso
 
-**Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental**
+**Infraestrutura tecnológica para verificação da integridade e autenticidade documental em Moçambique**
+
+---
+
+| | |
+|:---|:---|
+| **Versão** | 1.2.0 |
+| **Estado** | 🔄 Em curso (Fase 2) |
+| **Última atualização** | 2026-07-12 |
+| **Autor** | Equipa Txeka Ntiyiso |
+| **Contacto técnico** | geral.txekantiyiso@gmail.com |
+
+---
+
+## Índice
+
+1. [Visão Geral](#1-visão-geral)
+2. [Princípios Arquiteturais](#2-princípios-arquiteturais)
+3. [Estrutura do Repositório](#3-estrutura-do-repositório)
+4. [Stack Tecnológico](#4-stack-tecnológico)
+5. [Arquitetura de Dados](#5-arquitetura-de-dados)
+6. [Fluxos de Operação](#6-fluxos-de-operação)
+7. [Autenticação](#7-autenticação)
+8. [Multi-Tenancy e Controlo de Créditos](#8-multi-tenancy-e-controlo-de-créditos)
+9. [Segurança](#9-segurança)
+10. [Deploy e Containerização](#10-deploy-e-containerização)
+11. [Performance](#11-performance)
+12. [Monitoramento](#12-monitoramento)
+13. [Decisões Arquiteturais](#13-decisões-arquiteturais)
+14. [Roadmap Técnico](#14-roadmap-técnico)
+15. [Documentação Relacionada](#15-documentação-relacionada)
 
 ---
 
@@ -30,7 +60,80 @@ Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Doc
 
 ---
 
-## 2. Stack Tecnológico
+## 2. Princípios Arquiteturais
+
+| Princípio | Descrição |
+|-----------|-----------|
+| **API First** | Toda a funcionalidade é exposta via API REST antes de ser consumida por qualquer interface. Documentação OpenAPI/Swagger gerada automaticamente. |
+| **Security by Design** | Autenticação JWT stateless, bcrypt para passwords, rate limiting por tier, validação rigorosa de inputs, CORS restrito. |
+| **Privacy by Design** | Zero retenção de documentos originais. Apenas hashes SHA-256 de 64 caracteres são persistidos. |
+| **Zero-Knowledge** | O documento original é processado em memória e descartado. O servidor nunca vê, armazena ou transmite o conteúdo do ficheiro. |
+| **Multi-Tenant** | Segregação lógica por `institution_id`. Cada instituição opera num tenant isolado com dados, créditos e dashboard próprios. |
+| **Cloud Native** | Containerização Docker, healthchecks, auto-scaling ready, deploy em qualquer ambiente cloud ou on-premise. |
+| **Auditabilidade** | Cada operação é registada imutavelmente em JSON com timestamp CAT (UTC+2), IP, user e resultado. Retenção mínima de 20 anos. |
+
+---
+
+## 3. Estrutura do Repositório
+
+```
+Txeka-Ntiyiso/
+│
+├── api-gateway/              # Backend FastAPI principal
+│   ├── src/
+│   │   ├── main.py          # Entry point: rotas, middlewares, CORS
+│   │   ├── database.py       # AsyncSession, engine PostgreSQL
+│   │   ├── settings.py       # Config centralizada: JWT, DB, env vars
+│   │   ├── security.py       # JWT, bcrypt, verify_token, verify_role
+│   │   ├── logger.py         # Structlog: correlation_id, JSON logging
+│   │   ├── models/           # ORM SQLAlchemy + schemas Pydantic
+│   │   ├── routes/           # Endpoints: auth, certify, verify, audit
+│   │   ├── services/         # Lógica de negócio: emission, verification, audit
+│   │   └── core/             # Utilitários: hashing, QR, sanitização
+│   ├── requirements.txt
+│   ├── pyproject.toml
+│   └── tests/
+│
+├── core/                     # Módulo compartilhado (workspace Poetry)
+│   ├── src/                  # Hashing, QR generator, security utils
+│   ├── tests/
+│   └── pyproject.toml
+│
+├── portal-web/               # Frontend React + Tailwind CSS (Fase 2)
+│
+├── doc/                      # Documentação completa
+│   ├── README.md            # Índice por perfil
+│   ├── guides/              # API_REFERENCE.md, USER_GUIDE.md
+│   ├── technical/           # TECHNICAL.md, DEPLOYMENT.md, RUNBOOK.md
+│   └── legal/               # COMPLIANCE.md, SECURITY.md
+│
+├── assets/                   # Logos, imagens, recursos visuais
+│
+├── scripts/                  # Scripts de automação e utilitários
+│
+├── .github/                  # Workflows GitHub Actions
+│
+├── Dockerfile                # Multi-stage build (builder + runtime)
+├── docker-compose.yml        # Orquestração PostgreSQL + API
+├── pyproject.toml            # Workspace Poetry (api-gateway + core)
+├── README.md                 # Apresentação do projeto (GitHub)
+├── POSITIONING.md            # Posicionamento estratégico e regulatório
+└── LICENSE                   # Proprietário — todos os direitos reservados
+```
+
+| Diretório | Função |
+|-----------|--------|
+| `api-gateway/` | Backend principal FastAPI — lógica de negócio, rotas, autenticação, auditoria |
+| `core/` | Biblioteca compartilhada — hashing SHA-256, geração de QR codes, utilitários de segurança |
+| `portal-web/` | Aplicação React — portal público de verificação e dashboard institucional |
+| `doc/` | Documentação técnica, operacional, jurídica e de segurança |
+| `assets/` | Recursos visuais do projeto (logos, badges, diagramas) |
+| `scripts/` | Scripts de deploy, backup, migração e automação |
+| `.github/` | CI/CD workflows e templates de issues/pull requests |
+
+---
+
+## 4. Stack Tecnológico
 
 | Camada | Tecnologia | Versão | Função |
 |--------|-----------|--------|--------|
@@ -51,9 +154,9 @@ Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Doc
 
 ---
 
-## 3. Arquitetura de Dados
+## 5. Arquitetura de Dados
 
-### 3.1 Tabelas Principais
+### 5.1 Tabelas Principais
 
 #### `documents`
 
@@ -166,9 +269,9 @@ CREATE INDEX idx_credit_type ON credit_transactions(type);
 
 ---
 
-## 4. Fluxos de Operação
+## 6. Fluxos de Operação
 
-### 4.1 Emissão (Documento Único)
+### 6.1 Emissão (Documento Único)
 
 ```
 Cliente ──POST /certify (PDF + JWT)──▶ API
@@ -220,7 +323,7 @@ Cliente ──POST /certify (PDF + JWT)──▶ API
 
 **Tempo esperado:** < 500ms
 
-### 4.2 Emissão em Bulk (B2B/B2G)
+### 6.2 Emissão em Bulk (B2B/B2G)
 
 ```
 Cliente ──POST /certify/bulk (JSON + JWT)──▶ API
@@ -271,7 +374,7 @@ Cliente ──POST /certify/bulk (JSON + JWT)──▶ API
 
 **Tempo esperado:** < 2s para 100 documentos
 
-### 4.3 Verificação (Pública)
+### 6.3 Verificação (Pública)
 
 ```
 Cliente ──GET /verify/{hash}──▶ API
@@ -305,7 +408,7 @@ Cliente ──GET /verify/{hash}──▶ API
 
 **Tempo esperado:** < 100ms
 
-### 4.4 Verificação (B2B/B2G)
+### 6.4 Verificação (B2B/B2G)
 
 ```
 Cliente ──POST /verify (JSON + API Key)──▶ API
@@ -329,7 +432,7 @@ Cliente ──POST /verify (JSON + API Key)──▶ API
                                         + institution_id
 ```
 
-### 4.5 Revogação
+### 6.5 Revogação
 
 ```
 Admin/Inst ──POST /emissions/{id}/revoke + JWT──▶ API
@@ -371,7 +474,7 @@ Admin/Inst ──POST /emissions/{id}/revoke + JWT──▶ API
 
 **Tempo esperado:** < 150ms
 
-### 4.6 Auditoria
+### 6.6 Auditoria
 
 ```
 Admin ──GET /audit/logs + JWT──▶ API
@@ -398,9 +501,9 @@ Admin ──GET /audit/logs + JWT──▶ API
 
 ---
 
-## 5. Autenticação
+## 7. Autenticação
 
-### 5.1 JWT Flow
+### 7.1 JWT Flow
 
 ```
 ┌─────────┐    login     ┌─────────┐    encode     ┌─────────┐
@@ -429,7 +532,7 @@ Admin ──GET /audit/logs + JWT──▶ API
                                            Continua      401 Unauthorized
 ```
 
-### 5.2 Payload JWT
+### 7.2 Payload JWT
 
 ```json
 {
@@ -443,14 +546,14 @@ Admin ──GET /audit/logs + JWT──▶ API
 }
 ```
 
-### 5.3 Sistema Dual de Login
+### 7.3 Sistema Dual de Login
 
 | Tipo | Endpoint | Expiração | Acesso | Uso |
 |------|----------|-----------|--------|-----|
 | **Admin** | `/api/v1/auth/admin/login` | 90 dias | Sistema completo: emit, revoke, manage_institutions, audit_logs | Equipa Txeka, gestão de plataforma |
 | **Instituição** | `/api/v1/auth/login` | 30 dias | emit, verify, dashboard próprio | INAGE, bancos, universidades |
 
-### 5.4 Roles e Permissões
+### 7.4 Roles e Permissões
 
 ```python
 ROLES = {
@@ -465,9 +568,9 @@ ROLES = {
 
 ---
 
-## 6. Multi-Tenancy e Controlo de Créditos
+## 8. Multi-Tenancy e Controlo de Créditos
 
-### 6.1 Arquitetura Multi-Tenant
+### 8.1 Arquitetura Multi-Tenant
 
 Cada instituição opera num **tenant isolado** lógico:
 
@@ -476,7 +579,7 @@ Cada instituição opera num **tenant isolado** lógico:
 - API keys únicas por instituição
 - Dashboard segregado por tenant
 
-### 6.2 Controlo de Créditos
+### 8.2 Controlo de Créditos
 
 | Operação | Consumo | Descrição |
 |----------|---------|-----------|
@@ -509,9 +612,9 @@ Instituição ──compra créditos──▶ Admin
 
 ---
 
-## 7. Segurança
+## 9. Segurança
 
-### 7.1 Criptografia
+### 9.1 Criptografia
 
 | Algoritmo | Tipo | Uso | Força |
 |-----------|------|-----|-------|
@@ -520,7 +623,7 @@ Instituição ──compra créditos──▶ Admin
 | **bcrypt** | Password hashing | Login de utilizadores | 12 rounds (~100ms) |
 | **TLS 1.3** | Transporte | HTTPS obrigatório | Padrão bancário |
 
-### 7.2 Validação de Entrada
+### 9.2 Validação de Entrada
 
 | Regra | Implementação | Mitigação |
 |-------|--------------|-----------|
@@ -531,7 +634,7 @@ Instituição ──compra créditos──▶ Admin
 | Nome suspeito | Rejeita `.pdf.png`, `.pdf.exe` | Double extension attacks |
 | Rate limiting | 100 req/min (público) / 1000 req/min (B2B) | Brute force, scraping |
 
-### 7.3 Rate Limiting por Tier
+### 9.3 Rate Limiting por Tier
 
 | Tier | Limite | Janela | Uso |
 |------|--------|--------|-----|
@@ -540,7 +643,7 @@ Instituição ──compra créditos──▶ Admin
 | **Admin** | 500 req/min | 60s | Gestão e auditoria |
 | **Bulk** | 100 docs/min | 60s | Emissão em lote |
 
-### 7.4 CORS
+### 9.4 CORS
 
 ```python
 ALLOWED_ORIGINS = [
@@ -558,9 +661,9 @@ ALLOWED_ORIGINS = [
 
 ---
 
-## 8. Deploy e Containerização
+## 10. Deploy e Containerização
 
-### 8.1 Dockerfile (Multi-Stage Build)
+### 10.1 Dockerfile (Multi-Stage Build)
 
 O Dockerfile utiliza **multi-stage build** para otimizar segurança e tamanho:
 
@@ -573,7 +676,7 @@ O Dockerfile utiliza **multi-stage build** para otimizar segurança e tamanho:
 - Healthcheck a cada 30s com 3 retries
 - 4 workers Uvicorn para concorrência
 
-### 8.2 Docker Compose
+### 10.2 Docker Compose
 
 Orquestração completa com 2 serviços:
 
@@ -589,7 +692,7 @@ Orquestração completa com 2 serviços:
 - Resource limits em ambos os serviços
 - Variáveis de ambiente via `.env` (segredos nunca hardcoded)
 
-### 8.3 Deploy Pipeline
+### 10.3 Deploy Pipeline
 
 **Desenvolvimento Local:**
 ```bash
@@ -618,7 +721,7 @@ sudo docker-compose up -d --build
 
 ---
 
-## 9. Performance
+## 11. Performance
 
 | Operação | Tempo Médio | P95 | P99 | Notas |
 |----------|-------------|-----|-----|-------|
@@ -632,9 +735,9 @@ sudo docker-compose up -d --build
 
 ---
 
-## 10. Monitoramento
+## 12. Monitoramento
 
-### 10.1 Logs (structlog JSON)
+### 12.1 Logs (structlog JSON)
 
 ```json
 {
@@ -648,7 +751,7 @@ sudo docker-compose up -d --build
 }
 ```
 
-### 10.2 Health Check
+### 12.2 Health Check
 
 ```json
 GET /health
@@ -663,7 +766,7 @@ GET /health
 }
 ```
 
-### 10.3 Métricas Futuras (Prometheus + Grafana)
+### 12.3 Métricas Futuras (Prometheus + Grafana)
 
 | Métrica | Alerta | Severidade |
 |---------|--------|------------|
@@ -676,9 +779,9 @@ GET /health
 
 ---
 
-## 11. Decisões Arquiteturais
+## 13. Decisões Arquiteturais
 
-### 11.1 Por que FastAPI?
+### 13.1 Por que FastAPI?
 
 | Critério | FastAPI | Django | Flask |
 |----------|---------|--------|-------|
@@ -690,7 +793,7 @@ GET /health
 
 **Decisão:** FastAPI oferece performance (uvicorn + asyncio) e documentação automática sem boilerplate.
 
-### 11.2 Por que PostgreSQL?
+### 13.2 Por que PostgreSQL?
 
 | Critério | PostgreSQL | MongoDB |
 |----------|-----------|---------|
@@ -702,7 +805,7 @@ GET /health
 
 **Decisão:** PostgreSQL com Supabase oferece ACID + auditoria + escalabilidade sem custo inicial.
 
-### 11.3 Por que SHA-256 em vez de Blockchain?
+### 13.3 Por que SHA-256 em vez de Blockchain?
 
 | Critério | SHA-256 + BD | Blockchain |
 |----------|-------------|------------|
@@ -714,7 +817,7 @@ GET /health
 
 **Decisão:** SHA-256 com PostgreSQL oferece imutabilidade via audit logs sem complexidade de blockchain.
 
-### 11.4 Zero-Knowledge: Client-Side vs Server-Side Hashing
+### 13.4 Zero-Knowledge: Client-Side vs Server-Side Hashing
 
 | Abordagem | Privacidade | Complexidade | Conformidade |
 |-----------|------------|--------------|--------------|
@@ -725,7 +828,7 @@ GET /health
 
 ---
 
-## 12. Roadmap Técnico
+## 14. Roadmap Técnico
 
 | Fase | Período | Itens Técnicos |
 |------|---------|----------------|
@@ -735,4 +838,18 @@ GET /health
 
 ---
 
-*Documento gerado em conformidade com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+## 15. Documentação Relacionada
+
+| Documento | Descrição |
+|-----------|-----------|
+| [README.md](../../README.md) | Apresentação do projeto, proposta de valor, roadmap |
+| [POSITIONING.md](../../POSITIONING.md) | Posicionamento estratégico, declaração regulatória, glossário |
+| [API Reference](../guides/API_REFERENCE.md) | Referência completa da API REST (endpoints, schemas, exemplos) |
+| [Estratégia de Implantação](DEPLOYMENT.md) | Docker, deploy nacional, infraestrutura, SSL, backup |
+| [Runbook de Produção](RUNBOOK.md) | Operações diárias, troubleshooting, manutenção, contactos de emergência |
+| [Dossiê de Conformidade](../legal/COMPLIANCE.md) | Lei 3/2017, Decreto 59/2019, mapeamento de requisitos |
+| [Políticas de Segurança](../legal/SECURITY.md) | Threat model, ataques mitigados, incident response |
+
+---
+
+*Documento gerado em conformidade com os princípios da Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
