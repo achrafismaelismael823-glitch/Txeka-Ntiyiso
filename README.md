@@ -5,16 +5,16 @@
 <h1 align="center">Txeka Ntiyiso</h1>
 
 <p align="center">
-  <strong>Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental</strong>
+  <strong>Infraestrutura tecnológica para verificação da integridade e autenticidade documental em Moçambique</strong>
 </p>
 
 <p align="center">
   <a href="https://txeka-ntiyiso-api.onrender.com/health">
-    <img src="https://img.shields.io/badge/status-online-brightgreen" alt="Status"/>
+    <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build"/>
   </a>
   <img src="https://img.shields.io/badge/conformidade-Lei%203%2F2017-blue" alt="Conformidade"/>
   <img src="https://img.shields.io/badge/validacao-%3C100ms-orange" alt="Performance"/>
-  <img src="https://img.shields.io/badge/ultimo_deploy-05%2F07%2F2026-success" alt="Deploy"/>
+  <img src="https://img.shields.io/badge/versao-1.2.0-blueviolet" alt="Versão"/>
 </p>
 
 ---
@@ -93,18 +93,18 @@ Tornar-se a infraestrutura nacional de referência para verificação da integri
 
 ---
 
-## 🛡️ Zero-Knowledge Architecture: Privacidade Inviolável
+## 🛡️ Zero-Knowledge Architecture: Privacidade por Design
 
-**O Txeka Ntiyiso nunca vê, nunca armazena e nunca poderá vazar o teu documento original.**
+O Txeka Ntiyiso foi concebido para que os documentos originais permaneçam no dispositivo do utilizador. A plataforma processa apenas o hash criptográfico necessário para a verificação da integridade documental.
 
-Aqui está o segredo da nossa arquitetura:
+Aqui está o funcionamento da nossa arquitetura:
 1. O utilizador anexa o PDF no portal.
 2. A "impressão digital" (Hash SHA-256) é calculada **diretamente no navegador** (client-side).
 3. Apenas esta linha de código de 64 caracteres viaja até ao nosso servidor.
-4. O documento original **NUNCA sai do dispositivo** do utilizador.
+4. O documento original **não sai do dispositivo** do utilizador.
 5. O sistema apenas regista: *"Esta impressão digital foi validada e existe desde 27/06/2026"*.
 
-**Resultado:** Risco zero de vazamento de dados confidenciais.
+**Resultado:** O risco de vazamento de dados confidenciais é eliminado na origem, por construção.
 
 ---
 
@@ -123,7 +123,7 @@ Atuando como um **serviço descentralizado de verificação de integridade e reg
 | Fase | Período | Estado | Descrição |
 |------|---------|--------|-----------|
 | **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
-| **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | **Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos** |
+| **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos |
 | **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
 | **Fase 4** | Q4 2026 | ⏳ Planeada | Dashboard por perfil (Admin/Instituição/Governo) + Escala empresarial |
 
@@ -153,7 +153,7 @@ O Txeka Ntiyiso implementa um pipeline de validação de quatro etapas:
 - **Emissão em Bulk (B2B/B2G):** Emissão de múltiplos documentos em lote via JSON, com consumo de 1 crédito por documento. Ideal para universidades, ministérios e bancos.
 - **Validação Rigorosa de PDF:** Verificação de extensão `.pdf`, MIME `application/pdf`, magic bytes `%PDF-` e deteção de nomes suspeitos (ex: `.pdf.png`). Rejeita PNG, JPG, GIF, SVG e stickers.
 - **Auditoria Forense:** Registo imutável de quem verificou, quando, de que IP, com que resultado.
-- **Conformidade Lei 3/2017:** Desenvolvido em conformidade com os princípios da Lei n.º 3/2017 aplicáveis à integridade, autenticidade e rastreabilidade.
+- **Conformidade Lei 3/2017:** Desenvolvido em conformidade com os princípios e requisitos aplicáveis da legislação moçambicana relativos à integridade, autenticidade e rastreabilidade documental.
 - **Retenção de 20 Anos:** Arquitetura preparada para retenção de registos por até 20 anos, conforme os requisitos legais aplicáveis.
 - **Privacidade por Design (Zero-Knowledge):** A plataforma processa e armazena exclusivamente **hashes criptográficos de 64 caracteres**. Os documentos originais nunca saem do ambiente do cliente, eliminando por completo o risco de vazamento de dados pessoais.
 
@@ -283,7 +283,7 @@ Para especificações detalhadas e manuais operacionais, consulte a nossa estrut
 
 ## Conformidade Legal e Retenção de Dados
 
-O Txeka Ntiyiso cumpre integralmente o regime jurídico moçambicano de validação eletrónica:
+O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos aplicáveis da legislação moçambicana relativos à integridade, autenticidade e rastreabilidade documental.
 
 | Legislação | Âmbito | Alinhamento Txeka Ntiyiso |
 |------------|--------|---------------------------|
@@ -303,8 +303,6 @@ O Txeka Ntiyiso cumpre integralmente o regime jurídico moçambicano de validaç
 |---------|--------|-------------|
 | Q1 2026 | ✅ Concluída | MVP core validado: emissão, verificação, revogação, audit logs imutáveis |
 
----
-
 ### 🔄 Fase 2 — Em Curso
 
 | Período | Estado | Entregáveis |
@@ -322,15 +320,11 @@ O Txeka Ntiyiso cumpre integralmente o regime jurídico moçambicano de validaç
 > - ✅ Multi-tenant
 > - 🔄 Portal web React (em evolução)
 
----
-
 ### ⏳ Fase 3 — Planeada
 
 | Período | Estado | Entregáveis |
 |---------|--------|-------------|
 | Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
-
----
 
 ### ⏳ Fase 4 — Planeada
 
