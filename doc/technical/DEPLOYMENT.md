@@ -2,9 +2,30 @@
 
 ## Guia de Deploy e Infraestrutura — Txeka Ntiyiso
 
-**Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental**
+**Infraestrutura tecnológica para verificação da integridade e autenticidade documental em Moçambique**
 
-Plano de deploy, containerização e operação em conformidade com a legislação moçambicana.
+| Versão | Estado | Última Atualização | Contacto |
+|--------|--------|-------------------|----------|
+| 2.0 | Final | 2026-07-12 | geral.txekantiyiso@gmail.com |
+
+Plano de deploy, containerização e operação em alinhamento com a legislação moçambicana.
+
+---
+
+## Índice
+
+1. [Visão Geral](#1-visão-geral)
+2. [Ficheiros Docker](#2-ficheiros-docker)
+3. [Variáveis de Ambiente](#3-variáveis-de-ambiente)
+4. [Deploy Passo a Passo](#4-deploy-passo-a-passo)
+5. [Nginx — Reverse Proxy](#5-nginx--reverse-proxy)
+6. [Backup e Recuperação](#6-backup-e-recuperação)
+7. [Monitoramento](#7-monitoramento)
+8. [Checklist de Deploy](#8-checklist-de-deploy)
+9. [Conformidade Legal](#9-conformidade-legal)
+10. [Roadmap Infraestrutura](#10-roadmap-infraestrutura)
+11. [Contactos para Suporte Infraestrutural](#11-contactos-para-suporte-infraestrutural)
+12. [Documentação Relacionada](#12-documentação-relacionada)
 
 ---
 
@@ -28,10 +49,10 @@ O sistema Txeka Ntiyiso é containerizado com Docker e orquestrado via Docker Co
 ```dockerfile
 # ============================================================
 # TXEKA NTIYISO - API Gateway
-# Infraestrutura tecnológica nacional de verificação da
+# Infraestrutura tecnológica para verificação da
 # integridade e autenticidade documental
 #
-# Conformidade: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
+# Alinhamento: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
 # Fuso horário: CAT (UTC+2) - Moçambique
 # Versão: 2.0.0
 # ============================================================
@@ -39,7 +60,7 @@ O sistema Txeka Ntiyiso é containerizado com Docker e orquestrado via Docker Co
 # -------- Stage 1: Builder --------
 FROM python:3.11-slim AS builder
 
-LABEL maintainer="Txeka Ntiyiso Team <tech@txeka.co.mz>"
+LABEL maintainer="Txeka Ntiyiso Team <geral.txekantiyiso@gmail.com>"
 LABEL description="API Gateway para validação criptográfica de documentos"
 LABEL version="2.0.0"
 LABEL country="MZ"
@@ -67,7 +88,7 @@ RUN poetry config virtualenvs.create false && \
 # -------- Stage 2: Runtime --------
 FROM python:3.11-slim
 
-LABEL maintainer="Txeka Ntiyiso Team <tech@txeka.co.mz>"
+LABEL maintainer="Txeka Ntiyiso Team <geral.txekantiyiso@gmail.com>"
 LABEL description="Txeka Ntiyiso API Gateway — Infraestrutura de Verificação de Integridade Documental"
 LABEL version="2.0.0"
 
@@ -129,12 +150,12 @@ CMD ["uvicorn", "api-gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000
 ```yaml
 # ============================================================
 # TXEKA NTIYISO - Docker Compose
-# Infraestrutura tecnológica nacional de verificação da
+# Infraestrutura tecnológica para verificação da
 # integridade e autenticidade documental
 #
 # Ambiente: Desenvolvimento e Produção Nacional
 # Fuso horário: CAT (UTC+2) - Moçambique
-# Conformidade: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
+# Alinhamento: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
 # Versão: 2.0.0
 # ============================================================
 
@@ -559,6 +580,8 @@ docker exec txeka-ntiyiso-api cat /app/logs/app.json | jq
 
 ## 9. Conformidade Legal
 
+O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos aplicáveis da legislação moçambicana relativos à integridade, autenticidade e rastreabilidade documental.
+
 | Requisito | Implementação | Ficheiro |
 |-----------|--------------|----------|
 | **Lei 3/2017** — Autenticidade | JWT + institution_id no payload | `Dockerfile` (runtime) |
@@ -586,12 +609,24 @@ docker exec txeka-ntiyiso-api cat /app/logs/app.json | jq
 
 | Função | Contacto | Canal |
 |--------|----------|-------|
-| DevOps / Suporte Técnico | tech@txeka.co.mz | Email |
+| DevOps / Suporte Técnico | geral.txekantiyiso@gmail.com | Email |
 | Render Support | support@render.com | Dashboard |
 | INTIC | info@intic.gov.mz | Email institucional |
 | AC-MZ | info@acmz.gov.mz | Certificados SSL |
 
 ---
 
-*Documento gerado em conformidade com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+## 12. Documentação Relacionada
+
+- [README.md](../README.md) — Apresentação do projeto
+- [POSITIONING.md](../POSITIONING.md) — Posicionamento estratégico e regulatório
+- [API Reference](../guides/API_REFERENCE.md) — Referência completa da API REST
+- [Runbook de Produção](RUNBOOK.md) — Operações diárias e troubleshooting
+- [Arquitetura Técnica](TECHNICAL.md) — Stack, schema e decisões arquiteturais
+- [Dossiê de Conformidade Legal](../legal/COMPLIANCE.md) — Enquadramento jurídico completo
+- [Políticas de Segurança Cibernética](../legal/SECURITY.md) — Threat model e segurança
+
+---
+
+*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
 *Versão 2.0 — Julho 2026*
