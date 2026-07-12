@@ -1,28 +1,37 @@
 # Runbook de Operações — Txeka Ntiyiso
 
-**Infraestrutura tecnológica nacional de verificação da integridade e autenticidade documental**
+**Infraestrutura tecnológica para verificação da integridade e autenticidade documental em Moçambique**
 
 **Procedimentos Operacionais, Troubleshooting e Resposta a Incidentes**
 
-Baseado em testes reais de produção | Última atualização: 07/07/2026
+---
+
+| | |
+|:---|:---|
+| **Versão** | 2.0 |
+| **Estado** | 🔄 Em curso (Fase 2) |
+| **Última atualização** | 2026-07-12 |
+| **Baseado em** | Testes reais de produção (07/07/2026) |
+| **Contacto operacional** | geral.txekantiyiso@gmail.com |
 
 ---
 
 ## Índice
 
-1. [Checklist Diário](#checklist-diário)
-2. [Checklist Semanal](#checklist-semanal)
-3. [Checklist Mensal](#checklist-mensal)
-4. [Procedimentos Comuns](#procedimentos-comuns)
-5. [Troubleshooting](#troubleshooting)
-6. [Manutenção Programada](#manutenção-programada)
-7. [Resposta a Incidentes](#resposta-a-incidentes)
-8. [Contactos de Emergência](#contactos-de-emergência)
-9. [Comandos de Referência Rápida](#comandos-de-referência-rápida)
+1. [Checklist Diário](#1-checklist-diário)
+2. [Checklist Semanal](#2-checklist-semanal)
+3. [Checklist Mensal](#3-checklist-mensal)
+4. [Procedimentos Comuns](#4-procedimentos-comuns)
+5. [Troubleshooting](#5-troubleshooting)
+6. [Manutenção Programada](#6-manutenção-programada)
+7. [Resposta a Incidentes](#7-resposta-a-incidentes)
+8. [Contactos de Emergência](#8-contactos-de-emergência)
+9. [Comandos de Referência Rápida](#9-comandos-de-referência-rápida)
+10. [Documentação Relacionada](#10-documentação-relacionada)
 
 ---
 
-## Checklist Diário
+## 1. Checklist Diário
 
 ### Verificação de Saúde (5 minutos)
 
@@ -120,7 +129,7 @@ fi
 
 ---
 
-## Checklist Semanal
+## 2. Checklist Semanal
 
 ### Manutenção Preventiva (30 minutos)
 
@@ -166,7 +175,7 @@ ORDER BY remaining ASC;
 
 ---
 
-## Checklist Mensal
+## 3. Checklist Mensal
 
 ### Manutenção Profunda (2 horas)
 
@@ -233,7 +242,7 @@ LIMIT 10;
 
 ---
 
-## Procedimentos Comuns
+## 4. Procedimentos Comuns
 
 ### Reiniciar Serviço API
 
@@ -321,7 +330,7 @@ VALUES ('INAGE', 1000, 'purchase', 'Recarga manual — Ordem #2026-07-001');
 "
 
 # 3. Notificar instituição
-# Email: tech@txeka.co.mz
+# Email: geral.txekantiyiso@gmail.com
 # Assunto: [Txeka Ntiyiso] Créditos adicionados — INAGE
 ```
 
@@ -344,7 +353,7 @@ sed -i "s/JWT_SECRET_KEY=.*/JWT_SECRET_KEY=$NEW_KEY/" .env
 docker-compose up -d --force-recreate api
 
 # 5. Notificar institções (todos os tokens ativos serão invalidados)
-# Enviar email: tech@txeka.co.mz
+# Enviar email: geral.txekantiyiso@gmail.com
 # Assunto: [MANUTENÇÃO] Rotação de credenciais — re-login necessário
 
 # 6. Verificar
@@ -376,7 +385,7 @@ WHERE institution_id = 'INAGE';
 
 ---
 
-## Troubleshooting
+## 5. Troubleshooting
 
 ### Erro 502 Bad Gateway
 
@@ -520,7 +529,7 @@ sudo ufw deny from 192.0.2.100
 # Gerar novo token para instituição afetada
 curl -X POST https://txeka-ntiyiso-api.onrender.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@inage.gov.mz", "password": "senha_segura"}'
+  -d '{''"email''": "admin@inage.gov.mz", "password": "senha_segura"}'
 
 # Enviar novo token por canal seguro:
 # - Email cifrado (PGP)
@@ -649,7 +658,7 @@ curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \
 
 ---
 
-## Manutenção Programada
+## 6. Manutenção Programada
 
 ### Janela de Manutenção Oficial
 
@@ -666,7 +675,7 @@ curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \
 ### Procedimento de Atualização de Segurança
 
 **1. Notificar stakeholders 48h antes**
-   - Email: tech@txeka.co.mz + instituições afetadas
+   - Email: geral.txekantiyiso@gmail.com + instituições afetadas
    - Dashboard: banner de manutenção programada
    - Status page: incidente programado
 
@@ -732,7 +741,7 @@ curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=50" \
 
 ---
 
-## Resposta a Incidentes
+## 7. Resposta a Incidentes
 
 ### Classificação de Severidade
 
@@ -934,16 +943,16 @@ T+60min   PÓS-RESOLUÇÃO:
 
 ---
 
-## Contactos de Emergência
+## 8. Contactos de Emergência
 
 ### Equipa Txeka Ntiyiso
 
-| Função | Nome | Contacto | Disponibilidade | Escalation |
-|--------|------|----------|-----------------|------------|
-| On-call Engineer | Rotativo | +258 84 XXX XXXX | 24/7 | P1, P2 |
-| Tech Lead | A definir | tech@txeka.co.mz | 24/7 (escalação) | P1, P2 não resolvido |
-| Security Officer | A definir | security@txeka.co.mz | 24/7 (incidentes) | Breach, P1 segurança |
-| CTO | A definir | cto@txeka.co.mz | Business hours | P1 não resolvido em 1h |
+| Função | Contacto | Disponibilidade | Escalation |
+|--------|----------|-----------------|------------|
+| On-call Engineer | Rotativo | 24/7 | P1, P2 |
+| Tech Lead | A definir | 24/7 (escalação) | P1, P2 não resolvido |
+| Security Officer | A definir | 24/7 (incidentes) | Breach, P1 segurança |
+| CTO | A definir | Business hours | P1 não resolvido em 1h |
 
 ### Parceiros e Fornecedores
 
@@ -960,7 +969,7 @@ T+60min   PÓS-RESOLUÇÃO:
 
 | Canal | Uso | Acesso |
 |-------|-----|--------|
-| Email | Notificações formais, relatórios | tech@txeka.co.mz |
+| Email | Notificações formais, relatórios | geral.txekantiyiso@gmail.com |
 | Slack #incidents | Coordenação em tempo real | Equipa técnica |
 | PagerDuty | Alertas críticos, on-call | On-call engineer |
 | Status Page | Comunicação pública | https://status.txeka.co.mz |
@@ -968,7 +977,7 @@ T+60min   PÓS-RESOLUÇÃO:
 
 ---
 
-## Comandos de Referência Rápida
+## 9. Comandos de Referência Rápida
 
 ### Docker
 
@@ -1118,5 +1127,19 @@ curl "https://txeka-ntiyiso-api.onrender.com/api/v1/audit/logs?limit=5" \
 
 ---
 
+## 10. Documentação Relacionada
+
+| Documento | Descrição |
+|-----------|-----------|
+| [README.md](../../README.md) | Apresentação do projeto, proposta de valor, roadmap |
+| [POSITIONING.md](../../POSITIONING.md) | Posicionamento estratégico, declaração regulatória |
+| [Arquitetura Técnica](TECHNICAL.md) | Stack, schema SQL, fluxos de dados, decisões arquiteturais |
+| [Estratégia de Implantação](DEPLOYMENT.md) | Docker, deploy nacional, infraestrutura, SSL |
+| [API Reference](../guides/API_REFERENCE.md) | Referência completa da API REST |
+| [Dossiê de Conformidade](../legal/COMPLIANCE.md) | Lei 3/2017, Decreto 59/2019, mapeamento de requisitos |
+| [Políticas de Segurança](../legal/SECURITY.md) | Threat model, ataques mitigados, incident response |
+
+---
+
 > **Txeka Ntiyiso — Runbook de Operações v2.0** 🇲🇿
-> Baseado em testes reais de produção (07/07/2026) | Alinhado com Lei 3/2017, Decreto 59/2019 e Resolução 69/2021 (PENSC)
+> Baseado em testes reais de produção | Alinhado com os princípios da Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC)
