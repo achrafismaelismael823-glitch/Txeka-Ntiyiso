@@ -2,7 +2,28 @@
 
 ## Políticas de Segurança Cibernética — Txeka Ntiyiso
 
+**Infraestrutura tecnológica para verificação da integridade e autenticidade documental em Moçambique**
+
+| Versão | Estado | Última Atualização | Contacto |
+|--------|--------|-------------------|----------|
+| 2.0 | Final | 2026-07-12 | geral.txekantiyiso@gmail.com |
+
 Implementação de conformidade legal, modelo de ameaças e resposta a incidentes.
+
+---
+
+## Índice
+
+1. [Modelo de Ameaças (STRIDE)](#1-modelo-de-ameaças-stride)
+2. [Criptografia](#2-criptografia)
+3. [Autenticação e Autorização](#3-autenticação-e-autorização)
+4. [Ataques Mitigados](#4-ataques-mitigados)
+5. [Containerização e Segurança de Infraestrutura](#5-containerização-e-segurança-de-infraestrutura)
+6. [Backup e Disaster Recovery](#6-backup-e-disaster-recovery)
+7. [Resposta a Incidentes](#7-resposta-a-incidentes)
+8. [Conformidade Legal](#8-conformidade-legal)
+9. [Contacto para Auditoria](#9-contacto-para-auditoria)
+10. [Documentação Relacionada](#10-documentação-relacionada)
 
 ---
 
@@ -12,8 +33,8 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 |-------|-----------|-----------------|
 | **S**poofing | Falsificar identidade do emissor | JWT + institution_id validado no servidor |
 | **T**ampering | Alterar documento após emissão | SHA-256 imutável; qualquer alteração invalida hash |
-| **R**epudiation | Emissor negar que emitiu | Audit logs imutáveis com timestamp UTC (CAT) |
-| **I**nformation Disclosure | Vazamento de dados | Zero-Knowledge: apenas hashes de 64 chars armazenados |
+| **R**epudiation | Emissor negar que emitiu | Audit logs imutáveis com timestamp CAT (UTC+2) |
+| **I**nformation Disclosure | Vazamento de dados | Zero-Knowledge: apenas hashes de 64 caracteres armazenados |
 | **D**enial of Service | Sobrecarga do sistema | Rate limiting (100 req/min), resource limits (1.0 CPU / 512M RAM) |
 | **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root `txeka` no container |
 
@@ -21,19 +42,19 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 
 ## 2. Criptografia
 
-### SHA-256
+### 2.1 SHA-256
 
 | Propriedade | Valor |
 |-------------|-------|
 | Tipo | Hash criptográfico |
 | Tamanho | 256 bits (64 caracteres hexadecimais) |
 | Propriedade | One-way (não reversível) |
-| Força | Militar (padrão governamental) |
-| Colisão | Computacionalmente impossível |
+| Força | Amplamente adotado na indústria |
+| Colisão | Computacionalmente impraticável |
 
 **Uso Txeka:** Hash do PDF binário processado em memória no container `txeka-ntiyiso-api`. O PDF original nunca é persistido.
 
-### JWT (pyjwt 2.8.0)
+### 2.2 JWT (pyjwt 2.8.0)
 
 | Propriedade | Valor |
 |-------------|-------|
@@ -44,17 +65,17 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 
 **Uso Txeka:** Token para autenticação stateless de APIs.
 
-### bcrypt (Futuro)
+### 2.3 bcrypt
 
 | Propriedade | Valor |
 |-------------|-------|
 | Tipo | Password hashing |
 | Salt rounds | 12 (defesa contra rainbow tables) |
-| Tempo | ~100ms/hash (lento propositalmente) |
+| Tempo | ~100 ms/hash (lento propositalmente) |
 
-**Uso Txeka:** Quando implementar login real com tabela `users`.
+**Uso Txeka:** Hashing de passwords de instituições e admin.
 
-### TLS 1.3
+### 2.4 TLS 1.3
 
 | Propriedade | Valor |
 |-------------|-------|
@@ -87,12 +108,15 @@ ROLES = {
 | Endpoint | Método | Requisito | Log de Auditoria |
 |----------|--------|-----------|------------------|
 | `/api/v1/certify` | POST | JWT + role institution | EMIT |
+| `/api/v1/certify/bulk` | POST | JWT + role institution | EMIT_BULK |
 | `/api/v1/verify/{hash}` | GET | Público (não requer token) | VERIFY (anonymous) |
 | `/api/v1/verify` | POST | API Key (B2B/B2G) | VERIFY |
 | `/api/v1/emissions/{id}/revoke` | POST | JWT admin/institution | REVOKE |
 | `/api/v1/audit/logs` | GET | JWT admin | — |
 | `/api/v1/audit/document/{hash}/history` | GET | JWT admin/institution | — |
 | `/api/v1/audit/stats` | GET | JWT admin | — |
+| `/api/v1/institutions` | POST/GET/PATCH | JWT admin | INSTITUTION_* |
+| `/api/v1/institutions/{id}/credits` | POST | JWT admin | CREDIT_ADD |
 
 ---
 
@@ -100,44 +124,44 @@ ROLES = {
 
 ### Ataque 1: Falsificação de Documento
 
-**Atacante:** "Vou editar este PDF"
-**Txeka:** Hash SHA-256 muda → verificação retorna `INVALID`
+**Atacante:** "Vou editar este PDF"  
+**Txeka:** Hash SHA-256 muda → verificação retorna `INVALID`  
 **Estado:** ✅ Mitigado
 
 ### Ataque 2: Duplicação
 
-**Atacante:** "Vou emitir o mesmo PDF 2x"
-**Txeka:** 409 Conflict, hash já existe na tabela `documents`
+**Atacante:** "Vou emitir o mesmo PDF 2x"  
+**Txeka:** 409 Conflict, hash já existe na tabela `documents`  
 **Estado:** ✅ Mitigado
 
 ### Ataque 3: Revogação Ignorada
 
-**Atacante:** "Vou usar documento revogado"
-**Txeka:** Status = `revoked` → verificação retorna `REVOKED`
+**Atacante:** "Vou usar documento revogado"  
+**Txeka:** Status = `revoked` → verificação retorna `REVOKED`  
 **Estado:** ✅ Mitigado
 
 ### Ataque 4: Token Falso
 
-**Atacante:** "Vou criar token JWT fake"
-**Txeka:** `jwt.decode()` falha (assinatura inválida) → 401
+**Atacante:** "Vou criar token JWT fake"  
+**Txeka:** `jwt.decode()` falha (assinatura inválida) → 401  
 **Estado:** ✅ Mitigado
 
 ### Ataque 5: SQL Injection
 
-**Atacante:** "Vou injetar SQL no hash"
-**Txeka:** Prepared statements (SQLAlchemy) + validação de 64 chars hexadecimais
+**Atacante:** "Vou injetar SQL no hash"  
+**Txeka:** Prepared statements (SQLAlchemy) + validação de 64 caracteres hexadecimais  
 **Estado:** ✅ Mitigado
 
 ### Ataque 6: Brute-Force
 
-**Atacante:** "Vou tentar adivinhar hashes"
-**Txeka:** Rate limiting (100 req/min por IP) + SHA-256 espaço de 2^256
+**Atacante:** "Vou tentar adivinhar hashes"  
+**Txeka:** Rate limiting (100 req/min por IP) + SHA-256 espaço de 2^256  
 **Estado:** ✅ Mitigado
 
 ### Ataque 7: Man-in-the-Middle (MITM)
 
-**Atacante:** "Vou interceptar tráfego"
-**Txeka:** TLS 1.3 obrigatório + HSTS + certificado válido
+**Atacante:** "Vou interceptar tráfego"  
+**Txeka:** TLS 1.3 obrigatório + HSTS + certificado válido  
 **Estado:** ✅ Mitigado
 
 ---
@@ -252,7 +276,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
 1. **Isolar:** Revogar todos os tokens JWT ativos
 2. **Preservar:** Exportar logs dos últimos 7 dias
 3. **Analisar:** Identificar vetor de ataque
-4. **Notificar:** security@txeka.co.mz + INTIC + BdM
+4. **Notificar:** geral.txekantiyiso@gmail.com + INTIC + BdM
 5. **Remediar:** Rotação de todas as credenciais
 6. **Relatório:** Documentar timeline e medidas
 
@@ -268,7 +292,9 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
 
 ## 8. Conformidade Legal
 
-| Requisito | Legislação | Implementação | Status |
+O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos aplicáveis da legislação moçambicana relativos à integridade, autenticidade e rastreabilidade documental.
+
+| Requisito | Legislação | Implementação | Estado |
 |-----------|-----------|---------------|--------|
 | Autenticidade | Lei 3/2017, Art. 48 | JWT + institution_id | ✅ |
 | Integridade | Lei 3/2017, Art. 49 | SHA-256 imutável | ✅ |
@@ -278,7 +304,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
 | Cifragem em trânsito | Resolução 69/2021 (PENSC) | HTTPS obrigatório (TLS 1.3) | ✅ |
 | Cifragem em repouso | Resolução 69/2021 (PENSC) | PostgreSQL encriptação nativa | ✅ |
 | Rate limiting | Banco de Moçambique | 100 req/min (público), 1000 req/min (B2B) | ✅ |
-| Zero PII | Banco de Moçambique | Apenas hashes de 64 chars | ✅ |
+| Zero PII | Banco de Moçambique | Apenas hashes de 64 caracteres | ✅ |
 | Trilha de auditoria | Banco de Moçambique | Tabela `audit_logs` imutável | ✅ |
 | Backup automático | Decreto 59/2019 | Script diário + retenção 30 dias | ✅ |
 | RTO/RPO | Decreto 59/2019 | 4h / 15min | ✅ |
@@ -289,7 +315,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
 
 Para o governo ou regulador realizar auditorias técnicas:
 
-**Email:** security@txeka.co.mz
+**Email:** geral.txekantiyiso@gmail.com
 
 Disponibilizaremos:
 - Desenho da arquitetura completa
@@ -300,5 +326,17 @@ Disponibilizaremos:
 
 ---
 
-*Documento gerado em conformidade com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
-*Versão 1.0 — Junho 2026*
+## 10. Documentação Relacionada
+
+- [README.md](../../README.md) — Apresentação do projeto
+- [POSITIONING.md](../../POSITIONING.md) — Posicionamento estratégico e regulatório
+- [Arquitetura Técnica](../technical/TECHNICAL.md) — Stack, schema e decisões técnicas
+- [Guia de Deploy](../technical/DEPLOYMENT.md) — Docker, pipeline CI/CD e infraestrutura
+- [Runbook de Produção](../technical/RUNBOOK.md) — Operações diárias e troubleshooting
+- [Dossiê de Conformidade Legal](COMPLIANCE.md) — Enquadramento jurídico completo
+- [API Reference](../guides/API_REFERENCE.md) — Contrato completo da API REST
+
+---
+
+*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Versão 2.0 — Julho 2026*
