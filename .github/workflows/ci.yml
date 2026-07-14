@@ -17,13 +17,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar Poetry
-        uses: snok/install-poetry@v1
       - name: Instalar dependências
-        run: poetry install
-      - name: Executar testes
-        run: poetry run pytest tests/ -v
-      - name: Scan de segurança (bandit)
         run: |
-          pip install bandit
-          bandit -r src/ -ll -ii
+          pip install pytest pytest-asyncio pytest-cov pytest-mock httpx bandit
+          pip install -r requirements.txt
+      - name: Executar testes
+        run: pytest tests/ -v
+      - name: Scan de segurança (bandit)
+        run: bandit -r src/ -ll -ii
