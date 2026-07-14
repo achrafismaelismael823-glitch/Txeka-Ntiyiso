@@ -8,31 +8,36 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Callable
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import HTTPException, status, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# Configuração
-SECRET_KEY = os.getenv("SECRET_KEY", "txeka-dev-secret-change-in-production")
-ALGORITHM = "HS256"
+# ──────────────────────────────────────────────
+# SEGURANÇA: Falha hard se variáveis não configuradas
+# ──────────────────────────────────────────────
 
-# Contexto para hash de passwords (legado - mantido para compatibilidade)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is required")
+
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not JWT_SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY environment variable is required")
+
+# Garantir que as chaves são diferentes (camadas de segurança)
+if SECRET_KEY == JWT_SECRET_KEY:
+    raise RuntimeError("SECRET_KEY and JWT_SECRET_KEY must be different")
+
+ALGORITHM = "HS256"
+JWT_ALGORITHM = "HS256"
 
 # Logger
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
-JWT_ALGORITHM = "HS256"
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not JWT_SECRET_KEY or JWT_SECRET_KEY == "dev-secret-key":
-    logger.warning("JWT_SECRET_KEY not configured or insecure. Using fallback.")
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "txeka-fallback-secret-key-change-immediately")
-
 # Expirações por perfil
-JWT_EXPIRATION_HOURS = 24          # Fallback geral
-JWT_EXPIRATION_DAYS_ADMIN = 90     # Admin: 90 dias
-JWT_EXPIRATION_DAYS_INSTITUTION = 30  # Institution: 30 dias
+JWT_EXPIRATION_HOURS = 24
+JWT_EXPIRATION_DAYS_ADMIN = 90
+JWT_EXPIRATION_DAYS_INSTITUTION = 30
 
 ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
 
@@ -55,7 +60,6 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None
 ) -> str:
     """Gera JWT com claims: sub, email, id, role."""
-    # Usa JWT_EXPIRATION_HOURS 
     if expires_delta is None:
         expires_delta = timedelta(hours=JWT_EXPIRATION_HOURS)
     expire = datetime.now(timezone.utc) + expires_delta
@@ -150,4 +154,3 @@ def get_user_id(user: Dict) -> str:
 
 def get_user_role(user: Dict) -> str:
     return user.get("role", "citizen")
-
