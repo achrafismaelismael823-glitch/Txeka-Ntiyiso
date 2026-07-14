@@ -3,7 +3,7 @@
 import os
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import PostgresDsn, SecretStr
+from pydantic import PostgresDsn, SecretStr, Field
 
 
 class Settings(BaseSettings):
@@ -19,9 +19,21 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
 
-    DATABASE_URL: PostgresDsn = "postgresql+asyncpg://postgres:postgres@localhost:5432/txeka_ntiyiso"
+    # ──────────────────────────────────────────────
+    # SEGURANÇA: Sem fallbacks — falha hard se não configurado
+    # ──────────────────────────────────────────────
 
-    JWT_SECRET_KEY: SecretStr = "dev-secret-key-change-in-production-32chars!"
+    DATABASE_URL: PostgresDsn = Field(
+        ...,
+        description="URL do banco de dados PostgreSQL"
+    )
+
+    JWT_SECRET_KEY: SecretStr = Field(
+        ...,
+        min_length=32,
+        description="Chave secreta para JWT (mínimo 32 caracteres)"
+    )
+
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -58,5 +70,6 @@ class Settings(BaseSettings):
         if "asyncpg" in url:
             url = url.replace("postgresql+asyncpg://", "postgresql://")
         return url
+
 
 settings = Settings()
