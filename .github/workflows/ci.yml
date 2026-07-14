@@ -9,21 +9,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api-gateway
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar Poetry
-        uses: snok/install-poetry@v1
       - name: Instalar dependências
-        working-directory: ./api-gateway
-        run: poetry install --with test
+        run: |
+          pip install pytest pytest-asyncio pytest-cov pytest-mock httpx bandit
+          pip install -r requirements.txt
       - name: Executar testes
-        working-directory: ./api-gateway
-        run: poetry run pytest tests/ -v --cov=src --cov-report=xml
-      - name: Upload cobertura
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./api-gateway/coverage.xml
-          fail_ci_if_error: false
+        run: pytest tests/ -v
+      - name: Scan de segurança (bandit)
+        run: bandit -r src/ -ll -ii
