@@ -227,8 +227,15 @@ class InstitutionService:
         if not verify_password(password, institution.password_hash):
             return None
         
-        if institution.status != "active" or not institution.approved:
-            return None
+        # Verificações de status — retorna institution mesmo se inativa
+        # para que o route possa distinguir 401 de 403
+        if institution.status != "active":
+            institution._inactive_reason = f"Conta inativa. Status atual: {institution.status}"
+            return institution
+        
+        if not institution.approved:
+            institution._inactive_reason = "Conta pendente de aprovação pelo administrador."
+            return institution
         
         return institution
     

@@ -73,6 +73,10 @@ async def get_institution(institution_id: str, db: AsyncSession = Depends(get_db
 @router.patch("/{institution_id}", response_model=InstitutionResponse, dependencies=[Depends(verify_role("admin"))])
 async def update_institution(institution_id: str, data: InstitutionUpdate, db: AsyncSession = Depends(get_db)):
     try:
+        # Validar status se fornecido
+        if data.status and data.status not in ["pending", "active", "suspended", "inactive"]:
+            raise HTTPException(status_code=400, detail=f"Status inválido: {data.status}. Valores permitidos: pending, active, suspended, inactive")
+        
         institution = await InstitutionService.update_institution(db, institution_id, data)
         return institution
     except ValueError as e:
@@ -116,11 +120,12 @@ async def get_institution_credit_history(
 async def reset_institution_password(institution_id: str, db: AsyncSession = Depends(get_db)):
     try:
         result = await InstitutionService.reset_password(db, institution_id)
+        # LOG SEGURO: senha apenas no servidor, NUNCA na resposta HTTP
+        logger.info(f"PASSWORD_RESET: institution={institution_id} temp_password={result['temp_password']}")
         return {
             "success": True,
             "institution_id": result["institution"].id,
-            "temp_password": result["temp_password"],
-            "message": f"Password resetada. Enviar para {result['institution'].contact_email}"
+            "message": "Password resetada. Verifique os logs do servidor para a senha temporária."
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

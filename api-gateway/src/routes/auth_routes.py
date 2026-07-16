@@ -66,7 +66,11 @@ async def login_institution(data: InstitutionLoginRequest, db: AsyncSession = De
     )
     
     if not institution:
-        raise HTTPException(status_code=401, detail="Credenciais inválidas ou conta inativa")
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    
+    # Verificar se a conta está inativa (403 Forbidden)
+    if hasattr(institution, '_inactive_reason'):
+        raise HTTPException(status_code=403, detail=institution._inactive_reason)
     
     # Institution = 30 dias (mais seguro)
     token = create_access_token(
