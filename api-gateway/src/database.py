@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.pool import NullPool
 from sqlalchemy.dialects.postgresql.base import PGDialect
 
 from src.settings import settings
@@ -28,8 +29,7 @@ def _create_engine_safe():
     return create_async_engine(
         db_url,
         echo=False,
-        pool_pre_ping=True,
-        pool_recycle=3600,
+        poolclass=NullPool,
         connect_args={
             "statement_cache_size": 0,
             "prepared_statement_cache_size": 0,
@@ -91,3 +91,4 @@ async def init_db():
     except Exception as e:
         logger.warning(f"init_db() falhou (PgBouncer warm-up?): {e}")
         return False
+logger.info("DATABASE.PY LOADED - connect_args: statement_cache_size=0")
