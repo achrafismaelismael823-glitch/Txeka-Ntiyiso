@@ -6,10 +6,10 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Callable, List
 
+import bcrypt
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.context import CryptContext
 
 
 # ── Environment ───────────────────────────────
@@ -30,7 +30,6 @@ ALGORITHM = "HS256"
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
-# expiração por perfil
 JWT_EXPIRATION_HOURS = 24
 JWT_EXPIRATION_DAYS_ADMIN = 90
 JWT_EXPIRATION_DAYS_INSTITUTION = 30
@@ -38,17 +37,18 @@ JWT_EXPIRATION_DAYS_INSTITUTION = 30
 ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
 
 
-# ── Password hashing ──────────────────────────
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+# ── Password hashing (bcrypt nativo) ──────────
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password[:72])
+    password_bytes = password.encode("utf-8")
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password[:72], hashed_password)
+    plain_bytes = plain_password.encode("utf-8")
+    hash_bytes = hashed_password.encode("utf-8")
+    return bcrypt.checkpw(plain_bytes, hash_bytes)
 
 
 # ── JWT ───────────────────────────────────────
@@ -182,4 +182,3 @@ def get_user_id(user: Dict) -> str:
 
 def get_user_role(user: Dict) -> str:
     return user.get("role", "citizen")
-
