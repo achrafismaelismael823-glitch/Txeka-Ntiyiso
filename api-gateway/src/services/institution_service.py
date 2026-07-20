@@ -45,7 +45,6 @@ class InstitutionService:
         temp_password = generate_temp_password()
         password_hash = get_password_hash(temp_password)
         
-        # GERA API KEY E HASH
         api_key = generate_api_key()
         api_key_hash = get_password_hash(api_key)
         
@@ -54,7 +53,6 @@ class InstitutionService:
             name=data.name,
             contact_email=str(data.contact_email),
             password_hash=password_hash,
-            api_key=api_key,
             api_key_hash=api_key_hash,
             role="institution",
             credits=data.credits,
@@ -217,6 +215,12 @@ class InstitutionService:
         institution_id: str,
         password: str
     ) -> Optional[Institution]:
+        """
+        Autentica instituição por ID e password.
+        
+        CORREÇÃO: Retorna None para contas inativas ou pendentes.
+        O route de login deve tratar 403 separadamente.
+        """
         institution = await db.get(Institution, institution_id.upper())
         if not institution:
             return None
@@ -227,15 +231,15 @@ class InstitutionService:
         if not verify_password(password, institution.password_hash):
             return None
         
-        # Verificações de status — retorna institution mesmo se inativa
-        # para que o route possa distinguir 401 de 403
+        # Retorna None para contas inativas
+        # O route de login verifica o motivo e retorna 403
         if institution.status != "active":
-            institution._inactive_reason = f"Conta inativa. Status atual: {institution.status}"
-            return institution
+            logger.warning(f"Login tentado em conta inativa: {institution_id}")
+            return None
         
         if not institution.approved:
-            institution._inactive_reason = "Conta pendente de aprovação pelo administrador."
-            return institution
+            logger.warning(f"Login tentado em conta pendente: {institution_id}")
+            return None
         
         return institution
     
@@ -270,10 +274,10 @@ class InstitutionService:
             raise ValueError("Instituição não encontrada")
         
         new_key = generate_api_key()
-        institution.api_key = new_key
         institution.api_key_hash = get_password_hash(new_key)
         institution.updated_at = datetime.now(timezone.utc)
         
         await db.commit()
         await db.refresh(institution)
         return new_key
+
