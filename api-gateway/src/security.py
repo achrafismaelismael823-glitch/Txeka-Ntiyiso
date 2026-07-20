@@ -29,7 +29,8 @@ ALGORITHM = "HS256"
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
-# expiração por perfil 
+
+# expiração por perfil
 JWT_EXPIRATION_HOURS = 24
 JWT_EXPIRATION_DAYS_ADMIN = 90
 JWT_EXPIRATION_DAYS_INSTITUTION = 30
