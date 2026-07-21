@@ -13,7 +13,7 @@ jobs:
       run:
         working-directory: ./api-gateway
     env:
-      SECRET_KEY: test-secret-key-32-chars-long!!
+      SECRET_KEY: test-secret-key-32-chars-long!!! 
       JWT_SECRET_KEY: test-jwt-secret-key-32-chars-long!!!
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
