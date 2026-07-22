@@ -14,12 +14,12 @@
   </a>
   <img src="https://img.shields.io/badge/conformidade-Lei%203%2F2017-blue" alt="Conformidade"/>
   <img src="https://img.shields.io/badge/desempenho-%3C100ms%20(producao)-orange" alt="Performance"/>
-  <img src="https://img.shields.io/badge/versao-1.2.0-blueviolet" alt="Versão"/>
+  <img src="https://img.shields.io/badge/versao-2.0.0-blueviolet" alt="Versão"/>
   <img src="https://img.shields.io/badge/licenca-Proprietaria-red" alt="Licença"/>
   <br/>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python"/>
   <img src="https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi&logoColor=white" alt="FastAPI"/>
-  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"/>
+  <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"/>
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" alt="Docker"/>
 </p>
 
@@ -62,7 +62,7 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 - **Fim das Filas:** Elimine a necessidade de o cidadão deslocar-se fisicamente apenas para "autenticar cópias".
 - **Transparência Radical:** Trilha de auditoria criptográfica e imutável, pronta para auditorias do Tribunal de Contas.
 
-🚀 **[Lidere a Modernização Administrativa ➡️ Agende uma Demo](mailto:tech@txeka.co.mz)**
+🚀 **[Lidere a Modernização Administrativa ➡️ Agende uma Demo](mailto:geral.txekantiyiso@gmail.com)**
 
 ### 💼 Empresas e Banca (B2B)
 *Para KYC, Onboarding de Clientes e Compliance Financeiro*
@@ -71,7 +71,7 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 - **Integração Relâmpago:** API REST robusta, documentada e pronta para entrar em produção em menos de 24 horas.
 - **Soberania de Dados:** Reduza a dependência de plataformas estrangeiras caras e fature tudo na moeda local.
 
-🔌 **[Explore o Futuro das Integrações ➡️ Ver Documentação da API](doc/guides/API_REFERENCE.md)**
+🔌 **[Explore a Documentação da API ➡️ Ver API Reference](doc/guides/API_REFERENCE.md)**
 
 ---
 
@@ -95,7 +95,7 @@ O Txeka Ntiyiso foi concebido para que os documentos originais permaneçam no di
 2. O Hash SHA-256 é calculado **diretamente no navegador** (client-side).
 3. Apenas a linha de 64 caracteres viaja até ao servidor.
 4. O documento original **não sai do dispositivo**.
-5. O sistema regista: *"Esta impressão digital foi validada e existe desde 27/06/2026"*.
+5. O sistema regista: *"Esta impressão digital foi validada e existe desde [data]"*.
 
 **Resultado:** O risco de exposição de dados confidenciais é minimizado na origem, por construção arquitetural.
 
@@ -130,7 +130,7 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
      ▼           ▼
 ┌─────────┐  ┌──────────────┐
 │PostgreSQL│  │  Audit Logs  │  ← Trilha forense imutável (20 anos)
-│Supabase  │  │   Imutáveis  │
+│  15     │  │   Imutáveis  │
 └────┬────┘  └──────────────┘
      │
      ▼
@@ -149,12 +149,14 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
 | Camada | Tecnologia | Função |
 |--------|-----------|--------|
 | Backend | FastAPI 0.110 + Python 3.11 | API REST, lógica de negócio, autenticação JWT |
-| Base de Dados | PostgreSQL (Supabase) | Persistência ACID de hashes, metadados e audit logs |
+| Base de Dados | PostgreSQL 15 | Persistência ACID de hashes, metadados e audit logs |
 | Frontend | React + Tailwind CSS | Portal de verificação, dashboard institucional |
 | Segurança | JWT + bcrypt + Rate Limiting | Autenticação stateless, proteção contra abuso |
-| Deploy | Render.com (Atual) / Docker (Futuro) | Cloud imediata; on-premise para soberania digital |
+| Deploy | Render.com (Produção) / Docker (Local & On-premise) | Cloud imediata; on-premise para soberania digital |
 
 **Produção Atual:** [API](https://txeka-ntiyiso-api.onrender.com) · [Health](https://txeka-ntiyiso-api.onrender.com/health) · [Swagger](https://txeka-ntiyiso-api.onrender.com/docs) · Último deploy: 05/07/2026
+
+**Ambiente Local:** Docker + docker-compose com PostgreSQL 15, pronto para `docker-compose up`.
 
 **Futuro:** Migração para infraestrutura nacional (Docker on-premise) para soberania digital, conformidade com a Lei de Proteção de Dados Pessoais e resiliência independente de conectividade internacional.
 
@@ -166,7 +168,7 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
 |------|---------|--------|-------------|
 | **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
 | **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos |
-| **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/audit/stats` + Go-to-market com INAGE e bancos |
+| **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/stats` + Go-to-market com INAGE e bancos |
 | **Fase 4** | Q4 2026 | ⏳ Planeada | Dashboard por perfil + Escala empresarial: 2FA, OAuth2, ML fraud detection |
 
 > **Fase 2 — Operacional agora:** Registo de instituições com API key, login dual (Admin/Institution), emissão única e em bulk, verificação pública anónima, audit logs, validação rigorosa de PDF e arquitetura multi-tenant.
@@ -179,9 +181,16 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
 
 ```bash
 git clone https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso.git
-cd Txeka-Ntiyiso/api-gateway
+cd Txeka-Ntiyiso
+
+# Opção 1: Docker (Recomendado)
+docker-compose up --build
+
+# Opção 2: Python local
+cd api-gateway
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+# ou: poetry install
 uvicorn src.main:app --reload
 ```
 
@@ -199,20 +208,30 @@ Contacte: **geral.txekantiyiso@gmail.com**
 
 ## Endpoints da API
 
+> **Nota:** A API utiliza prefixo `/api/v1` configurado em `settings.API_V1_STR`, mas os routers FastAPI montam os endpoints sem prefixo adicional. A documentação Swagger em `/docs` reflete os caminhos exatos.
+
 | Categoria | Método | Endpoint | Descrição | Acesso |
 |-----------|--------|----------|-----------|--------|
-| Auth | `POST` | `/api/v1/auth/admin/login` | Login administrador (token 90 dias) | Admin |
-| Auth | `POST` | `/api/v1/auth/login` | Login instituição (token 30 dias) | Institution |
-| Emissão | `POST` | `/api/v1/certify` | Emitir documento único (PDF) | Institution |
-| Emissão | `POST` | `/api/v1/certify/bulk` | Emitir múltiplos documentos em lote | Institution |
-| Verificação | `GET` | `/api/v1/verify/{hash}` | Verificar documento (consulta rápida) | Público |
-| Verificação | `POST` | `/api/v1/verify` | Verificar documento (validação B2B/B2G) | Público |
-| Dashboard | `GET` | `/api/v1/institutions/me/dashboard` | Dashboard da instituição | Institution |
-| Dashboard | `GET` | `/api/v1/institutions/me/credits` | Créditos disponíveis e histórico | Institution |
-| Admin | `POST` | `/api/v1/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin / Institution |
-| Admin | `GET` | `/api/v1/audit/logs` | Logs de auditoria imutáveis | Admin |
-| Admin | `GET` | `/api/v1/audit/document/{hash}/history` | Rasto cronológico do documento | Admin / Institution |
-| Admin | `GET` | `/api/v1/audit/stats` | Métricas e volume de validações (Fase 3) | Admin |
+| Auth | `POST` | `/admin/login` | Login administrador (token 90 dias) | Público |
+| Auth | `POST` | `/login` | Login instituição (token 30 dias) | Público |
+| Emissão | `POST` | `/certify` | Emitir documento único (PDF) | Institution |
+| Emissão | `POST` | `/certify/bulk` | Emitir múltiplos documentos em lote | Institution |
+| Verificação | `GET` | `/verify/{doc_hash}` | Verificar documento por hash (público) | Público |
+| Verificação | `POST` | `/verify` | Verificar documento por hash (B2B/B2G) | Público |
+| Dashboard | `GET` | `/me/dashboard` | Dashboard da instituição autenticada | Institution |
+| Dashboard | `GET` | `/me/credits` | Créditos disponíveis e status | Institution |
+| Dashboard | `GET` | `/me/credit-history` | Histórico de transações de crédito | Institution |
+| Admin | `POST` | `/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin |
+| Admin | `GET` | `/logs` | Logs de auditoria imutáveis | Admin |
+| Admin | `GET` | `/document/{doc_hash}/history` | Rasto cronológico do documento | Admin / Institution |
+| Admin | `GET` | `/stats` | Métricas e volume de validações | Admin |
+| Admin | `POST` | `/{institution_id}` | Criar nova instituição | Admin |
+| Admin | `GET` | `/{institution_id}` | Detalhes da instituição | Admin |
+| Admin | `PATCH` | `/{institution_id}` | Atualizar instituição | Admin |
+| Admin | `POST` | `/{institution_id}/credits` | Adicionar créditos à instituição | Admin |
+| Admin | `GET` | `/{institution_id}/credit-history` | Histórico de créditos da instituição | Admin |
+| Admin | `POST` | `/{institution_id}/reset-password` | Reset de password da instituição | Admin |
+| Admin | `POST` | `/{institution_id}/regenerate-api-key` | Regenerar API key da instituição | Admin |
 
 > Documentação interativa completa disponível em `/docs` ou `/redoc`. Para especificações detalhadas, consulte a [Referência da API](doc/guides/API_REFERENCE.md).
 
@@ -255,6 +274,29 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 ---
 
+## Stack Tecnológica
+
+| Componente | Tecnologia | Versão |
+|------------|-----------|--------|
+| Linguagem | Python | 3.11 |
+| Framework | FastAPI | 0.110.0 |
+| Servidor | Uvicorn | 0.28.0 |
+| ORM | SQLAlchemy | 2.0.29 |
+| Migrations | Alembic | 1.12.1 |
+| Base de Dados | PostgreSQL | 15 |
+| Driver Async | asyncpg | 0.29.0 |
+| Driver Sync | psycopg2-binary | 2.9.9 |
+| Hashing | bcrypt | 5.0.0 |
+| JWT | python-jose + PyJWT | 3.5.0 / 2.8.0 |
+| Rate Limiting | slowapi + limits | 0.1.9 / 3.8.0 |
+| Logging | structlog | 24.1.0 |
+| QR Code | qrcode + Pillow | 7.4.2 / 11.0.0 |
+| PDF | PyPDF2 | 3.0.1 |
+| Config | pydantic-settings | 2.2.1 |
+| Deploy | Render + Docker | — |
+| CI/CD | GitHub Actions | — |
+
+---
 
 ## Suporte e Contacto
 
