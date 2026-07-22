@@ -327,10 +327,10 @@ jobs:
 
 ## Referencias
 
-- [OWASP Top 10 (2026)](https://owasp.org/Top10/)
-- [FastAPI Security](https://fastapi.tiangolo.com/tutorial/security/)
-- [PostgreSQL Security](https://www.postgresql.org/docs/current/security.html)
-- [Decreto n. 59/2019 — Retencao de dados em Mocambique](doc/legal/COMPLIANCE.md)
+- [OWASP Top 10 (2025)](https://owasp.org/Top10/)
+- [FastAPI Security](https://fastapi.tiangolo.com)
+- [PostgreSQL Row-Level Security](https://postgresql.org)
+- [Decreto n. 59/2019 — Retencao de dados em Mocambique](doc/legal/COMPLIANCE.md)/(https://intic.gov.mz)
 
 ---
 
