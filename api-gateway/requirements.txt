@@ -1,6 +1,8 @@
 # Framework & Servidor
 fastapi==0.110.0
 uvicorn[standard]==0.28.0
+starlette<0.37.0
+httpx<0.28.0
 
 # Configuração & Validação
 pydantic==2.10.3
