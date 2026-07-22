@@ -123,7 +123,7 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
            ▼
    ┌───────────────┐
    │  API REST     │  ← FastAPI + Python 3.11 + JWT + Rate Limiting
-   │  Txeka Ntiyiso│
+   │  Txeka Ntiyiso│     Prefixo: /api/v1
    └───────┬───────┘
            │
      ┌─────┴─────┐
@@ -154,7 +154,7 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
 | Segurança | JWT + bcrypt + Rate Limiting | Autenticação stateless, proteção contra abuso |
 | Deploy | Render.com (Produção) / Docker (Local & On-premise) | Cloud imediata; on-premise para soberania digital |
 
-**Produção Atual:** [API](https://txeka-ntiyiso-api.onrender.com) · [Health](https://txeka-ntiyiso-api.onrender.com/health) · [Swagger](https://txeka-ntiyiso-api.onrender.com/docs) · Último deploy: 05/07/2026
+**Produção Atual:** [API](https://txeka-ntiyiso-api.onrender.com) · [Health](https://txeka-ntiyiso-api.onrender.com/health) · [Swagger](https://txeka-ntiyiso-api.onrender.com/docs) · Último deploy: 22/07/2026
 
 **Ambiente Local:** Docker + docker-compose com PostgreSQL 15, pronto para `docker-compose up`.
 
@@ -208,32 +208,34 @@ Contacte: **geral.txekantiyiso@gmail.com**
 
 ## Endpoints da API
 
-> **Nota:** A API utiliza prefixo `/api/v1` configurado em `settings.API_V1_STR`, mas os routers FastAPI montam os endpoints sem prefixo adicional. A documentação Swagger em `/docs` reflete os caminhos exatos.
+> **Base URL:** `https://txeka-ntiyiso-api.onrender.com`  
+> **Prefixo:** `/api/v1` (configurado em `main.py` via `API_V1_STR`)  
+> **Documentação interativa:** `/docs` (Swagger UI) · `/redoc` (ReDoc)
 
 | Categoria | Método | Endpoint | Descrição | Acesso |
 |-----------|--------|----------|-----------|--------|
-| Auth | `POST` | `/admin/login` | Login administrador (token 90 dias) | Público |
-| Auth | `POST` | `/login` | Login instituição (token 30 dias) | Público |
-| Emissão | `POST` | `/certify` | Emitir documento único (PDF) | Institution |
-| Emissão | `POST` | `/certify/bulk` | Emitir múltiplos documentos em lote | Institution |
-| Verificação | `GET` | `/verify/{doc_hash}` | Verificar documento por hash (público) | Público |
-| Verificação | `POST` | `/verify` | Verificar documento por hash (B2B/B2G) | Público |
-| Dashboard | `GET` | `/me/dashboard` | Dashboard da instituição autenticada | Institution |
-| Dashboard | `GET` | `/me/credits` | Créditos disponíveis e status | Institution |
-| Dashboard | `GET` | `/me/credit-history` | Histórico de transações de crédito | Institution |
-| Admin | `POST` | `/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin |
-| Admin | `GET` | `/logs` | Logs de auditoria imutáveis | Admin |
-| Admin | `GET` | `/document/{doc_hash}/history` | Rasto cronológico do documento | Admin / Institution |
-| Admin | `GET` | `/stats` | Métricas e volume de validações | Admin |
-| Admin | `POST` | `/{institution_id}` | Criar nova instituição | Admin |
-| Admin | `GET` | `/{institution_id}` | Detalhes da instituição | Admin |
-| Admin | `PATCH` | `/{institution_id}` | Atualizar instituição | Admin |
-| Admin | `POST` | `/{institution_id}/credits` | Adicionar créditos à instituição | Admin |
-| Admin | `GET` | `/{institution_id}/credit-history` | Histórico de créditos da instituição | Admin |
-| Admin | `POST` | `/{institution_id}/reset-password` | Reset de password da instituição | Admin |
-| Admin | `POST` | `/{institution_id}/regenerate-api-key` | Regenerar API key da instituição | Admin |
+| Auth | `POST` | `/api/v1/admin/login` | Login administrador (token 90 dias) | Público |
+| Auth | `POST` | `/api/v1/login` | Login instituição (token 30 dias) | Público |
+| Emissão | `POST` | `/api/v1/certify` | Emitir documento único (PDF) | Institution |
+| Emissão | `POST` | `/api/v1/certify/bulk` | Emitir múltiplos documentos em lote | Institution |
+| Verificação | `GET` | `/api/v1/verify/{doc_hash}` | Verificar documento por hash (público) | Público |
+| Verificação | `POST` | `/api/v1/verify` | Verificar documento por hash (B2B/B2G) | Público |
+| Dashboard | `GET` | `/api/v1/me/dashboard` | Dashboard da instituição autenticada | Institution |
+| Dashboard | `GET` | `/api/v1/me/credits` | Créditos disponíveis e status | Institution |
+| Dashboard | `GET` | `/api/v1/me/credit-history` | Histórico de transações de crédito | Institution |
+| Admin | `POST` | `/api/v1/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin |
+| Admin | `GET` | `/api/v1/logs` | Logs de auditoria imutáveis | Admin |
+| Admin | `GET` | `/api/v1/document/{doc_hash}/history` | Rasto cronológico do documento | Admin / Institution |
+| Admin | `GET` | `/api/v1/stats` | Métricas e volume de validações | Admin |
+| Admin | `POST` | `/api/v1/{institution_id}` | Criar nova instituição | Admin |
+| Admin | `GET` | `/api/v1/{institution_id}` | Detalhes da instituição | Admin |
+| Admin | `PATCH` | `/api/v1/{institution_id}` | Atualizar instituição | Admin |
+| Admin | `POST` | `/api/v1/{institution_id}/credits` | Adicionar créditos à instituição | Admin |
+| Admin | `GET` | `/api/v1/{institution_id}/credit-history` | Histórico de créditos da instituição | Admin |
+| Admin | `POST` | `/api/v1/{institution_id}/reset-password` | Reset de password da instituição | Admin |
+| Admin | `POST` | `/api/v1/{institution_id}/regenerate-api-key` | Regenerar API key da instituição | Admin |
 
-> Documentação interativa completa disponível em `/docs` ou `/redoc`. Para especificações detalhadas, consulte a [Referência da API](doc/guides/API_REFERENCE.md).
+> Para especificações detalhadas (request/response, schemas, códigos de erro), consulte a [Referência da API](doc/guides/API_REFERENCE.md).
 
 ---
 
