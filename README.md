@@ -113,37 +113,38 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
 
 ```
   PDF / Documento Original
-           │
-           ▼
-   ┌───────────────┐
-   │  Client-Side  │  ← Hash SHA-256 calculado no navegador
-   │   SHA-256     │
-   └───────┬───────┘
-           │  Hash (64 chars)
-           ▼
-   ┌───────────────┐
-   │  API REST     │  ← FastAPI + Python 3.11 + JWT + Rate Limiting
-   │  Txeka Ntiyiso│     Prefixo: /api/v1
-   └───────┬───────┘
-           │
-     ┌─────┴─────┐
-     ▼           ▼
-┌─────────┐  ┌──────────────┐
-│PostgreSQL│  │  Audit Logs  │  ← Trilha forense imutável (20 anos)
-│  15     │  │   Imutáveis  │
-└────┬────┘  └──────────────┘
-     │
-     ▼
-┌─────────────┐
-│  QR Code    │  ← Verificável por qualquer cidadão via telemóvel
-│ Verificável │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────┐
-│ Verificação     │  ← Pública, anónima, < 100 ms
-│ Pública / API   │
-└─────────────────┘
+           |
+           v
+   +---------------+
+   |  Client-Side  |  <- Hash SHA-256 calculado no navegador
+   |   SHA-256     |
+   +-------+-------+
+           |  Hash (64 chars)
+           v
+   +---------------+
+   |  API REST     |  <- FastAPI + Python 3.11 + JWT + Rate Limiting
+   |  Txeka Ntiyiso|     Prefixo: /api/v1
+   +-------+-------+
+           |
+     +-----+-----+
+     |           |
+     v           v
++---------+  +--------------+
+|PostgreSQL|  |  Audit Logs  |  <- Trilha forense imutável (20 anos)
+|  15     |  |   Imutáveis  |
++----+----+  +--------------+
+     |
+     v
++-------------+
+|  QR Code    |  <- Verificável por qualquer cidadão via telemóvel
+| Verificável |
++------+------+
+       |
+       v
++-----------------+
+| Verificação     |  <- Pública, anónima, < 100 ms
+| Pública / API   |
++-----------------+
 ```
 
 | Camada | Tecnologia | Função |
