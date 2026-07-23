@@ -1,29 +1,29 @@
-// Autenticação REAL — chama backend Txeka Ntiyiso API
+// Autenticação REAL — chama backend Txeka Ntiyiso API v2.0
 import api from './api';
 
 // Login institucional (chama backend real)
-export const login = async (email, password) => {
+export const login = async (institution_id, password) => {
   try {
-    if (!email || !password) {
-      throw new Error('E-mail e senha são obrigatórios');
+    if (!institution_id || !password) {
+      throw new Error('ID da instituição e senha são obrigatórios');
     }
 
-    // Chama API real de autenticação
     const response = await api.post('/auth/login', {
-      institution_id: email,
+      institution_id: institution_id,
       password: password,
     });
 
     const data = response.data;
 
-    // Guarda token JWT real do backend
+    // Guarda token JWT real do backend + institution_id
     localStorage.setItem('authToken', data.access_token);
-    localStorage.setItem('username', data.institution?.name || email);
-    localStorage.setItem('userRole', data.institution ? 'institution' : 'user');
+    localStorage.setItem('institutionId', data.institution?.id || institution_id);
+    localStorage.setItem('username', data.institution?.name || institution_id);
+    localStorage.setItem('userRole', 'institution');
     localStorage.setItem('loginTime', new Date().toISOString());
     localStorage.setItem('institutionData', JSON.stringify(data.institution || {}));
 
-    console.log(`[Auth] Instituição autenticada: ${data.institution?.name || email}`);
+    console.log(`[Auth] Instituição autenticada: ${data.institution?.name || institution_id}`);
 
     return data;
   } catch (error) {
@@ -75,6 +75,7 @@ export const logout = () => {
     const username = localStorage.getItem('username');
     
     localStorage.removeItem('authToken');
+    localStorage.removeItem('institutionId');
     localStorage.removeItem('username');
     localStorage.removeItem('userRole');
     localStorage.removeItem('loginTime');
@@ -87,10 +88,15 @@ export const logout = () => {
   }
 };
 
-// Verifica autenticação (token existe)
+// Verifica autenticação
 export const isAuthenticated = () => {
   const token = localStorage.getItem('authToken');
   return !!token;
+};
+
+// Obtém institution_id
+export const getInstitutionId = () => {
+  return localStorage.getItem('institutionId');
 };
 
 // Obtém utilizador atual
@@ -101,6 +107,7 @@ export const getCurrentUser = () => {
 
   return {
     username: localStorage.getItem('username'),
+    institutionId: localStorage.getItem('institutionId'),
     role: localStorage.getItem('userRole'),
     loginTime: localStorage.getItem('loginTime'),
     institution: JSON.parse(localStorage.getItem('institutionData') || '{}'),
@@ -117,6 +124,7 @@ export default {
   loginAdmin,
   logout,
   isAuthenticated,
+  getInstitutionId,
   getCurrentUser,
   getAuthToken,
 };
