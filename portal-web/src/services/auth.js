@@ -1,129 +1,127 @@
-import api, { translateError, requestWithRetry } from './api';
+// src/services/auth.js
+// v3.0 — Compatível com Txeka Ntiyiso API v2.0.0
+// SPEC: InstitutionResponse.role é required, não hardcoded!
 
-function validateCredentials(institution_id, password) {
-  const errors = [];
-  if (!institution_id || institution_id.trim().length === 0) {
-    errors.push('ID da instituicao e obrigatorio');
-  } else if (institution_id.trim().length < 2) {
-    errors.push('ID da instituicao deve ter pelo menos 2 caracteres');
-  }
-  if (!password || password.length === 0) {
-    errors.push('Senha e obrigatoria');
-  } else if (password.length < 4) {
-    errors.push('Senha deve ter pelo menos 4 caracteres');
-  }
-  return errors;
-}
+import api from './api';
 
-export const login = async (institution_id, password) => {
-  const validationErrors = validateCredentials(institution_id, password);
-  if (validationErrors.length > 0) {
-    const err = new Error(validationErrors[0]);
-    err.translated = { code: 'VALIDATION', message: validationErrors.join('. '), type: 'warning', fields: validationErrors };
-    throw err;
-  }
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
 
+/**
+ * Login de Instituição
+ * POST /api/v1/auth/login
+ * Body: { institution_id, password }
+ * Response: InstitutionLoginResponse { access_token, token_type, institution, message }
+ * SPEC: InstitutionResponse.role é required → usamos data.institution.role
+ */
+export async function login(institution_id, password) {
   try {
-    const data = await requestWithRetry(() => api.post('/auth/login', {
-      institution_id: institution_id.trim(),
-      password: password,
-    }).then(r => r.data));
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ institution_id, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const translated = translateError(response.status, errorData);
+      throw Object.assign(new Error(translated.message), { translated, status: response.status });
+    }
+
+    const data = await response.json();
+
+    // ENTERPRISE: Usar role da API, não hardcoded
+    const role = data.institution?.role || 'institution';
 
     localStorage.setItem('authToken', data.access_token);
+    localStorage.setItem('tokenType', data.token_type || 'bearer');
     localStorage.setItem('institutionId', data.institution?.id || institution_id);
     localStorage.setItem('username', data.institution?.name || institution_id);
-    localStorage.setItem('userRole', 'institution');
-    localStorage.setItem('loginTime', new Date().toISOString());
-    localStorage.setItem('institutionData', JSON.stringify(data.institution || {}));
+    localStorage.setItem('userRole', role);
+    localStorage.setItem('userData', JSON.stringify(data.institution || {}));
 
-    console.log('[Auth] Instituicao autenticada:', data.institution?.name || institution_id);
     return data;
   } catch (error) {
     if (error.translated) throw error;
-    const translated = translateError(error);
-    error.translated = translated;
-    throw error;
+    const translated = translateError('NETWORK', { message: error.message });
+    throw Object.assign(new Error(translated.message), { translated, status: 'NETWORK' });
   }
-};
+}
 
-export const loginAdmin = async (email, password) => {
-  if (!email || !email.includes('@')) {
-    const err = new Error('Email invalido');
-    err.translated = { code: 'VALIDATION', message: 'Digite um email valido.', type: 'warning' };
-    throw err;
-  }
-  if (!password || password.length < 4) {
-    const err = new Error('Senha invalida');
-    err.translated = { code: 'VALIDATION', message: 'Senha deve ter pelo menos 4 caracteres.', type: 'warning' };
-    throw err;
-  }
-
+/**
+ * Login de Administrador
+ * POST /api/v1/auth/admin/login?email=...&password=...
+ * Query params (não body!)
+ * Response: { access_token, token_type } — SEM institution!
+ */
+export async function loginAdmin(email, password) {
   try {
-    const data = await requestWithRetry(() => api.post('/auth/admin/login', null, {
-      params: { email, password }
-    }).then(r => r.data));
+    const params = new URLSearchParams({ email, password });
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/admin/login?${params.toString()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const translated = translateError(response.status, errorData);
+      throw Object.assign(new Error(translated.message), { translated, status: response.status });
+    }
+
+    const data = await response.json();
 
     localStorage.setItem('authToken', data.access_token);
+    localStorage.setItem('tokenType', data.token_type || 'bearer');
     localStorage.setItem('username', email);
     localStorage.setItem('userRole', 'admin');
-    localStorage.setItem('loginTime', new Date().toISOString());
+    localStorage.setItem('userData', JSON.stringify({ email, role: 'admin' }));
 
-    console.log('[Auth] Admin autenticado:', email);
     return data;
   } catch (error) {
     if (error.translated) throw error;
-    const translated = translateError(error);
-    error.translated = translated;
-    throw error;
+    const translated = translateError('NETWORK', { message: error.message });
+    throw Object.assign(new Error(translated.message), { translated, status: 'NETWORK' });
   }
-};
+}
 
-export const logout = () => {
-  try {
-    const username = localStorage.getItem('username');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('institutionId');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('loginTime');
-    localStorage.removeItem('institutionData');
-    localStorage.removeItem('verificationHistory');
-    console.log('[Auth] Sessao terminada:', username);
-  } catch (error) {
-    console.error('[Auth Logout Error]', error.message);
-  }
-};
+export function logout() {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('tokenType');
+  localStorage.removeItem('institutionId');
+  localStorage.removeItem('username');
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('userData');
+}
 
-export const isAuthenticated = () => {
+export function isAuthenticated() {
   return !!localStorage.getItem('authToken');
-};
+}
 
-export const getInstitutionId = () => {
-  return localStorage.getItem('institutionId');
-};
+export function getAuthToken() {
+  return localStorage.getItem('authToken');
+}
 
-export const getCurrentUser = () => {
-  if (!isAuthenticated()) return null;
+export function getCurrentUser() {
+  const userData = localStorage.getItem('userData');
   return {
     username: localStorage.getItem('username'),
-    institutionId: localStorage.getItem('institutionId'),
     role: localStorage.getItem('userRole'),
-    loginTime: localStorage.getItem('loginTime'),
-    institution: JSON.parse(localStorage.getItem('institutionData') || '{}'),
+    institutionId: localStorage.getItem('institutionId'),
+    ...(userData ? JSON.parse(userData) : {}),
   };
-};
+}
 
-export const getAuthToken = () => {
-  return localStorage.getItem('authToken');
-};
-
-export default {
-  login,
-  loginAdmin,
-  logout,
-  isAuthenticated,
-  getInstitutionId,
-  getCurrentUser,
-  getAuthToken,
-};
+function translateError(status, data) {
+  const codeMap = {
+    400: { code: 'VALIDATION', message: data.detail?.[0]?.msg || 'Dados invalidos', type: 'error' },
+    401: { code: 'UNAUTHORIZED', message: 'Credenciais invalidas. Verifique ID e senha.', type: 'error' },
+    403: { code: 'FORBIDDEN', message: 'Acesso negado. Instituicao nao aprovada.', type: 'error' },
+    404: { code: 'NOT_FOUND', message: 'Instituicao nao encontrada.', type: 'error' },
+    429: { code: 'RATE_LIMIT', message: 'Muitas tentativas. Aguarde.', type: 'warning' },
+    500: { code: 'SERVER_ERROR', message: 'Erro interno do servidor.', type: 'error' },
+    503: { code: 'SERVICE_DOWN', message: 'Servico temporariamente indisponivel.', type: 'warning' },
+    NETWORK: { code: 'NETWORK', message: 'Sem conexao. Verifique a internet.', type: 'error' },
+    TIMEOUT: { code: 'TIMEOUT', message: 'Tempo de resposta excedido.', type: 'warning' },
+  };
+  return codeMap[status] || { code: 'UNKNOWN', message: data.message || 'Erro inesperado', type: 'error' };
+}
 
