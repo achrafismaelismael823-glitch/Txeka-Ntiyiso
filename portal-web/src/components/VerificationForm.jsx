@@ -1,213 +1,95 @@
 import React, { useState } from 'react';
 import { verifyDocumentByHash } from '../services/api';
 import { validateSHA256Hash, calculateSHA256, formatFileSize } from '../utils/validation';
-import { Upload, Search, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, Search, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 export default function VerificationForm({ onVerificationResult }) {
   const [method, setMethod] = useState('hash');
   const [hash, setHash] = useState('');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
 
   const handleHashChange = (e) => {
     setHash(e.target.value.toLowerCase());
-    setError('');
+    setError(null);
   };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
-
     if (selectedFile) {
       if (selectedFile.size > 50 * 1024 * 1024) {
-        setError('Ficheiro muito grande. Máximo 50MB.');
+        setError({ message: 'Ficheiro muito grande. Maximo 50MB.', type: 'warning' });
         setFile(null);
         return;
       }
       setFile(selectedFile);
-      setError('');
+      setError(null);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       let hashToVerify;
-
       if (method === 'file') {
-        if (!file) {
-          throw new Error('Seleccione um ficheiro');
-        }
+        if (!file) throw Object.assign(new Error('Seleccione um ficheiro'), { translated: { code: 'VALIDATION', message: 'Seleccione um ficheiro.', type: 'warning' } });
         hashToVerify = await calculateSHA256(file);
       } else {
-        if (!hash) {
-          throw new Error('Digite um hash SHA-256');
-        }
-        if (!validateSHA256Hash(hash)) {
-          throw new Error('Hash inválido. Deve ter 64 caracteres hexadecimais');
-        }
+        if (!hash) throw Object.assign(new Error('Digite um hash'), { translated: { code: 'VALIDATION', message: 'Digite um hash SHA-256.', type: 'warning' } });
+        if (!validateSHA256Hash(hash)) throw Object.assign(new Error('Hash invalido'), { translated: { code: 'VALIDATION', message: 'Hash invalido. Deve ter 64 caracteres hexadecimais.', type: 'warning' } });
         hashToVerify = hash;
       }
 
       const result = await verifyDocumentByHash(hashToVerify);
-
       const history = JSON.parse(localStorage.getItem('verificationHistory') || '[]');
-      history.unshift({
-        timestamp: new Date().toISOString(),
-        hash: hashToVerify,
-        result: result,
-      });
-
+      history.unshift({ timestamp: new Date().toISOString(), hash: hashToVerify, result, status: result.status });
       localStorage.setItem('verificationHistory', JSON.stringify(history.slice(0, 50)));
-
       onVerificationResult(result, hashToVerify);
     } catch (err) {
-      console.error('Verification error:', err);
-
-      const status = err?.status;
-      const errorMessage = (err?.message || '').toLowerCase();
-
-      if (status === 404 || errorMessage.includes('not found')) {
-        setError('Documento não encontrado na base de dados oficial.');
-      } else if (status === 503 || errorMessage.includes('unavailable')) {
-        setError('Serviço temporariamente indisponível. Tente novamente em alguns momentos.');
-      } else if (!status || errorMessage.includes('failed to fetch') || errorMessage.includes('network')) {
-        setError('Erro de conexão: Verifique se o servidor está online.');
-      } else if (errorMessage.includes('seleccione') || errorMessage.includes('digite') || errorMessage.includes('inválido')) {
-        setError(err.message);
-      } else {
-        setError('Ocorreu um erro ao verificar o documento. Tente novamente mais tarde.');
-      }
+      const translated = err.translated || { message: err.message || 'Erro ao verificar.', type: 'error' };
+      setError(translated);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="card">
-      <h2 className="text-2xl font-bold text-primary mb-6 flex items-center gap-2">
-        <Search size={24} />
-        Verificar Documento
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+        <Search className="h-5 w-5 text-[#00D2C4]" /> Verificar Documento
       </h2>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* Método de verificação */}
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="label-field">Método de Verificação</label>
-
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Metodo</label>
           <div className="grid grid-cols-2 gap-3">
-            <label
-              className="flex items-center p-3 border-2 rounded-lg cursor-pointer transition"
-              style={{
-                borderColor: method === 'hash' ? '#0d47a1' : '#e0e7ff',
-                backgroundColor: method === 'hash' ? '#f0f4ff' : 'white',
-              }}
-            >
-              <input
-                type="radio"
-                value="hash"
-                checked={method === 'hash'}
-                onChange={(e) => setMethod(e.target.value)}
-                disabled={loading}
-                className="mr-2"
-              />
-              <span className="font-semibold text-sm">Hash SHA-256</span>
-            </label>
-
-            <label
-              className="flex items-center p-3 border-2 rounded-lg cursor-pointer transition"
-              style={{
-                borderColor: method === 'file' ? '#0d47a1' : '#e0e7ff',
-                backgroundColor: method === 'file' ? '#f0f4ff' : 'white',
-              }}
-            >
-              <input
-                type="radio"
-                value="file"
-                checked={method === 'file'}
-                onChange={(e) => setMethod(e.target.value)}
-                disabled={loading}
-                className="mr-2"
-              />
-              <span className="font-semibold text-sm">Ficheiro</span>
-            </label>
+            <button type="button" onClick={() => { setMethod('hash'); setError(null); }} className={`p-3 border-2 rounded-xl text-sm font-semibold transition ${method === 'hash' ? 'border-[#00D2C4] bg-[#00D2C4]/5 text-[#0B192C]' : 'border-slate-200 text-slate-600'}`}>Hash SHA-256</button>
+            <button type="button" onClick={() => { setMethod('file'); setError(null); }} className={`p-3 border-2 rounded-xl text-sm font-semibold transition ${method === 'file' ? 'border-[#00D2C4] bg-[#00D2C4]/5 text-[#0B192C]' : 'border-slate-200 text-slate-600'}`}>Ficheiro</button>
           </div>
         </div>
-
-        {/* Input hash */}
         {method === 'hash' && (
           <div>
-            <label className="label-field">Hash SHA-256</label>
-
-            <input
-              type="text"
-              value={hash}
-              onChange={handleHashChange}
-              className="input-field font-mono text-sm"
-              placeholder="Cole o hash SHA-256 (64 caracteres)"
-              disabled={loading}
-            />
-
-            <p className="text-gray-500 text-xs mt-2">
-              {hash.length}/64 caracteres
-            </p>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Hash SHA-256</label>
+            <input type="text" value={hash} onChange={handleHashChange} className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[#00D2C4] font-mono" placeholder="Cole o hash (64 caracteres)" disabled={loading} />
+            <p className="text-slate-400 text-xs mt-1">{hash.length}/64</p>
           </div>
         )}
-
-        {/* Input file */}
         {method === 'file' && (
           <div>
-            <label className="label-field flex items-center gap-2">
-              <Upload size={18} />
-              Seleccionar Ficheiro
-            </label>
-
-            <input
-              type="file"
-              onChange={handleFileChange}
-              className="input-field cursor-pointer"
-              disabled={loading}
-              accept="*/*"
-            />
-
-            {file && (
-              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-                <CheckCircle size={18} className="text-success" />
-
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-gray-800 truncate">
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    {formatFileSize(file.size)}
-                  </p>
-                </div>
-              </div>
-            )}
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2 flex items-center gap-2"><Upload className="h-4 w-4" /> Ficheiro</label>
+            <input type="file" onChange={handleFileChange} className="w-full bg-slate-50 border border-slate-200 text-sm rounded-xl px-4 py-3" disabled={loading} accept="*/*" />
+            {file && <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2"><CheckCircle className="h-5 w-5 text-emerald-600" /><div><p className="font-semibold text-sm truncate">{file.name}</p><p className="text-xs text-slate-600">{formatFileSize(file.size)}</p></div></div>}
           </div>
         )}
-
-        {/* Erro */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-3">
-            <AlertCircle className="text-danger flex-shrink-0" size={20} />
-            <p className="text-danger text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Submit */}
-        <button
-          type="submit"
-          className="btn-primary w-full"
-          disabled={loading}
-        >
-          {loading ? 'Verificando...' : 'Verificar Documento'}
+        {error && <div className={`border rounded-xl p-3 flex gap-3 ${error.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-200 text-rose-700'}`}><AlertCircle className="flex-shrink-0 h-5 w-5" /><p className="text-sm font-medium">{error.message}</p></div>}
+        <button type="submit" className="w-full bg-[#0B192C] hover:bg-slate-800 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50" disabled={loading}>
+          {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Verificando...</> : <><Search className="h-4 w-4" /> Verificar</>}
         </button>
       </form>
     </div>
   );
-            }
+}
+
