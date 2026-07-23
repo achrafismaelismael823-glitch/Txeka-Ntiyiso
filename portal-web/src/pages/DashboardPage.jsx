@@ -18,7 +18,6 @@ import VerificationForm from '../components/VerificationForm';
 import ResultsDisplay from '../components/ResultsDisplay';
 
 // ==================== STATUS HELPERS ====================
-// API returns: "VALID" | "INVALID" | "EXPIRED" | "REVOKED"
 function isValidStatus(status) {
   return status === 'VALID';
 }
@@ -39,6 +38,15 @@ function getStatusColor(status) {
   if (status === 'EXPIRED') return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: 'text-amber-600' };
   if (status === 'REVOKED') return { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-600' };
   return { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: 'text-slate-600' };
+}
+
+// ==================== SAFE GETTERS (Enterprise Fallbacks) ====================
+function safeGet(obj, path, defaultValue) {
+  try {
+    return path.split('.').reduce((o, k) => (o || {})[k], obj) || defaultValue;
+  } catch (e) {
+    return defaultValue;
+  }
 }
 
 export default function DashboardPage() {
@@ -81,20 +89,20 @@ export default function DashboardPage() {
           listInstitutions().catch(err => { console.warn('[Dashboard] Institutions error:', err.translated?.message); return null; }),
           getAuditLogs({ limit: 50 }).catch(err => { console.warn('[Dashboard] Audit logs error:', err.translated?.message); return []; }),
         ]);
-        setAdminStats(stats);
+        setAdminStats(stats || {});
         setInstitutionsList(institutions?.institutions || []);
-        setAuditLogs(logs || []);
+        setAuditLogs(Array.isArray(logs) ? logs : []);
       } else {
         const [dashboard, credits] = await Promise.all([
           getMyDashboard().catch(err => { console.warn('[Dashboard] My dashboard error:', err.translated?.message); return null; }),
           getMyCredits().catch(err => { console.warn('[Dashboard] My credits error:', err.translated?.message); return null; }),
         ]);
-        setDashboardData(dashboard);
-        setCreditsData(credits);
+        setDashboardData(dashboard || {});
+        setCreditsData(credits || {});
       }
       const savedHistory = localStorage.getItem('verificationHistory');
       if (savedHistory) {
-        try { setHistory(JSON.parse(savedHistory)); } catch (e) {}
+        try { setHistory(JSON.parse(savedHistory)); } catch (e) { setHistory([]); }
       }
     } catch (error) {
       console.error('[Dashboard] Erro ao carregar dados:', error);
@@ -131,8 +139,8 @@ export default function DashboardPage() {
   };
 
   const filteredHistory = history.filter(item => 
-    item.hash.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.type && item.type.toLowerCase().includes(searchTerm.toLowerCase()))
+    item.hash && item.hash.toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+    (item.type && item.type.toLowerCase().includes((searchTerm || '').toLowerCase()))
   );
 
   return (
@@ -254,11 +262,12 @@ function DashboardHeader({ activeTab, apiStatus, institutionStatus }) {
 }
 
 function AdminOverview({ stats, institutions, auditLogs }) {
-  const totalDocs = stats?.stats?.summary?.total_emitted_documents || stats?.total_documents || 0;
-  const totalInstitutions = institutions?.length || 0;
-  const activeInstitutions = institutions?.filter(i => i.status === 'active').length || 0;
-  const totalVerifications = stats?.stats?.summary?.total_verifications || 0;
-  const totalCredits = institutions?.reduce((sum, i) => sum + (i.credits || 0), 0) || 0;
+  // Enterprise fallbacks — safeGet protege contra qualquer estrutura da API
+  const totalDocs = safeGet(stats, 'stats.summary.total_emitted_documents', 0) || safeGet(stats, 'total_documents', 0) || safeGet(stats, 'total_emitted', 0) || 0;
+  const totalVerifications = safeGet(stats, 'stats.summary.total_verifications', 0) || safeGet(stats, 'total_verifications', 0) || 0;
+  const totalInstitutions = Array.isArray(institutions) ? institutions.length : 0;
+  const activeInstitutions = Array.isArray(institutions) ? institutions.filter(i => i && i.status === 'active').length : 0;
+  const totalCredits = Array.isArray(institutions) ? institutions.reduce((sum, i) => sum + (i && i.credits || 0), 0) : 0;
 
   const monthlyData = [
     { month: 'Jan', emits: 120, verifies: 340 },
@@ -316,7 +325,7 @@ function AdminOverview({ stats, institutions, auditLogs }) {
           </h3>
           <div className="space-y-4">
             {['active', 'pending', 'suspended', 'inactive'].map(status => {
-              const count = institutions?.filter(i => i.status === status).length || 0;
+              const count = Array.isArray(institutions) ? institutions.filter(i => i && i.status === status).length : 0;
               const colors = { active: 'bg-emerald-500', pending: 'bg-amber-500', suspended: 'bg-rose-500', inactive: 'bg-slate-400' };
               const labels = { active: 'Ativas', pending: 'Pendentes', suspended: 'Suspensas', inactive: 'Inativas' };
               const pct = totalInstitutions > 0 ? (count / totalInstitutions) * 100 : 0;
@@ -343,16 +352,16 @@ function AdminOverview({ stats, institutions, auditLogs }) {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h3 className="text-lg font-bold text-slate-900 mb-4">Atividade Recente</h3>
         <div className="space-y-2">
-          {auditLogs.slice(0, 5).map((log, idx) => (
+          {Array.isArray(auditLogs) && auditLogs.slice(0, 5).map((log, idx) => (
             <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <div className={`w-2 h-2 rounded-full ${log.action === 'EMIT' ? 'bg-blue-500' : log.action === 'VERIFY' ? 'bg-emerald-500' : log.action === 'REVOKE' ? 'bg-rose-500' : 'bg-slate-400'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${log && log.action === 'EMIT' ? 'bg-blue-500' : log && log.action === 'VERIFY' ? 'bg-emerald-500' : log && log.action === 'REVOKE' ? 'bg-rose-500' : 'bg-slate-400'}`}></div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-slate-900">{log.action}</p>
-                <p className="text-xs text-slate-500">{log.institution_id} — {formatDate(log.created_at)}</p>
+                <p className="text-sm font-medium text-slate-900">{log && log.action ? log.action : 'UNKNOWN'}</p>
+                <p className="text-xs text-slate-500">{log && log.institution_id ? log.institution_id : '-'} — {formatDate(log && log.created_at ? log.created_at : null)}</p>
               </div>
             </div>
           ))}
-          {auditLogs.length === 0 && <p className="text-slate-400 text-sm text-center py-4">Sem atividade recente</p>}
+          {(!Array.isArray(auditLogs) || auditLogs.length === 0) && <p className="text-slate-400 text-sm text-center py-4">Sem atividade recente</p>}
         </div>
       </div>
     </div>
@@ -360,12 +369,12 @@ function AdminOverview({ stats, institutions, auditLogs }) {
 }
 
 function InstitutionOverview({ dashboardData, creditsData, result, lastHash, setActiveTab }) {
-  const totalEmitted = dashboardData?.total_emitted || 0;
-  const totalVerifications = dashboardData?.total_verifications || 0;
-  const credits = creditsData?.credits || 0;
-  const docsEmittedMonth = creditsData?.docs_emitted_month || 0;
-  const institutionStatus = creditsData?.status || 'active';
-  const institution = dashboardData?.institution;
+  const totalEmitted = safeGet(dashboardData, 'total_emitted', 0) || 0;
+  const totalVerifications = safeGet(dashboardData, 'total_verifications', 0) || 0;
+  const credits = safeGet(creditsData, 'credits', 0) || 0;
+  const docsEmittedMonth = safeGet(creditsData, 'docs_emitted_month', 0) || 0;
+  const institutionStatus = safeGet(creditsData, 'status', 'active');
+  const institution = safeGet(dashboardData, 'institution', null);
   const lowCredits = credits < 100;
 
   return (
@@ -393,15 +402,15 @@ function InstitutionOverview({ dashboardData, creditsData, result, lastHash, set
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-slate-50 rounded-xl">
               <p className="text-xs text-slate-500 uppercase">Nome</p>
-              <p className="text-sm font-bold text-slate-900">{institution.name}</p>
+              <p className="text-sm font-bold text-slate-900">{institution.name || '-'}</p>
             </div>
             <div className="p-4 bg-slate-50 rounded-xl">
               <p className="text-xs text-slate-500 uppercase">Plano</p>
-              <p className="text-sm font-bold capitalize">{institution.subscription_plan}</p>
+              <p className="text-sm font-bold capitalize">{institution.subscription_plan || '-'}</p>
             </div>
             <div className="p-4 bg-slate-50 rounded-xl">
               <p className="text-xs text-slate-500 uppercase">Status</p>
-              <p className="text-sm font-bold capitalize">{institution.status}</p>
+              <p className="text-sm font-bold capitalize">{institution.status || '-'}</p>
             </div>
           </div>
         </div>
@@ -444,12 +453,12 @@ function HistoryTab({ history, filteredHistory, searchTerm, setSearchTerm }) {
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-          <input type="text" placeholder="Pesquisar por hash ou tipo..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          <input type="text" placeholder="Pesquisar por hash ou tipo..." value={searchTerm || ''} onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00D2C4]" />
         </div>
       </div>
 
-      {filteredHistory.length === 0 ? (
+      {(!Array.isArray(filteredHistory) || filteredHistory.length === 0) ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
           <History className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-500 font-medium">Nenhum registro no historico</p>
@@ -458,8 +467,8 @@ function HistoryTab({ history, filteredHistory, searchTerm, setSearchTerm }) {
       ) : (
         <div className="space-y-3">
           {filteredHistory.map((item, index) => {
-            const statusColors = getStatusColor(item.status);
-            const isValid = isValidStatus(item.status);
+            const statusColors = getStatusColor(item && item.status);
+            const isValid = isValidStatus(item && item.status);
             return (
               <div key={index} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition">
                 <div className="flex items-start justify-between">
@@ -468,19 +477,19 @@ function HistoryTab({ history, filteredHistory, searchTerm, setSearchTerm }) {
                       {isValid ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900">{item.type || 'Documento'}</p>
+                      <p className="font-semibold text-slate-900">{item && item.type ? item.type : 'Documento'}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Hash className="h-3 w-3 text-slate-400" />
-                        <p className="text-xs text-slate-500 font-mono">{item.hash.substring(0, 16)}...</p>
+                        <p className="text-xs text-slate-500 font-mono">{item && item.hash ? item.hash.substring(0, 16) : '...'}...</p>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <Clock className="h-3 w-3 text-slate-400" />
-                        <p className="text-xs text-slate-400">{formatDate(item.timestamp)}</p>
+                        <p className="text-xs text-slate-400">{formatDate(item && item.timestamp)}</p>
                       </div>
                     </div>
                   </div>
                   <span className={`px-2 py-1 rounded-lg text-xs font-bold ${statusColors.bg} ${statusColors.text}`}>
-                    {getStatusLabel(item.status)}
+                    {getStatusLabel(item && item.status)}
                   </span>
                 </div>
               </div>
@@ -494,27 +503,28 @@ function HistoryTab({ history, filteredHistory, searchTerm, setSearchTerm }) {
 
 function InstitutionsTab({ institutions }) {
   const [expandedId, setExpandedId] = useState(null);
+  const safeInstitutions = Array.isArray(institutions) ? institutions : [];
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-slate-900">Instituicoes Cadastradas</h3>
-          <span className="text-sm text-slate-500">{institutions.length} total</span>
+          <span className="text-sm text-slate-500">{safeInstitutions.length} total</span>
         </div>
         <div className="space-y-2">
-          {institutions.map((inst) => (
-            <div key={inst.id} className="border border-slate-200 rounded-xl overflow-hidden">
+          {safeInstitutions.map((inst) => (
+            inst && <div key={inst.id || Math.random()} className="border border-slate-200 rounded-xl overflow-hidden">
               <button onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
                 className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition">
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${inst.status === 'active' ? 'bg-emerald-500' : inst.status === 'pending' ? 'bg-amber-500' : inst.status === 'suspended' ? 'bg-rose-500' : 'bg-slate-400'}`}></div>
                   <div className="text-left">
-                    <p className="font-semibold text-slate-900">{inst.name}</p>
-                    <p className="text-xs text-slate-500">{inst.id} — {inst.contact_email}</p>
+                    <p className="font-semibold text-slate-900">{inst.name || 'Sem nome'}</p>
+                    <p className="text-xs text-slate-500">{inst.id || '-'} — {inst.contact_email || '-'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{inst.credits} creditos</span>
+                  <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{inst.credits || 0} creditos</span>
                   {expandedId === inst.id ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                 </div>
               </button>
@@ -523,11 +533,11 @@ function InstitutionsTab({ institutions }) {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="p-3 bg-slate-50 rounded-lg">
                       <p className="text-xs text-slate-500">Plano</p>
-                      <p className="text-sm font-bold capitalize">{inst.subscription_plan}</p>
+                      <p className="text-sm font-bold capitalize">{inst.subscription_plan || '-'}</p>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg">
                       <p className="text-xs text-slate-500">Status</p>
-                      <p className="text-sm font-bold capitalize">{inst.status}</p>
+                      <p className="text-sm font-bold capitalize">{inst.status || '-'}</p>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg">
                       <p className="text-xs text-slate-500">Aprovado</p>
@@ -535,7 +545,7 @@ function InstitutionsTab({ institutions }) {
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg">
                       <p className="text-xs text-slate-500">Emitidos/Mes</p>
-                      <p className="text-sm font-bold">{inst.docs_emitted_month}</p>
+                      <p className="text-sm font-bold">{inst.docs_emitted_month || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -549,6 +559,7 @@ function InstitutionsTab({ institutions }) {
 }
 
 function AuditTab({ auditLogs }) {
+  const safeLogs = Array.isArray(auditLogs) ? auditLogs : [];
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
@@ -564,19 +575,19 @@ function AuditTab({ auditLogs }) {
               </tr>
             </thead>
             <tbody>
-              {auditLogs.map((log, idx) => (
-                <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+              {safeLogs.map((log, idx) => (
+                log && <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="py-3 px-3">
                     <span className={`px-2 py-1 rounded-lg text-xs font-bold ${log.action === 'EMIT' ? 'bg-blue-50 text-blue-700' : log.action === 'VERIFY' ? 'bg-emerald-50 text-emerald-700' : log.action === 'REVOKE' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-700'}`}>
-                      {log.action}
+                      {log.action || 'UNKNOWN'}
                     </span>
                   </td>
                   <td className="py-3 px-3 text-slate-700">{log.institution_id || '-'}</td>
                   <td className="py-3 px-3 text-slate-500 text-xs">{formatDate(log.created_at)}</td>
-                  <td className="py-3 px-3 text-slate-500 text-xs">{(log.details || '-').substring(0, 50)}</td>
+                  <td className="py-3 px-3 text-slate-500 text-xs">{log.details ? String(log.details).substring(0, 50) : '-'}</td>
                 </tr>
               ))}
-              {auditLogs.length === 0 && <tr><td colSpan="4" className="py-8 text-center text-slate-400">Sem logs de auditoria</td></tr>}
+              {safeLogs.length === 0 && <tr><td colSpan="4" className="py-8 text-center text-slate-400">Sem logs de auditoria</td></tr>}
             </tbody>
           </table>
         </div>
