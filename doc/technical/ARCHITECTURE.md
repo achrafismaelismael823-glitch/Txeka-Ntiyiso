@@ -1,595 +1,420 @@
-# Arquitetura Tecnica - Txeka Ntiyiso
+# Documentação Técnica — Txeka Ntiyiso
 
-> **Versao:** 2.0.0  
-> **Ultima atualizacao:** 22/07/2026  
-> **Fase:** Fase 2 - Gestao de Instituicoes & Controlo de Creditos
+**Arquitetura, Stack e Decisões Técnicas**
 
----
-
-## Indice
-
-- [Visao Geral](#visao-geral)
-- [Stack Tecnologica](#stack-tecnologica)
-- [Arquitetura em Camadas](#arquitetura-em-camadas)
-- [Fluxos de Dados](#fluxos-de-dados)
-- [Modelo de Dados](#modelo-de-dados)
-- [Seguranca](#seguranca)
-- [Pipeline de Deploy](#pipeline-de-deploy)
-- [Escalabilidade](#escalabilidade)
-- [Metricas e SLA](#metricas-e-sla)
+| Versão | Estado | Última Atualização | Contacto |
+|--------|--------|-------------------|----------|
+| 2.0.0 | Final | 2026-07-23 | geral.txekantiyiso@gmail.com |
 
 ---
 
-## Visao Geral
+## Índice
 
-O Txeka Ntiyiso e uma plataforma de infraestrutura digital B2G/B2B para verificacao da integridade e autenticidade de documentos em Mocambique. A arquitetura segue os principios de:
-
-- **Zero-Knowledge:** Documentos originais nunca saem do dispositivo do utilizador
-- **Multi-tenant:** Suporte a multiplas instituicoes com isolamento logico
-- **Stateless:** API REST sem estado, escalavel horizontalmente
-- **Auditavel:** Toda operacao e registada em logs imutaveis
-
----
-
-## Stack Tecnologica
-
-| Camada | Tecnologia | Versao | Funcao |
-|--------|-----------|--------|--------|
-| Linguagem | Python | 3.11 | Backend, logica de negocio |
-| Framework | FastAPI | 0.110.0 | API REST, validacao, documentacao auto |
-| Servidor ASGI | Uvicorn | 0.28.0 | Servidor HTTP assincrono |
-| ORM | SQLAlchemy | 2.0.29 | Mapeamento objeto-relacional |
-| Migrations | Alembic | 1.12.1 | Versionamento de schema |
-| Base de Dados | PostgreSQL | 15 | Persistencia ACID |
-| Driver Async | asyncpg | 0.29.0 | Conexao assincrona com PostgreSQL |
-| Driver Sync | psycopg2-binary | 2.9.9 | Conexao sincrona (Alembic) |
-| Hashing | bcrypt | 5.0.0 | Hash de passwords |
-| JWT | python-jose + PyJWT | 3.5.0 / 2.8.0 | Tokens de autenticacao |
-| Rate Limiting | slowapi + limits | 0.1.9 / 3.8.0 | Protecao contra abuso |
-| Logging | structlog | 24.1.0 | Logs estruturados JSON |
-| QR Code | qrcode + Pillow | 7.4.2 / 11.0.0 | Geracao de QR codes verificaveis |
-| PDF | PyPDF2 | 3.0.1 | Validacao de ficheiros PDF |
-| Config | pydantic-settings | 2.2.1 | Gestao de configuracoes |
-| Frontend | React + Tailwind CSS | 18.x | Portal web |
-| Deploy | Render + Docker | - | Cloud e on-premise |
-| CI/CD | GitHub Actions | - | Testes, lint, deploy |
+1. [Visão Geral da Arquitetura](#1-visão-geral-da-arquitetura)
+2. [Stack Tecnológico](#2-stack-tecnológico)
+3. [Decisões Arquiteturais](#3-decisões-arquiteturais)
+4. [Modelo de Dados](#4-modelo-de-dados)
+5. [Fluxo de Dados](#5-fluxo-de-dados)
+6. [Segurança](#6-segurança)
+7. [Performance](#7-performance)
+8. [Escalabilidade](#8-escalabilidade)
+9. [Roadmap Técnico](#9-roadmap-técnico)
+10. [Documentação Relacionada](#10-documentação-relacionada)
 
 ---
 
-## Arquitetura em Camadas
+## 1. Visão Geral da Arquitetura
 
 ```
-+---------------------+
-|    Cliente          |  <- Navegador, App Mobile, Sistema Externo
-|  (React / Mobile)     |
-+----------+----------+
++--------------------------------------------------+
+|                    CLIENTE                        |
+|  (Instituição / Cidadão / Banco / Governo)      |
++----------+---------------------------------------+
            |
-           | HTTPS
+           | HTTPS (TLS 1.3)
            v
-+---------------------+
-|   Nginx / Render    |  <- SSL, Reverse Proxy, Rate Limiting
-|   (Edge Layer)      |
-+----------+----------+
++----------+----------+     +---------------------+
+|   Render.com        |     |  PostgreSQL         |
+|   FastAPI + Uvicorn |<--->|  15 (managed)      |
+|   Python 3.11       |     |  Hashes + Logs      |
++----------+----------+     +---------------------+
            |
            v
-+---------------------+
-|   FastAPI Gateway   |  <- Rotas, Middleware, Auth, Validacao
-|   (API Layer)       |
 +----------+----------+
-           |
-     +-----+-----+
-     |           |
-     v           v
-+---------+  +---------+
-|Business |  |Business |
-|Logic    |  |Logic    |  <- Services, Use Cases, Rules
-|Layer    |  |Layer    |
-+----+----+  +----+----+
-     |            |
-     v            v
-+---------+  +---------+
-| Data    |  | Audit   |  <- Repositorios, Queries
-| Access  |  | Logs    |
-| Layer   |  | Layer   |
-+----+----+  +----+----+
-     |            |
-     v            v
-+---------+  +---------+
-|PostgreSQL|  |PostgreSQL|  <- Dados + Logs imutaveis
-|  Dados   |  |  Logs    |
-+---------+  +---------+
+|  JWT + bcrypt       |
+|  SHA-256 (in-memory)|
++---------------------+
 ```
 
-### Camadas Detalhadas
-
-#### 1. Edge Layer (Nginx / Render)
-- Terminacao SSL/TLS
-- Reverse proxy para o Uvicorn
-- Headers de seguranca (HSTS, CSP, X-Frame-Options)
-- Compressao gzip
-
-#### 2. API Layer (FastAPI)
-- **Roteamento:** Prefixo `/api/v1` com include_router
-- **Middleware:**
-  - CORS para origens permitidas
-  - Rate limiting (slowapi)
-  - Logging de requests (structlog)
-  - Tratamento global de excecoes
-- **Dependencias:**
-  - `get_db()` - Sessao de base de dados
-  - `get_current_user()` - Extracao e validacao de JWT
-  - `verify_role("admin")` - Verificacao de permissao
-
-#### 3. Business Logic Layer
-- **Services:**
-  - `AuthService` - Login, tokens, password reset
-  - `CertifyService` - Emissao de documentos, hash SHA-256
-  - `VerifyService` - Verificacao publica e privada
-  - `InstitutionService` - CRUD de instituicoes, creditos
-  - `AuditService` - Registo de logs, queries agregadas
-- **Use Cases:**
-  - Emissao unica e em bulk
-  - Verificacao via QR code ou API
-  - Revogacao administrativa
-  - Gestao de creditos e planos
-
-#### 4. Data Access Layer
-- **Repositorios:**
-  - `DocumentRepository` - CRUD de documentos
-  - `InstitutionRepository` - CRUD de instituicoes
-  - `CreditRepository` - Transacoes de creditos
-  - `AuditLogRepository` - Logs de auditoria
-- **Queries:**
-  - Queries agregadas para `/stats`
-  - Filtros avancados para `/logs`
-  - Historico cronologico por documento
-
-#### 5. Audit Logs Layer
-- Tabela separada `audit_logs` com trigger de imutabilidade
-- Registo de toda operacao: EMIT, VERIFY, REVOKE, LOGIN, BULK_EMIT
-- Retencao minima de 20 anos (Decreto 59/2019)
-- Acesso exclusivo via token de Admin
+**Princípio Zero-Knowledge:** A plataforma armazena apenas hashes SHA-256 (64 caracteres hexadecimais). Os documentos originais (PDF) nunca saem do ambiente do cliente.
 
 ---
 
-## Fluxos de Dados
+## 2. Stack Tecnológico
 
-### Fluxo 1: Emissao de Documento (Fase 2)
+### Backend
+
+| Componente | Versão | Função |
+|------------|--------|--------|
+| Python | 3.11 | Linguagem principal |
+| FastAPI | 0.110.0 | Framework web async |
+| Uvicorn | 0.28.0 | Servidor ASGI |
+| SQLAlchemy | 2.0.29 | ORM |
+| Alembic | 1.12.1 | Migrations |
+| Pydantic | 2.10.3 | Validação de dados |
+| Pydantic-Settings | 2.2.1 | Configuração via `.env` |
+| PyJWT | 2.8.0 | Tokens JWT |
+| bcrypt | 5.0.0 | Hashing de passwords |
+| slowapi | 0.1.9 | Rate limiting |
+| structlog | 24.1.0 | Logging estruturado |
+
+### Base de Dados
+
+| Componente | Versão | Função |
+|------------|--------|--------|
+| PostgreSQL | 15 | Base de dados relacional |
+| asyncpg | 0.29.0 | Driver async para PostgreSQL |
+| psycopg2-binary | 2.9.9 | Driver sync para PostgreSQL |
+
+### Infraestrutura
+
+| Componente | Versão | Função |
+|------------|--------|--------|
+| Docker | 24.0+ | Containerização |
+| Docker Compose | 2.20+ | Orquestração local |
+| Nginx | 1.24+ | Reverse proxy (on-premise) |
+| Render.com | — | PaaS (produção cloud) |
+
+### DevOps / Qualidade
+
+| Componente | Versão | Função |
+|------------|--------|--------|
+| Poetry | 2.1.3 | Gestão de dependências |
+| pytest | 8.4.2 | Testes unitários |
+| pytest-cov | 4.1.0 | Cobertura de testes |
+| pytest-asyncio | 0.23.8 | Testes async |
+| bandit | 1.9.4 | Análise de segurança estática |
+| GitHub Actions | — | CI/CD |
+
+---
+
+## 3. Decisões Arquiteturais
+
+### 3.1 Por que FastAPI?
+
+| Critério | FastAPI | Django | Flask |
+|----------|---------|--------|-------|
+| Performance | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
+| Async nativo | ✅ | ❌ | ⚠️ |
+| Documentação automática | ✅ (Swagger) | ⚠️ (DRF) | ❌ |
+| Type hints | ✅ | ❌ | ❌ |
+| Curva de aprendizado | Média | Alta | Baixa |
+
+**Decisão:** FastAPI oferece async nativo, documentação automática e performance superior para I/O-bound workloads (verificação de hashes).
+
+### 3.2 Por que PostgreSQL?
+
+| Critério | PostgreSQL | MongoDB | MySQL |
+|----------|-----------|---------|-------|
+| ACID | ✅ | ⚠️ | ✅ |
+| JSONB | ✅ | ✅ | ⚠️ |
+| Full-text search | ✅ | ✅ | ⚠️ |
+| Extensões | ✅ (PostGIS, etc.) | ⚠️ | ⚠️ |
+| Licença | Open Source | SSPL | GPL |
+
+**Decisão:** PostgreSQL oferece ACID completo, suporte a JSONB para logs flexíveis, e é o padrão para aplicações governamentais em Moçambique.
+
+### 3.3 Por que SHA-256?
+
+| Algoritmo | Tamanho | Colisões | Performance | Uso |
+|-----------|---------|----------|-------------|-----|
+| SHA-256 | 256 bits | Improvável | Rápido | Padrão bancário |
+| SHA-512 | 512 bits | Improvável | Médio | Militar |
+| MD5 | 128 bits | Viável | Muito rápido | ❌ Obsoleto |
+| BLAKE3 | 256 bits | Improvável | Muito rápido | Moderno |
+
+**Decisão:** SHA-256 é amplamente auditado, suportado por todas as linguagens, e reconhecido legalmente em Moçambique (Lei 3/2017).
+
+### 3.4 Por que JWT (stateless)?
+
+| Critério | JWT | Sessions |
+|----------|-----|----------|
+| Escalabilidade | ✅ (sem estado) | ❌ (redis necessário) |
+| Latência | ✅ (sem lookup) | ⚠️ (lookup DB) |
+| Revogação | ⚠️ (blacklist) | ✅ (instantânea) |
+| Complexidade | Média | Baixa |
+
+**Decisão:** JWT oferece escalabilidade horizontal sem estado. Revogação é gerida via expiração curta (60 minutos) + refresh tokens (7 dias).
+
+---
+
+## 4. Modelo de Dados
+
+### 4.1 Diagrama ER (Simplificado)
 
 ```
-Utilizador (Portal Web)
-    |
-    | 1. Anexa PDF
-    v
-+---------------+
-| Client-Side   |  <- Hash SHA-256 calculado no navegador (Zero-Knowledge)
-| SHA-256       |
-+-------+-------+
-    | 2. Envia hash (64 chars)
-    v
-+---------------+
-| POST /certify |  <- FastAPI valida token, creditos, PDF
-|               |
-| - Verifica    |  <- InstitutionService: creditos > 0?
-|   creditos    |
-| - Gera hash   |  <- CertifyService: SHA-256 do ficheiro
-| - Cria doc    |  <- DocumentRepository: INSERT
-| - Debita      |  <- CreditRepository: UPDATE credits -= 1
-|   credito     |
-| - Gera QR     |  <- qrcode library
-| - Regista log |  <- AuditLogRepository: INSERT audit_logs
-+-------+-------+
-    | 3. Resposta JSON
-    v
-+---------------+
-| Resposta com  |  <- doc_id, doc_hash, qr_code, certificate_url
-| doc_id, hash, |
-| QR code       |
-+---------------+
++----------------+       +------------------+       +----------------+
+| institutions   |       | documents        |       | audit_logs     |
++----------------+       +------------------+       +----------------+
+| id (PK)        |<-----| id (PK)          |       | id (PK)        |
+| name           |       | doc_hash (UQ)    |       | action         |
+| email          |       | doc_id           |       | entity_type    |
+| api_key_hash   |       | institution_id   |------>| entity_id      |
+| password_hash  |       | status           |       | institution_id |------> institutions
+| credits        |       | created_at       |       | details (JSONB)|
+| is_active      |       | revoked_at       |       | ip_address     |
+| created_at     |       | revoked_reason   |       | created_at     |
++----------------+       +------------------+       +----------------+
+        |                                              |
+        |       +------------------+                  |
+        +------>| institution_logs   |<-----------------+
+                +------------------+
+                | id (PK)          |
+                | institution_id   |
+                | action           |
+                | details (JSONB)  |
+                | created_at       |
+                +------------------+
 ```
 
-### Fluxo 2: Verificacao Publica (Anonima)
+### 4.2 Tabelas Principais
 
-```
-Cidadao / Parceiro
-    |
-    | 1. Escaneia QR code ou acede URL
-    v
-+---------------+
-| GET /verify/  |  <- Sem autenticacao (publico)
-| {doc_hash}    |
-|               |
-| - Valida hash |  <- VerifyService: regex SHA-256
-| - Consulta BD |  <- DocumentRepository: SELECT
-| - Verifica    |  <- Se revoked=true, retorna status
-|   revogacao   |
-| - Regista log |  <- AuditLogRepository: INSERT VERIFY
-+-------+-------+
-    | 2. Resposta JSON
-    v
-+---------------+
-| Status: valid |  <- Dados publicos (tipo, instituicao, data)
-| ou revoked    |
-+---------------+
-```
+#### `institutions`
 
-### Fluxo 3: Gestao de Instituicoes (Admin)
+| Coluna | Tipo | Restrição | Descrição |
+|--------|------|-----------|-----------|
+| id | UUID | PK | Identificador único |
+| name | VARCHAR(255) | NOT NULL | Nome da instituição |
+| email | VARCHAR(255) | UQ, NOT NULL | Email de contacto |
+| api_key_hash | VARCHAR(255) | — | Hash da API key (bcrypt) |
+| password_hash | VARCHAR(255) | — | Hash da password (bcrypt) |
+| credits | INTEGER | DEFAULT 0 | Créditos disponíveis |
+| is_active | BOOLEAN | DEFAULT true | Estado da conta |
+| created_at | TIMESTAMP | DEFAULT NOW() | Data de criação |
 
-```
-Administrador
-    |
-    | 1. Login com credenciais admin
-    v
-+---------------+
-| POST /admin/  |  <- AuthService: valida, gera JWT (90 dias)
-| login         |
-+-------+-------+
-    | 2. Token JWT
-    v
-+---------------+
-| CRUD          |  <- InstitutionService
-| Instituicoes  |
-|               |
-| - Criar       |  <- POST /{institution_id}
-| - Ler         |  <- GET /{institution_id}
-| - Atualizar   |  <- PATCH /{institution_id}
-| - Creditos    |  <- POST /{institution_id}/credits
-| - Reset pass  |  <- POST /{institution_id}/reset-password
-| - Regen key   |  <- POST /{institution_id}/regenerate-api-key
-+-------+-------+
-    | 3. Resposta
-    v
-+---------------+
-| JSON com      |  <- InstitutionResponse
-| dados da      |
-| instituicao   |
-+---------------+
-```
+#### `documents`
 
-### Fluxo 4: Dashboard da Instituicao
+| Coluna | Tipo | Restrição | Descrição |
+|--------|------|-----------|-----------|
+| id | UUID | PK | Identificador único |
+| doc_hash | VARCHAR(64) | UQ, NOT NULL | Hash SHA-256 do PDF |
+| doc_id | VARCHAR(50) | UQ, NOT NULL | ID legível (ex: DUAT-INAGE-20260604-A1B2C3D4) |
+| institution_id | UUID | FK | Instituição emissora |
+| status | ENUM | DEFAULT 'active' | active / revoked |
+| created_at | TIMESTAMP | DEFAULT NOW() | Data de emissão |
+| revoked_at | TIMESTAMP | — | Data de revogação |
+| revoked_reason | TEXT | — | Motivo da revogação |
 
-```
-Instituicao (logada)
-    |
-    | 1. Token JWT (30 dias)
-    v
-+---------------+
-| GET /me/      |  <- InstitutionService: dados da instituicao
-| dashboard     |  <- CreditRepository: historico de creditos
-|               |  <- DocumentRepository: total_emitted
-|               |  <- AuditLogRepository: total_verifications
-+-------+-------+
-    | 2. Resposta
-    v
-+---------------+
-| Dashboard     |  <- InstitutionDashboard
-| completo com  |  <- institution + credits_history + metricas
-| metricas      |
-+---------------+
+#### `audit_logs`
+
+| Coluna | Tipo | Restrição | Descrição |
+|--------|------|-----------|-----------|
+| id | UUID | PK | Identificador único |
+| action | VARCHAR(50) | NOT NULL | EMIT / VERIFY / REVOKE / LOGIN |
+| entity_type | VARCHAR(50) | — | document / institution |
+| entity_id | VARCHAR(255) | — | ID do documento ou instituição |
+| institution_id | UUID | FK | Instituição relacionada |
+| details | JSONB | — | Metadados adicionais |
+| ip_address | INET | — | IP do requisitante |
+| created_at | TIMESTAMP | DEFAULT NOW() | Timestamp CAT (UTC+2) |
+
+### 4.3 Índices
+
+```sql
+-- Performance crítica
+CREATE INDEX idx_documents_doc_hash ON documents(doc_hash);
+CREATE INDEX idx_documents_institution ON documents(institution_id);
+CREATE INDEX idx_documents_status ON documents(status);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX idx_audit_logs_institution ON audit_logs(institution_id);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+
+-- Busca de texto
+CREATE INDEX idx_audit_logs_details ON audit_logs USING GIN(details);
 ```
 
 ---
 
-## Modelo de Dados
+## 5. Fluxo de Dados
 
-### Diagrama Entidade-Relacao
+### 5.1 Emissão de Documento
 
 ```
-+----------------+       +-------------------+       +------------------+
-| institutions   |<----->| credit_transactions|       | documents        |
-+----------------+       +-------------------+       +------------------+
-| id (PK)        |       | id (PK)           |       | id (PK)          |
-| name           |       | institution_id(FK) |       | doc_id (unique)  |
-| contact_email  |       | amount            |       | doc_hash (unique)|
-| password_hash  |       | type              |       | document_type    |
-| api_key_hash   |       | description       |       | institution_id   |
-| role           |       | payment_method    |       | file_name        |
-| subscription   |       | payment_reference |       | file_size        |
-| credits        |       | notes             |       | issued_by        |
-| docs_emitted   |       | created_by        |       | created_at       |
-| status         |       | created_at        |       | revoked          |
-| approved       |       +-------------------+       | revoked_at       |
-| created_at     |                                    | revoked_reason   |
-| updated_at     |<----------------------------------| revoked_by       |
-+----------------+                                    +------------------+
-         |                                                     |
-         |                                                     |
-         v                                                     v
-+----------------+                                    +------------------+
-| audit_logs     |<-----------------------------------| (triggers)       |
-+----------------+                                    +------------------+
-| id (PK)        |
-| action         |
-| institution_id |
-| doc_hash       |
-| ip_address     |
-| user_agent     |
-| details        |
-| created_at     |
-+----------------+
+1. Instituição envia PDF via POST /api/v1/certify
+   |
+   v
+2. API recebe ficheiro (UploadFile)
+   |
+   v
+3. PDF é processado em memória (nunca persistido)
+   |
+   v
+4. SHA-256 é calculado (64 caracteres hex)
+   |
+   v
+5. Verifica duplicidade (doc_hash UNIQUE)
+   |
+   v
+6. Regista em `documents` + `audit_logs`
+   |
+   v
+7. Retorna: doc_id, hash, QR code, URL de verificação
 ```
 
-### Tabelas
+### 5.2 Verificação de Documento
 
-#### institutions
-- **id:** VARCHAR(PK) - Identificador unico (ex: "INAGE", "INSS")
-- **name:** VARCHAR - Nome completo da instituicao
-- **contact_email:** VARCHAR - Email de contacto
-- **password_hash:** VARCHAR - Hash bcrypt da password
-- **api_key_hash:** VARCHAR - Hash da API key (para futuras integracoes)
-- **role:** VARCHAR - "institution" | "admin"
-- **subscription_plan:** VARCHAR - "free" | "standard" | "premium"
-- **credits:** INTEGER - Creditos disponiveis para emissao
-- **docs_emitted_month:** INTEGER - Documentos emitidos no mes atual
-- **status:** VARCHAR - "pending" | "active" | "suspended" | "inactive"
-- **approved:** BOOLEAN - Aprovacao manual pelo admin
-- **created_at:** TIMESTAMP - Data de criacao
-- **updated_at:** TIMESTAMP - Data de ultima atualizacao
+```
+1. Cidadão envia hash via GET /api/v1/verify/{hash}
+   |
+   v
+2. API valida formato (64 caracteres hex)
+   |
+   v
+3. Pesquisa em `documents` por doc_hash
+   |
+   v
+4. Verifica status (active / revoked)
+   |
+   v
+5. Regista em `audit_logs` (VERIFY)
+   |
+   v
+6. Retorna: status, instituição, timestamp, metadados
+```
 
-#### documents
-- **id:** SERIAL (PK)
-- **doc_id:** VARCHAR (unique) - UUID formatado (DOC-xxx)
-- **doc_hash:** VARCHAR (unique, 64 chars) - SHA-256 do documento
-- **document_type:** VARCHAR - Tipo (DUAT, CERTIDAO, ALVARA, etc.)
-- **institution_id:** VARCHAR (FK -> institutions.id)
-- **file_name:** VARCHAR - Nome original do ficheiro
-- **file_size:** INTEGER - Tamanho em bytes
-- **issued_by:** VARCHAR - ID da instituicao emissora
-- **created_at:** TIMESTAMP - Data de emissao
-- **revoked:** BOOLEAN - Status de revogacao
-- **revoked_at:** TIMESTAMP - Data de revogacao
-- **revoked_reason:** TEXT - Motivo da revogacao
-- **revoked_by:** VARCHAR - Quem revogou
+### 5.3 Revogação de Documento
 
-#### credit_transactions
-- **id:** SERIAL (PK)
-- **institution_id:** VARCHAR (FK -> institutions.id)
-- **amount:** INTEGER - Quantidade de creditos (positivo/negativo)
-- **type:** VARCHAR - "manual_add" | "bonus" | "refund" | "consumption"
-- **description:** TEXT - Descricao da transacao
-- **payment_method:** VARCHAR - "bank_transfer" | "cash" | "mpesa" | "bonus" | "none"
-- **payment_reference:** VARCHAR - Referencia do pagamento
-- **notes:** TEXT - Notas internas
-- **created_by:** VARCHAR - Email do admin que criou
-- **created_at:** TIMESTAMP - Data da transacao
-
-#### audit_logs
-- **id:** SERIAL (PK)
-- **action:** VARCHAR - "EMIT" | "VERIFY" | "REVOKE" | "LOGIN" | "BULK_EMIT" | "CREDIT_ADD"
-- **institution_id:** VARCHAR (FK, nullable) - Instituicao envolvida
-- **doc_hash:** VARCHAR (64 chars, nullable) - Hash do documento
-- **ip_address:** VARCHAR - IP do cliente
-- **user_agent:** TEXT - User-Agent do navegador
-- **details:** JSONB - Detalhes adicionais
-- **created_at:** TIMESTAMP - Data do evento
+```
+1. Admin/Instituição envia POST /api/v1/emissions/{id}/revoke
+   |
+   v
+2. API valida JWT + role
+   |
+   v
+3. Atualiza `documents.status` = 'revoked'
+   |
+   v
+4. Regista `documents.revoked_at` e `revoked_reason`
+   |
+   v
+5. Regista em `audit_logs` (REVOKE)
+   |
+   v
+6. Retorna: confirmação de revogação
+```
 
 ---
 
-## Seguranca
+## 6. Segurança
 
-### Autenticacao
+### 6.1 Modelo de Ameaças (STRIDE)
 
-| Mecanismo | Implementacao | Detalhes |
-|-----------|-------------|----------|
-| JWT | python-jose + PyJWT | HS256, secret de 32+ chars |
-| Passwords | bcrypt | Custo 12, salt auto |
-| Tokens | Stateless | Expiracao: 30 dias (inst) / 90 dias (admin) |
-| API Keys | Hash SHA-256 | Para futuras integracoes B2B |
+| Vetor | Descrição | Mitigação |
+|-------|-----------|-----------|
+| **S**poofing | Falsificar identidade | JWT + institution_id validado no servidor |
+| **T**ampering | Alterar documento | SHA-256 imutável; qualquer alteração invalida hash |
+| **R**epudiation | Negar emissão | Audit logs imutáveis com timestamp CAT |
+| **I**nformation Disclosure | Vazamento | Zero-Knowledge: apenas hashes armazenados |
+| **D**enial of Service | Sobrecarga | Rate limiting (100 req/min), resource limits |
+| **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root no container |
 
-### Autorizacao
+### 6.2 Criptografia
+
+| Algoritmo | Uso | Implementação |
+|-----------|-----|---------------|
+| SHA-256 | Hash de documentos | `hashlib.sha256()` |
+| JWT (HS256) | Autenticação stateless | `pyjwt` com `JWT_SECRET_KEY` |
+| bcrypt | Hashing de passwords | `bcrypt` com 12 rounds |
+| TLS 1.3 | Cifragem em trânsito | Nginx / Render |
+
+### 6.3 Autenticação e Autorização
 
 ```python
-# Decorador de verificacao de role
-@router.post("/{institution_id}")
-async def create_institution(
-    current_user = Depends(get_current_user),
-    ...
-):
-    verify_role("admin")  # Levanta 403 se nao for admin
-    ...
+ROLES = {
+    "admin":       ["verify", "emit", "revoke", "audit", "institution_manage", "credit_manage"],
+    "institution": ["emit", "verify", "revoke"],
+}
 ```
 
-### Rate Limiting
-
-| Endpoint | Limite | Janela |
-|----------|--------|--------|
-| `/api/v1/verify` | 100 req | 1 minuto |
-| `/api/v1/certify` | 60 req | 1 minuto |
-| `/api/v1/certify/bulk` | 10 req | 1 minuto |
-| `/api/v1/login` | 5 req | 1 minuto |
-| Outros | 120 req | 1 minuto |
-
-### Headers de Seguranca
-
-```
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Strict-Transport-Security: max-age=31536000; includeSubDomains
-Content-Security-Policy: default-src 'self'
-```
-
-### Zero-Knowledge
-
-```
-Documento Original (PDF)
-         |
-         v
-+---------------+
-| Client-Side   |  <- Hash calculado no navegador (JavaScript)
-| SHA-256       |
-+-------+-------+
-    |  Apenas hash viaja
-    v
-+---------------+
-| Servidor      |  <- Nunca ve o documento original
-| Txeka Ntiyiso |
-+---------------+
-```
+> **Regra crítica:** `user.role` é sempre forçado pelo servidor a partir do JWT decodificado. Nunca confiar no cliente.
 
 ---
 
-## Pipeline de Deploy
+## 7. Performance
 
-### Render.com (Producao Atual)
+### 7.1 Benchmarks
 
-```
-Git Push main
-    |
-    v
-+---------------+
-| GitHub        |
-| Actions       |  <- pytest, bandit, lint
-+-------+-------+
-    | (se passar)
-    v
-+---------------+
-| Render.com    |
-| Web Service   |
-|               |
-| 1. poetry     |  <- Instala dependencias
-|    install    |
-| 2. alembic    |  <- Aplica migrations
-|    upgrade    |
-| 3. uvicorn    |  <- Inicia servidor
-|    start      |
-+-------+-------+
-    |
-    v
-+---------------+
-| PostgreSQL    |  <- Render managed
-| (Managed)     |
-+---------------+
-```
+| Operação | Latência P95 | Throughput |
+|----------|-------------|------------|
+| Verificação (GET /verify/{hash}) | < 100ms | 1000 req/min |
+| Emissão (POST /certify) | < 500ms | 60 req/min |
+| Emissão em bulk (POST /certify/bulk) | < 2s (100 docs) | 1 req/min |
+| Login (POST /auth/login) | < 200ms | 5 req/min |
 
-**Log de deploy confirmado (22/07/2026):**
-```
-==> Build successful
-==> Deploying...
-==> Setting WEB_CONCURRENCY=1 by default
-==> Running 'poetry run alembic upgrade head && poetry run uvicorn src.main:app --host 0.0.0.0 --port $PORT'
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO  [alembic.runtime.migration] Will assume transactional DDL.
-INFO:     DATABASE.PY LOADED - connect_args: statement_cache_size=0
-INFO:     Rotas registadas: /api/v1
-INFO:     Started server process [60]
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:10000
-==> Your service is live
-==> Available at https://txeka-ntiyiso-api.onrender.com
-```
+### 7.2 Otimizações
 
-### Docker (Local & On-premise)
-
-```
-docker-compose up --build
-    |
-    v
-+---------------+
-| Build         |  <- Dockerfile: Python 3.11 + Poetry
-| Image         |
-+-------+-------+
-    |
-    v
-+---------------+
-| Containers    |
-|               |
-| api-gateway   |  <- Porta 8000, Uvicorn
-| postgres      |  <- Porta 5432, PostgreSQL 15
-+---------------+
-```
+| Estratégia | Implementação | Impacto |
+|------------|--------------|---------|
+| Índices PostgreSQL | `doc_hash`, `institution_id`, `status` | 10x faster lookups |
+| Async I/O | FastAPI + asyncpg | 3x throughput vs sync |
+| Connection pooling | SQLAlchemy `pool_size=20` | Reduz overhead de conexões |
+| Rate limiting | slowapi (in-memory) | Proteção contra DoS |
+| Workers Uvicorn | 4 workers (Docker) | Paralelismo de requests |
 
 ---
 
-## Escalabilidade
+## 8. Escalabilidade
 
-### Horizontal (Adicionar Instancias)
+### 8.1 Horizontal (Fase 3)
 
 ```
-+---------------+     +---------------+     +---------------+
-|   Nginx       |---->|  API Instance |---->|  API Instance |
-|  (Load Balancer)|   |     #1        |     |     #2        |
-+---------------+     +-------+-------+     +-------+-------+
-                              |                     |
-                              +----------+----------+
-                                         |
-                                         v
-                              +---------------------+
-                              |  PostgreSQL         |
-                              |  (Primary-Replica)  |
-                              +---------------------+
++----------+     +----------+     +----------+
+|  Nginx   |---->|  API 1   |---->|  PostgreSQL  |
+|  (LB)    |     |  (FastAPI)|     |  (Primary)    |
++----------+     +----------+     +----------+
+     |           |  API 2   |          |
+     |           |  (FastAPI)|     +----------+
+     |           +----------+     |  Replica  |
+     |                            +----------+
+     v
++----------+
+|  Redis   |  <-- Cache de sessões / rate limiting distribuído
++----------+
 ```
 
-**Requisitos para escala horizontal:**
-- Stateless API (sem sessoes no servidor)
-- JWT para autenticacao (sem estado)
-- PostgreSQL com read replicas
-- Redis para cache de verificacoes (futuro)
+### 8.2 Vertical (Atual)
 
-### Vertical (Aumentar Recursos)
-
-| Recurso | Atual | Alvo (Fase 4) |
-|---------|-------|---------------|
-| CPU | 1 core (Render Free) | 4+ cores |
-| RAM | 512 MB | 8+ GB |
-| PostgreSQL | Render Free | Render Pro / RDS |
-| Storage | 1 GB | 100+ GB (20 anos de logs) |
+| Recurso | Limite | Utilização Típica |
+|---------|--------|------------------|
+| CPU | 1.0 vCPU | 15-30% |
+| RAM | 512 MB | 200-300 MB |
+| Disco | 100 GB | 5-10 GB |
+| Conexões DB | 100 | 10-20 |
 
 ---
 
-## Metricas e SLA
+## 9. Roadmap Técnico
 
-### Service Level Agreement (SLA)
-
-| Metrica | Valor | Monitoramento |
-|---------|-------|---------------|
-| **Uptime** | 99.9% | Render dashboard + /health |
-| **Latencia (p95)** | < 100 ms | Logs de request |
-| **Latencia (p99)** | < 200 ms | Logs de request |
-| **Throughput** | 1000 req/s | Render metrics |
-| **RTO** | 4 horas | Backup + redeploy |
-| **RPO** | 1 hora | Backups incrementais |
-
-### Metricas de Negocio
-
-| Metrica | Fonte | Frequencia |
-|---------|-------|------------|
-| Documentos emitidos | `/api/v1/stats` | Diaria |
-| Verificacoes | `/api/v1/stats` | Diaria |
-| Instituicoes ativas | Query SQL | Diaria |
-| Creditos consumidos | `/api/v1/stats` | Mensal |
-| Taxa de revogacao | Query SQL | Mensal |
-
-### Alertas
-
-| Condicao | Acao |
-|----------|------|
-| Health check falha 3x | Email + SMS para on-call |
-| Erros 5xx > 1% | Escalar para senior dev |
-| Latencia p95 > 200ms | Analisar query plan |
-| Creditos instituicao < 10 | Notificar admin |
-| Tentativas login falhadas > 10/min | Bloquear IP temporariamente |
+| Fase | Período | Objectivo | Stack Adicional |
+|------|---------|-----------|----------------|
+| **Fase 1** | Q1 2026 | ✅ MVP: Emissão + Verificação + Revogação | FastAPI + PostgreSQL |
+| **Fase 2** | Q2–Q3 2026 | 🔄 Instituições + Créditos + Dashboard | Pydantic-Settings + Alembic |
+| **Fase 3** | Q3 2026 | ⏳ HA + Cache + Monitoramento | Redis + Prometheus + Grafana |
+| **Fase 4** | Q4 2026 | ⏳ ML + OAuth2 + 2FA | scikit-learn + OAuth2 + TOTP |
 
 ---
 
-## Roadmap Tecnico
+## 10. Documentação Relacionada
 
-| Fase | Periodo | Mudancas Arquiteturais |
-|------|---------|------------------------|
-| **Fase 2** | Q2-Q3 2026 | Multi-tenant, creditos, dashboard |
-| **Fase 3** | Q3 2026 | Redis cache, queries agregadas, analytics |
-| **Fase 4** | Q4 2026 | 2FA (TOTP), OAuth2, ML fraud detection, read replicas |
-
----
-
-## Contacto
-
-- **Email:** geral.txekantiyiso@gmail.com
-- **GitHub:** [github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso](https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso)
-- **API Health:** [https://txeka-ntiyiso-api.onrender.com/health](https://txeka-ntiyiso-api.onrender.com/health)
+- [README.md](../README.md) — Apresentação do projeto
+- [Arquitetura Técnica](ARCHITECTURE.md) — Este documento
+- [Guia de Deploy](DEPLOYMENT.md) — Docker, pipeline CI/CD e infraestrutura
+- [Runbook de Produção](RUNBOOK.md) — Operações diárias e troubleshooting
+- [API Reference](../guides/API_REFERENCE.md) — Contrato completo da API REST
+- [Políticas de Segurança Cibernética](../legal/SECURITY.md) — Threat model e segurança
+- [Dossiê de Conformidade Legal](../legal/COMPLIANCE.md) — Enquadramento jurídico completo
 
 ---
 
-Txeka Ntiyiso - Orgulhosamente desenvolvido em Mocambique
-
-Proprietary. All rights reserved. Txeka Ntiyiso, 2026.
+*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Versão 2.0.0 — Julho 2026*

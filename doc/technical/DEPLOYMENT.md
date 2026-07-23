@@ -6,7 +6,7 @@
 
 | Versão | Estado | Última Atualização | Contacto |
 |--------|--------|-------------------|----------|
-| 2.0 | Final | 2026-07-22 | geral.txekantiyiso@gmail.com |
+| 2.0 | Final | 2026-07-23 | geral.txekantiyiso@gmail.com |
 
 Plano de deploy, containerização e operação em alinhamento com a legislação moçambicana.
 
@@ -31,14 +31,15 @@ Plano de deploy, containerização e operação em alinhamento com a legislaçã
 
 ## 1. Visão Geral
 
-O sistema Txeka Ntiyiso é containerizado com Docker e orquestrado via Docker Compose. A stack utiliza **Python 3.11** (FastAPI) no backend e **PostgreSQL 15** como base de dados relacional. Todo o ambiente é configurado para o fuso horário **CAT (UTC+2)** e locale **pt_MZ.UTF-8**, em alinhamento com os requisitos de auditoria cronológica do Decreto n.º 59/2019.
+O sistema Txeka Ntiyiso utiliza duas abordagens de deploy distintas:
 
-| Ambiente | Finalidade | Infraestrutura | Fase |
-|----------|-----------|----------------|------|
-| **Desenvolvimento** | Desenvolvimento local | Docker Compose local | Contínua |
-| **Produção Cloud** | Deploy imediato, alta disponibilidade | Render.com + PostgreSQL managed | **Atual** |
-| **Produção Nacional** | Soberania digital, intranet governamental | Servidor dedicado em Moçambique (INTIC) | Migração futura |
-| **Híbrido** | Resiliência máxima, contingência offline | Docker Edge + Cloud | Futuro |
+| Ambiente | Método | Infraestrutura | Fase |
+|----------|--------|----------------|------|
+| **Produção Cloud** | Render.com (build nativo Poetry) | Render + PostgreSQL managed | **Atual** |
+| **Desenvolvimento** | Docker Compose local | Dockerfile + PostgreSQL container | Contínua |
+| **Produção Nacional** | Docker + Nginx (on-premise) | Servidor dedicado em Moçambique (INTIC) | Migração futura |
+
+> **⚠️ Importante:** O deploy no Render.com **não utiliza o Dockerfile** do repositório. O Render detecta automaticamente o `pyproject.toml` e utiliza Poetry nativo.
 
 ---
 
@@ -217,8 +218,8 @@ services:
       LC_ALL: pt_MZ.UTF-8
 
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/txeka_ntiyiso}
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-prod}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-TXEKA-NTIYISO-2026-k3ab9sGze6Igc1u8Q5@i+j0#0KX0rBzj}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS:-false}
       BASE_URL: ${BASE_URL:-http://localhost:8000}
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
@@ -374,23 +375,31 @@ open http://localhost:8000/docs
 |-------|------|-------|
 | 1 | Conecte o repo GitHub ao Render | 2 min |
 | 2 | Configure variáveis de ambiente no dashboard | 3 min |
-| 3 | Render deteta `Dockerfile` e faz build automático | 2-3 min |
+| 3 | Render deteta `pyproject.toml` e faz build com Poetry | 2-3 min |
 | 4 | Health check `GET /health` valida deploy | 30s |
 | 5 | API online em `https://txeka-ntiyiso-api.onrender.com` | — |
 
 **URL atual:** [https://txeka-ntiyiso-api.onrender.com](https://txeka-ntiyiso-api.onrender.com)
 
-**Log de deploy confirmado (22/07/2026):**
+**Configuração no Render:**
+
+| Campo | Valor |
+|-------|-------|
+| **Build Command** | `poetry lock && poetry install` |
+| **Start Command** | `poetry run alembic upgrade head && poetry run uvicorn src.main:app --host 0.0.0.0 --port $PORT` |
+
+> **Nota:** O Render utiliza o `WORKDIR` como `api-gateway/`, por isso o módulo é `src.main:app` (sem prefixo `api-gateway.`). O Dockerfile local usa `api-gateway.src.main:app` porque o `WORKDIR` é `/app`.
+
+**Log de deploy confirmado (23/07/2026):**
 ```
-==> Build successful
-==> Deploying...
-==> Running 'poetry run alembic upgrade head && poetry run uvicorn src.main:app --host 0.0.0.0 --port $PORT'
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO:     Rotas registadas: /api/v1
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:10000
-==> Your service is live
-==> Available at https://txeka-ntiyiso-api.onrender.com
+2026-07-23T11:06:22Z ==> Running build command 'poetry lock && poetry install'...
+2026-07-23T11:06:48Z ==> Running 'poetry run alembic upgrade head && poetry run uvicorn src.main:app --host 0.0.0.0 --port $PORT'
+2026-07-23T11:07:05Z INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+2026-07-23T11:07:20Z INFO:     Rotas registadas: /api/v1
+2026-07-23T11:07:22Z INFO:     Base de dados conectada com sucesso.
+2026-07-23T11:07:22Z INFO:     BD pronta
+2026-07-23T11:07:28Z ==> Your service is live
+2026-07-23T11:07:29Z ==> Available at https://txeka-ntiyiso-api.onrender.com
 ```
 
 **Nota**: A base de dados em produção cloud utiliza **PostgreSQL managed** (Render), não o container local.
@@ -566,7 +575,15 @@ docker exec txeka-ntiyiso-api cat /app/logs/app.json | jq
 - [ ] SSL configurado (AC-MZ recomendado)
 - [ ] Backup automático testado
 
-### Deploy
+### Deploy Render.com
+- [ ] Build command: `poetry lock && poetry install`
+- [ ] Start command: `poetry run alembic upgrade head && poetry run uvicorn src.main:app --host 0.0.0.0 --port $PORT`
+- [ ] Variáveis `SECRET_KEY` e `JWT_SECRET_KEY` configuradas
+- [ ] PostgreSQL managed criado e conectado
+- [ ] Health check `GET /health` retorna 200
+- [ ] `GET /docs` acessível
+
+### Deploy Docker Local
 - [ ] `docker-compose up -d --build`
 - [ ] Health check `GET /health` retorna 200
 - [ ] `GET /docs` acessível
@@ -600,8 +617,8 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 | Requisito | Implementação | Ficheiro |
 |-----------|--------------|----------|
-| **Lei 3/2017** — Autenticidade | JWT + institution_id no payload | `Dockerfile` (runtime) |
-| **Lei 3/2017** — Integridade | SHA-256 imutável | `docker-compose.yml` (DB persistente) |
+| **Lei 3/2017** — Autenticidade | JWT + institution_id no payload | `src/security.py` |
+| **Lei 3/2017** — Integridade | SHA-256 imutável | `src/core/hashing.py` |
 | **Lei 3/2017** — Não-repúdio | Logs auditáveis em `txeka-logs` | `docker-compose.yml` (volume) |
 | **Decreto 59/2019** — Retenção 20 anos | Volume `txeka-data` persistente | `docker-compose.yml` |
 | **Decreto 59/2019** — Auditoria cronológica | TZ Africa/Maputo, locale pt_MZ | `Dockerfile` |
@@ -641,7 +658,9 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 - [Arquitetura Técnica](ARCHITECTURE.md) — Stack, schema e decisões arquiteturais
 - [Dossiê de Conformidade Legal](../legal/COMPLIANCE.md) — Enquadramento jurídico completo
 - [Políticas de Segurança Cibernética](../legal/SECURITY.md) — Threat model e segurança
+- [api-gateway/DEPLOY.md](../../../api-gateway/DEPLOY.md) — Guia rápido de deploy no Render
 
 ---
 
 *Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Versão 2.0 — Julho 2026*
