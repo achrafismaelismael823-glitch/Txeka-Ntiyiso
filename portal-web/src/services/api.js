@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com/api/v1';
 const API_TIMEOUT = parseInt(process.env.REACT_APP_API_TIMEOUT) || 30000;
 
 console.log(`[API Service] Inicializando com URL: ${API_BASE_URL}`);
@@ -17,19 +17,10 @@ const api = axios.create({
 // Intercepta requisições
 api.interceptors.request.use(
   (config) => {
-    // Adiciona token
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
-    // Log de requisição
-    console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`, {
-      timestamp: new Date().toISOString(),
-      method: config.method,
-      url: config.url,
-    });
-
     return config;
   },
   (error) => {
@@ -41,50 +32,28 @@ api.interceptors.request.use(
 // Intercepta respostas
 api.interceptors.response.use(
   (response) => {
-    // Log de resposta
-    console.log(`[API Response] ${response.status} ${response.config.url}`, {
-      timestamp: new Date().toISOString(),
-      status: response.status,
-      url: response.config.url,
-    });
-
     return response;
   },
   (error) => {
-    // Trata erros da API
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data;
 
-      console.error(`[API Error] ${status}`, {
-        timestamp: new Date().toISOString(),
-        status: status,
-        url: error.config.url,
-        data: data,
-      });
-
-      // Redireciona se não autorizado
       if (status === 401) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('username');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('loginTime');
+        localStorage.removeItem('institutionData');
         window.location.href = '/login';
       }
 
-      return Promise.reject(data);
+      return Promise.reject(error);
     } else if (error.request) {
-      // Sem resposta do servidor
-      console.error('[API Error] Sem resposta do servidor', {
-        timestamp: new Date().toISOString(),
-        url: error.config?.url,
-      });
-
       return Promise.reject({
         message: 'Sem resposta do servidor. Verifique a conexão.',
+        networkError: true,
       });
     } else {
-      // Erro de configuração
-      console.error('[API Error] Erro de configuração', error.message);
-
       return Promise.reject({
         message: 'Erro ao processar requisição.',
       });
@@ -116,7 +85,7 @@ export const verifyDocumentByHash = async (docHash) => {
 export const verifyDocument = async (docHash, institutionId = null) => {
   try {
     const payload = {
-      doc_hash: docHash.toLowerCase(),
+      hash: docHash.toLowerCase(),
     };
 
     if (institutionId) {
@@ -146,3 +115,4 @@ export const checkApiHealth = async () => {
 };
 
 export default api;
+
