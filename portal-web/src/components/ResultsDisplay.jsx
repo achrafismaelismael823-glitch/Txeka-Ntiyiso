@@ -4,6 +4,7 @@ import { formatDate } from '../utils/validation';
 import { CheckCircle, XCircle, AlertCircle, Copy, Check, Download, Printer, Share2 } from 'lucide-react';
 
 // API returns: status = "VALID" | "INVALID" | "EXPIRED" | "REVOKED"
+// dados_publicos: { doc_id, document_type, institution_id, created_at, revoked, revoked_at, revoked_reason }
 function getStatusConfig(status) {
   const configs = {
     VALID: { label: 'Valido', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: '✅' },
@@ -22,6 +23,7 @@ export default function ResultsDisplay({ result, hash }) {
   const statusConfig = getStatusConfig(result.status);
   const dados = result.dados_publicos;
   const isValid = result.status === 'VALID' && dados;
+  const isRevoked = dados && dados.revoked === true;
 
   const handleCopyHash = () => {
     navigator.clipboard.writeText(hash);
@@ -42,14 +44,14 @@ export default function ResultsDisplay({ result, hash }) {
   const handlePrintQR = () => {
     if (!result.qr_code) return;
     const printWindow = window.open('', '', 'width=600,height=700');
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - Txeka Ntiyiso</title><style>body{font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;background:white;}.container{text-align:center;max-width:500px;}h1{color:#0B192C;margin-bottom:10px;}.doc-info{background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:20px;text-align:left;}.info-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e0e0e0;}.info-row:last-child{border-bottom:none;}.qr-container{margin:20px 0;padding:20px;background:white;border:2px solid #00D2C4;border-radius:8px;}.qr-container img{max-width:300px;height:auto;}.footer{color:#666;font-size:12px;margin-top:20px;padding-top:20px;border-top:1px solid #ddd;}@media print{body{background:white;}}</style></head><body><div class="container"><h1>Txeka Ntiyiso</h1><h2>Comprovante de Verificacao</h2><div class="doc-info"><div class="info-row"><strong>Documento:</strong><span>${dados?.doc_id || 'N/A'}</span></div><div class="info-row"><strong>Instituicao:</strong><span>${dados?.instituicao || 'N/A'}</span></div><div class="info-row"><strong>Status:</strong><span>${dados?.revogado ? 'Revogado' : 'Valido'}</span></div><div class="info-row"><strong>Data:</strong><span>${formatDate(dados?.data_verificacao)}</span></div></div><div class="qr-container"><p><strong>Codigo QR de Verificacao</strong></p><img src="${result.qr_code}" alt="QR Code" /></div><div class="footer"><p>Escaneie este codigo QR para verificar a autenticidade do documento.</p><p>Hash: ${hash.substring(0, 16)}...</p><p>Txeka Ntiyiso - Verificacao Digital de Documentos</p></div></div></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - Txeka Ntiyiso</title><style>body{font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;background:white;}.container{text-align:center;max-width:500px;}h1{color:#0B192C;margin-bottom:10px;}.doc-info{background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:20px;text-align:left;}.info-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e0e0e0;}.info-row:last-child{border-bottom:none;}.qr-container{margin:20px 0;padding:20px;background:white;border:2px solid #00D2C4;border-radius:8px;}.qr-container img{max-width:300px;height:auto;}.footer{color:#666;font-size:12px;margin-top:20px;padding-top:20px;border-top:1px solid #ddd;}@media print{body{background:white;}}</style></head><body><div class="container"><h1>Txeka Ntiyiso</h1><h2>Comprovante de Verificacao</h2><div class="doc-info"><div class="info-row"><strong>Documento:</strong><span>${dados?.doc_id || 'N/A'}</span></div><div class="info-row"><strong>Instituicao:</strong><span>${dados?.institution_id || 'N/A'}</span></div><div class="info-row"><strong>Status:</strong><span>${isRevoked ? 'Revogado' : 'Valido'}</span></div><div class="info-row"><strong>Data:</strong><span>${formatDate(dados?.created_at)}</span></div></div><div class="qr-container"><p><strong>Codigo QR de Verificacao</strong></p><img src="${result.qr_code}" alt="QR Code" /></div><div class="footer"><p>Escaneie este codigo QR para verificar a autenticidade do documento.</p><p>Hash: ${hash.substring(0, 16)}...</p><p>Txeka Ntiyiso - Verificacao Digital de Documentos</p></div></div></body></html>`);
     printWindow.document.close();
     printWindow.print();
   };
 
   const handleShareWhatsApp = () => {
     if (!result.qr_code) return;
-    const text = encodeURIComponent(`Documento Verificado no Txeka Ntiyiso\n\nDocumento: ${dados?.doc_id}\nInstituicao: ${dados?.instituicao}\nStatus: ${dados?.revogado ? 'Revogado' : 'Valido'}\n\nVerifique em: https://txeka-ntiyiso-portal.onrender.com`);
+    const text = encodeURIComponent(`Documento Verificado no Txeka Ntiyiso\n\nDocumento: ${dados?.doc_id}\nInstituicao: ${dados?.institution_id}\nStatus: ${isRevoked ? 'Revogado' : 'Valido'}\n\nVerifique em: https://txeka-ntiyiso-portal.onrender.com`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -101,24 +103,24 @@ export default function ResultsDisplay({ result, hash }) {
             <p className="text-lg font-bold text-[#0B192C]">{dados.doc_id}</p>
           </div>
           <div className="bg-white rounded-xl p-3 border border-slate-100">
-            <p className="text-slate-500 text-xs font-semibold uppercase">Instituicao Verificadora</p>
-            <p className="text-slate-800 font-semibold">{dados.instituicao}</p>
+            <p className="text-slate-500 text-xs font-semibold uppercase">Tipo de Documento</p>
+            <p className="text-slate-800 font-semibold">{dados.document_type}</p>
+          </div>
+          <div className="bg-white rounded-xl p-3 border border-slate-100">
+            <p className="text-slate-500 text-xs font-semibold uppercase">Instituicao</p>
+            <p className="text-slate-800 font-semibold">{dados.institution_id}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-xl p-3 border border-slate-100">
-              <p className="text-slate-500 text-xs font-semibold uppercase">Estado</p>
-              <p className="text-slate-800 font-semibold">{dados.estado}</p>
+              <p className="text-slate-500 text-xs font-semibold uppercase">Data de Emissao</p>
+              <p className="text-slate-800 font-semibold">{formatDate(dados.created_at)}</p>
             </div>
             <div className="bg-white rounded-xl p-3 border border-slate-100">
               <p className="text-slate-500 text-xs font-semibold uppercase">Status</p>
-              <p className={`font-semibold ${dados.revogado ? 'text-rose-600' : 'text-emerald-600'}`}>
-                {dados.revogado ? '⚠️ Revogado' : '✓ Valido'}
+              <p className={`font-semibold ${isRevoked ? 'text-rose-600' : 'text-emerald-600'}`}>
+                {isRevoked ? '⚠️ Revogado' : '✓ Valido'}
               </p>
             </div>
-          </div>
-          <div className="bg-white rounded-xl p-3 border border-slate-100">
-            <p className="text-slate-500 text-xs font-semibold uppercase">Data de Verificacao</p>
-            <p className="text-slate-800 font-semibold">{formatDate(dados.data_verificacao)}</p>
           </div>
         </div>
       )}
@@ -139,12 +141,15 @@ export default function ResultsDisplay({ result, hash }) {
         </button>
       )}
 
-      {isValid && dados?.revogado && (
+      {isValid && isRevoked && (
         <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
           <AlertCircle className="text-amber-600 flex-shrink-0 h-5 w-5" />
           <div>
             <p className="font-semibold text-amber-800 mb-1">Documento Revogado</p>
-            <p className="text-sm text-amber-700">Este documento foi revogado e nao e mais valido. Entre em contacto com a instituicao emissora para mais informacoes.</p>
+            <p className="text-sm text-amber-700">
+              Este documento foi revogado e nao e mais valido.
+              {dados.revoked_reason && <span className="block mt-1 font-medium">Motivo: {dados.revoked_reason}</span>}
+            </p>
           </div>
         </div>
       )}
