@@ -55,14 +55,15 @@ export function translateError(error) {
   return map[status] || { code: 'UNKNOWN', message: detail || 'Erro inesperado. Tente novamente.', type: 'error' };
 }
 
-async function requestWithRetry(requestFn, retriesLeft = MAX_RETRIES) {
+export async function requestWithRetry(requestFn, retriesLeft) {
+  retriesLeft = retriesLeft || MAX_RETRIES;
   try {
     return await requestFn();
   } catch (error) {
     const translated = translateError(error);
     
     if (retriesLeft > 0 && ['TIMEOUT', 'OFFLINE', 'NETWORK', 'BAD_GATEWAY', 'GATEWAY_TIMEOUT', 'SERVICE_DOWN'].includes(translated.code)) {
-      console.warn(`[API Retry] ${translated.code} — tentativa ${MAX_RETRIES - retriesLeft + 1}/${MAX_RETRIES}`);
+      console.warn('[API Retry] ' + translated.code + ' — tentativa ' + (MAX_RETRIES - retriesLeft + 1) + '/' + MAX_RETRIES);
       await sleep(RETRY_DELAY * (MAX_RETRIES - retriesLeft + 1));
       return requestWithRetry(requestFn, retriesLeft - 1);
     }
@@ -110,8 +111,6 @@ apiRoot.interceptors.response.use(
   }
 );
 
-// ==================== VERIFICATION ====================
-// API returns: { status: "VALID" | "INVALID" | "EXPIRED" | "REVOKED", dados_publicos: {...} }
 export const verifyDocumentByHash = async (docHash) => {
   if (!docHash || typeof docHash !== 'string') {
     const err = new Error('Hash invalido');
@@ -130,7 +129,6 @@ export const verifyDocument = async (docHash) => {
   return requestWithRetry(() => api.post('/verify', { hash: docHash.toLowerCase() }).then(r => r.data));
 };
 
-// ==================== EMISSION ====================
 export const emitDocument = async (file, documentType, institutionId) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -143,7 +141,6 @@ export const emitDocument = async (file, documentType, institutionId) => {
   }).then(r => r.data));
 };
 
-// ==================== INSTITUTION /me ====================
 export const getMyDashboard = async () => {
   return requestWithRetry(() => api.get('/institutions/me/dashboard').then(r => r.data));
 };
@@ -158,9 +155,6 @@ export const getMyCreditHistory = async (skip, limit) => {
   return requestWithRetry(() => api.get('/institutions/me/credit-history?skip=' + skip + '&limit=' + limit).then(r => r.data));
 };
 
-// ==================== AUDIT (Admin) ====================
-// FIX: API returns { success, count, limit, offset, timezone, logs: [...] }
-// We extract .logs to match frontend expectations
 export const getAuditStats = async (institutionId, startDate, endDate) => {
   const params = new URLSearchParams();
   if (institutionId) params.append('institution_id', institutionId);
@@ -180,12 +174,10 @@ export const getAuditLogs = async (filters) => {
   if (filters.limit) params.append('limit', filters.limit);
   if (filters.offset) params.append('offset', filters.offset);
   const query = params.toString() ? '?' + params.toString() : '';
-  // FIX: Extract .logs from paginated response
   const response = await requestWithRetry(() => api.get('/audit/logs' + query).then(r => r.data));
   return response.logs || [];
 };
 
-// ==================== INSTITUTIONS (Admin) ====================
 export const listInstitutions = async (skip, limit, status) => {
   skip = skip || 0;
   limit = limit || 100;
@@ -196,13 +188,12 @@ export const listInstitutions = async (skip, limit, status) => {
   return requestWithRetry(() => api.get('/institutions?' + params.toString()).then(r => r.data));
 };
 
-// ==================== HEALTH & INFO ====================
 export const checkApiHealth = async () => {
   try {
     const response = await apiRoot.get('/health', { timeout: 8000 });
     return response.data && response.data.status === 'online';
   } catch (error) {
-    console.warn('[checkApiHealth] API indisponivel:', error.translated?.code || error.message);
+    console.warn('[checkApiHealth] API indisponivel:', (error.translated && error.translated.code) || error.message);
     return false;
   }
 };
