@@ -1,42 +1,71 @@
-// Autenticação de utilizador
-export const login = async (username, password) => {
+// Autenticação REAL — chama backend Txeka Ntiyiso API
+import api from './api';
+
+// Login institucional (chama backend real)
+export const login = async (email, password) => {
   try {
-    // Valida credenciais básicas
-    if (!username || !password) {
-      throw new Error('Nome de utilizador e senha são obrigatórios');
+    if (!email || !password) {
+      throw new Error('E-mail e senha são obrigatórios');
     }
 
-    if (username.length < 3) {
-      throw new Error('Nome de utilizador deve ter mínimo 3 caracteres');
-    }
+    // Chama API real de autenticação
+    const response = await api.post('/auth/login', {
+      institution_id: email,
+      password: password,
+    });
 
-    if (password.length < 6) {
-      throw new Error('Senha deve ter mínimo 6 caracteres');
-    }
+    const data = response.data;
 
-    // Gera token simples
-    const token = btoa(`${username}:${password}`);
+    // Guarda token JWT real do backend
+    localStorage.setItem('authToken', data.access_token);
+    localStorage.setItem('username', data.institution?.name || email);
+    localStorage.setItem('userRole', data.institution ? 'institution' : 'user');
+    localStorage.setItem('loginTime', new Date().toISOString());
+    localStorage.setItem('institutionData', JSON.stringify(data.institution || {}));
 
-    // Cria sessão do utilizador
-    const user = {
-      username: username,
-      role: 'user',
-      authenticated: true,
-      loginTime: new Date().toISOString(),
-    };
+    console.log(`[Auth] Instituição autenticada: ${data.institution?.name || email}`);
 
-    // Guarda dados de sessão
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('username', username);
-    localStorage.setItem('userRole', user.role);
-    localStorage.setItem('loginTime', user.loginTime);
-
-    console.log(`[Auth] Utilizador autenticado: ${username}`);
-
-    return user;
+    return data;
   } catch (error) {
-    console.error('[Auth Login Error]', error.message);
-    throw error;
+    console.error('[Auth Login Error]', error);
+    
+    if (error.response?.status === 401) {
+      throw new Error('Credenciais institucionais inválidas.');
+    } else if (error.response?.status === 403) {
+      throw new Error(error.response.data?.detail || 'Conta inativa. Contacte o administrador.');
+    } else if (!error.response) {
+      throw new Error('Servidor indisponível. Verifique a conexão.');
+    } else {
+      throw new Error(error.response.data?.detail || 'Erro ao autenticar.');
+    }
+  }
+};
+
+// Login admin (chama backend real)
+export const loginAdmin = async (email, password) => {
+  try {
+    const response = await api.post('/auth/admin/login', null, {
+      params: { email, password }
+    });
+
+    const data = response.data;
+
+    localStorage.setItem('authToken', data.access_token);
+    localStorage.setItem('username', email);
+    localStorage.setItem('userRole', 'admin');
+    localStorage.setItem('loginTime', new Date().toISOString());
+
+    console.log(`[Auth] Admin autenticado: ${email}`);
+
+    return data;
+  } catch (error) {
+    console.error('[Auth Admin Login Error]', error);
+    
+    if (error.response?.status === 401) {
+      throw new Error('Credenciais de administrador inválidas.');
+    } else {
+      throw new Error(error.response?.data?.detail || 'Erro ao autenticar administrador.');
+    }
   }
 };
 
@@ -45,24 +74,23 @@ export const logout = () => {
   try {
     const username = localStorage.getItem('username');
     
-    // Limpa dados de sessão
     localStorage.removeItem('authToken');
     localStorage.removeItem('username');
     localStorage.removeItem('userRole');
     localStorage.removeItem('loginTime');
+    localStorage.removeItem('institutionData');
     localStorage.removeItem('verificationHistory');
 
-    console.log(`[Auth] Utilizador desconectado: ${username}`);
+    console.log(`[Auth] Sessão terminada: ${username}`);
   } catch (error) {
     console.error('[Auth Logout Error]', error.message);
   }
 };
 
-// Verifica autenticação
+// Verifica autenticação (token existe)
 export const isAuthenticated = () => {
   const token = localStorage.getItem('authToken');
-  const username = localStorage.getItem('username');
-  return !!(token && username);
+  return !!token;
 };
 
 // Obtém utilizador atual
@@ -75,6 +103,7 @@ export const getCurrentUser = () => {
     username: localStorage.getItem('username'),
     role: localStorage.getItem('userRole'),
     loginTime: localStorage.getItem('loginTime'),
+    institution: JSON.parse(localStorage.getItem('institutionData') || '{}'),
   };
 };
 
@@ -85,6 +114,7 @@ export const getAuthToken = () => {
 
 export default {
   login,
+  loginAdmin,
   logout,
   isAuthenticated,
   getCurrentUser,
