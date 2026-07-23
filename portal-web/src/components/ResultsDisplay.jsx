@@ -322,4 +322,4 @@ export default function ResultsDisplay({ result, hash }) {
       )}
     </div>
   );
-                }
+      }
