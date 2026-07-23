@@ -6,7 +6,7 @@
 
 | Versão | Estado | Última Atualização | Contacto |
 |--------|--------|-------------------|----------|
-| 2.0 | Final | 2026-07-12 | geral.txekantiyiso@gmail.com |
+| 2.0 | Final | 2026-07-22 | geral.txekantiyiso@gmail.com |
 
 Plano de deploy, containerização e operação em alinhamento com a legislação moçambicana.
 
@@ -36,7 +36,7 @@ O sistema Txeka Ntiyiso é containerizado com Docker e orquestrado via Docker Co
 | Ambiente | Finalidade | Infraestrutura | Fase |
 |----------|-----------|----------------|------|
 | **Desenvolvimento** | Desenvolvimento local | Docker Compose local | Contínua |
-| **Produção Cloud** | Deploy imediato, alta disponibilidade | Render.com + Supabase | **Atual** |
+| **Produção Cloud** | Deploy imediato, alta disponibilidade | Render.com + PostgreSQL managed | **Atual** |
 | **Produção Nacional** | Soberania digital, intranet governamental | Servidor dedicado em Moçambique (INTIC) | Migração futura |
 | **Híbrido** | Resiliência máxima, contingência offline | Docker Edge + Cloud | Futuro |
 
@@ -133,8 +133,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# 4 workers Uvicorn para concorrência otimizada
-CMD ["uvicorn", "api-gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Start com Poetry + Alembic migrations + Uvicorn
+CMD ["sh", "-c", "poetry run alembic upgrade head && poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000"]
 ```
 
 **Notas de conformidade:**
@@ -142,6 +142,7 @@ CMD ["uvicorn", "api-gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000
 - **Usuário não-root (`txeka`)**: Mitigação de Elevation of Privilege (STRIDE), alinhado com a Resolução n.º 69/2021 (PENSC).
 - **Locale `pt_MZ.UTF-8` e TZ `Africa/Maputo`**: Garante timestamps auditáveis em CAT (UTC+2), conforme Decreto 59/2019.
 - **Healthcheck**: Verificação periódica de disponibilidade; falha após 3 tentativas em 30s.
+- **Alembic no startup**: Migrations aplicadas automaticamente antes do servidor iniciar.
 
 ---
 
@@ -302,6 +303,8 @@ volumes:
 - **Variáveis via `.env`**: Segredos (`SECRET_KEY`, `JWT_SECRET_KEY`) nunca hardcoded em produção.
 - **Fase 2 — Multi-tenancy e créditos**: Variáveis `ENABLE_MULTI_TENANT` e `CREDIT_CONSUMPTION_ENABLED` preparadas.
 
+> **⚠️ Problema Conhecido:** O `docker-compose.yml` contém fallbacks inseguros para `SECRET_KEY` e `JWT_SECRET_KEY`. Estes devem ser removidos e substituídos por validação obrigatória em produção.
+
 ---
 
 ## 3. Variáveis de Ambiente
@@ -377,7 +380,20 @@ open http://localhost:8000/docs
 
 **URL atual:** [https://txeka-ntiyiso-api.onrender.com](https://txeka-ntiyiso-api.onrender.com)
 
-**Nota**: A base de dados em produção cloud utiliza **Supabase PostgreSQL** (managed), não o container local.
+**Log de deploy confirmado (22/07/2026):**
+```
+==> Build successful
+==> Deploying...
+==> Running 'poetry run alembic upgrade head && poetry run uvicorn src.main:app --host 0.0.0.0 --port $PORT'
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO:     Rotas registadas: /api/v1
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:10000
+==> Your service is live
+==> Available at https://txeka-ntiyiso-api.onrender.com
+```
+
+**Nota**: A base de dados em produção cloud utiliza **PostgreSQL managed** (Render), não o container local.
 
 ### 4.3 Produção Nacional (On-Premise)
 
@@ -622,11 +638,10 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 - [POSITIONING.md](../POSITIONING.md) — Posicionamento estratégico e regulatório
 - [API Reference](../guides/API_REFERENCE.md) — Referência completa da API REST
 - [Runbook de Produção](RUNBOOK.md) — Operações diárias e troubleshooting
-- [Arquitetura Técnica](TECHNICAL.md) — Stack, schema e decisões arquiteturais
+- [Arquitetura Técnica](ARCHITECTURE.md) — Stack, schema e decisões arquiteturais
 - [Dossiê de Conformidade Legal](../legal/COMPLIANCE.md) — Enquadramento jurídico completo
 - [Políticas de Segurança Cibernética](../legal/SECURITY.md) — Threat model e segurança
 
 ---
 
 *Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
-*Versão 2.0 — Julho 2026*
