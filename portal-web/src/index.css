@@ -4,5 +4,24 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Custom component classes */
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-slate-200 p-6 shadow-sm;
+  }
+  
+  .input-field {
+    @apply w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[#00D2C4] transition;
+  }
+  
+  .label-field {
+    @apply text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2;
+  }
+  
+  .btn-primary {
+    @apply bg-[#0B192C] hover:bg-slate-800 text-white font-semibold text-sm py-3 px-4 rounded-xl transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50;
+  }
 }
