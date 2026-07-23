@@ -1,21 +1,34 @@
-// Autenticação REAL — chama backend Txeka Ntiyiso API v2.0
-import api from './api';
+import api, { translateError, requestWithRetry } from './api';
 
-// Login institucional (chama backend real)
+function validateCredentials(institution_id, password) {
+  const errors = [];
+  if (!institution_id || institution_id.trim().length === 0) {
+    errors.push('ID da instituicao e obrigatorio');
+  } else if (institution_id.trim().length < 2) {
+    errors.push('ID da instituicao deve ter pelo menos 2 caracteres');
+  }
+  if (!password || password.length === 0) {
+    errors.push('Senha e obrigatoria');
+  } else if (password.length < 4) {
+    errors.push('Senha deve ter pelo menos 4 caracteres');
+  }
+  return errors;
+}
+
 export const login = async (institution_id, password) => {
+  const validationErrors = validateCredentials(institution_id, password);
+  if (validationErrors.length > 0) {
+    const err = new Error(validationErrors[0]);
+    err.translated = { code: 'VALIDATION', message: validationErrors.join('. '), type: 'warning', fields: validationErrors };
+    throw err;
+  }
+
   try {
-    if (!institution_id || !password) {
-      throw new Error('ID da instituição e senha são obrigatórios');
-    }
-
-    const response = await api.post('/auth/login', {
-      institution_id: institution_id,
+    const data = await requestWithRetry(() => api.post('/auth/login', {
+      institution_id: institution_id.trim(),
       password: password,
-    });
+    }).then(r => r.data));
 
-    const data = response.data;
-
-    // Guarda token JWT real do backend + institution_id
     localStorage.setItem('authToken', data.access_token);
     localStorage.setItem('institutionId', data.institution?.id || institution_id);
     localStorage.setItem('username', data.institution?.name || institution_id);
@@ -23,57 +36,51 @@ export const login = async (institution_id, password) => {
     localStorage.setItem('loginTime', new Date().toISOString());
     localStorage.setItem('institutionData', JSON.stringify(data.institution || {}));
 
-    console.log(`[Auth] Instituição autenticada: ${data.institution?.name || institution_id}`);
-
+    console.log('[Auth] Instituicao autenticada:', data.institution?.name || institution_id);
     return data;
   } catch (error) {
-    console.error('[Auth Login Error]', error);
-    
-    if (error.response?.status === 401) {
-      throw new Error('Credenciais institucionais inválidas.');
-    } else if (error.response?.status === 403) {
-      throw new Error(error.response.data?.detail || 'Conta inativa. Contacte o administrador.');
-    } else if (!error.response) {
-      throw new Error('Servidor indisponível. Verifique a conexão.');
-    } else {
-      throw new Error(error.response.data?.detail || 'Erro ao autenticar.');
-    }
+    if (error.translated) throw error;
+    const translated = translateError(error);
+    error.translated = translated;
+    throw error;
   }
 };
 
-// Login admin (chama backend real)
 export const loginAdmin = async (email, password) => {
-  try {
-    const response = await api.post('/auth/admin/login', null, {
-      params: { email, password }
-    });
+  if (!email || !email.includes('@')) {
+    const err = new Error('Email invalido');
+    err.translated = { code: 'VALIDATION', message: 'Digite um email valido.', type: 'warning' };
+    throw err;
+  }
+  if (!password || password.length < 4) {
+    const err = new Error('Senha invalida');
+    err.translated = { code: 'VALIDATION', message: 'Senha deve ter pelo menos 4 caracteres.', type: 'warning' };
+    throw err;
+  }
 
-    const data = response.data;
+  try {
+    const data = await requestWithRetry(() => api.post('/auth/admin/login', null, {
+      params: { email, password }
+    }).then(r => r.data));
 
     localStorage.setItem('authToken', data.access_token);
     localStorage.setItem('username', email);
     localStorage.setItem('userRole', 'admin');
     localStorage.setItem('loginTime', new Date().toISOString());
 
-    console.log(`[Auth] Admin autenticado: ${email}`);
-
+    console.log('[Auth] Admin autenticado:', email);
     return data;
   } catch (error) {
-    console.error('[Auth Admin Login Error]', error);
-    
-    if (error.response?.status === 401) {
-      throw new Error('Credenciais de administrador inválidas.');
-    } else {
-      throw new Error(error.response?.data?.detail || 'Erro ao autenticar administrador.');
-    }
+    if (error.translated) throw error;
+    const translated = translateError(error);
+    error.translated = translated;
+    throw error;
   }
 };
 
-// Termina sessão
 export const logout = () => {
   try {
     const username = localStorage.getItem('username');
-    
     localStorage.removeItem('authToken');
     localStorage.removeItem('institutionId');
     localStorage.removeItem('username');
@@ -81,30 +88,22 @@ export const logout = () => {
     localStorage.removeItem('loginTime');
     localStorage.removeItem('institutionData');
     localStorage.removeItem('verificationHistory');
-
-    console.log(`[Auth] Sessão terminada: ${username}`);
+    console.log('[Auth] Sessao terminada:', username);
   } catch (error) {
     console.error('[Auth Logout Error]', error.message);
   }
 };
 
-// Verifica autenticação
 export const isAuthenticated = () => {
-  const token = localStorage.getItem('authToken');
-  return !!token;
+  return !!localStorage.getItem('authToken');
 };
 
-// Obtém institution_id
 export const getInstitutionId = () => {
   return localStorage.getItem('institutionId');
 };
 
-// Obtém utilizador atual
 export const getCurrentUser = () => {
-  if (!isAuthenticated()) {
-    return null;
-  }
-
+  if (!isAuthenticated()) return null;
   return {
     username: localStorage.getItem('username'),
     institutionId: localStorage.getItem('institutionId'),
@@ -114,7 +113,6 @@ export const getCurrentUser = () => {
   };
 };
 
-// Obtém token
 export const getAuthToken = () => {
   return localStorage.getItem('authToken');
 };
@@ -128,3 +126,4 @@ export default {
   getCurrentUser,
   getAuthToken,
 };
+
