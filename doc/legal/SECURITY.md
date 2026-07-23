@@ -6,7 +6,7 @@
 
 | Versão | Estado | Última Atualização | Contacto |
 |--------|--------|-------------------|----------|
-| 2.0 | Final | 2026-07-12 | geral.txekantiyiso@gmail.com |
+| 2.0 | Final | 2026-07-22 | geral.txekantiyiso@gmail.com |
 
 Implementação de conformidade legal, modelo de ameaças e resposta a incidentes.
 
@@ -63,6 +63,8 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 | Payload | `{email, role, institution, exp, iat}` |
 | Validação | Assinatura verificada em cada request |
 
+> **⚠️ Problema Conhecido:** O `docker-compose.yml` contém fallbacks inseguros para `SECRET_KEY` e `JWT_SECRET_KEY`. Estes devem ser removidos em produção.
+
 **Uso Txeka:** Token para autenticação stateless de APIs.
 
 ### 2.3 bcrypt
@@ -73,7 +75,7 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 | Salt rounds | 12 (defesa contra rainbow tables) |
 | Tempo | ~100 ms/hash (lento propositalmente) |
 
-**Uso Txeka:** Hashing de passwords de instituições e admin.
+**Uso Txeka:** Hashing de passwords de institções e admin.
 
 ### 2.4 TLS 1.3
 
@@ -94,10 +96,8 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 
 ```python
 ROLES = {
-    "system":      ["verify", "emit", "revoke"],
     "admin":       ["verify", "emit", "revoke", "manage_institutions"],
-    "institution": ["emit", "verify"],
-    "citizen":     ["verify"]
+    "institution": ["emit", "verify"]
 }
 ```
 
@@ -107,16 +107,24 @@ ROLES = {
 
 | Endpoint | Método | Requisito | Log de Auditoria |
 |----------|--------|-----------|------------------|
+| `/api/v1/auth/admin/login` | POST | Público | LOGIN |
+| `/api/v1/auth/login` | POST | Público | LOGIN |
 | `/api/v1/certify` | POST | JWT + role institution | EMIT |
 | `/api/v1/certify/bulk` | POST | JWT + role institution | EMIT_BULK |
 | `/api/v1/verify/{hash}` | GET | Público (não requer token) | VERIFY (anonymous) |
-| `/api/v1/verify` | POST | API Key (B2B/B2G) | VERIFY |
+| `/api/v1/verify` | POST | Público (não requer token) | VERIFY |
 | `/api/v1/emissions/{id}/revoke` | POST | JWT admin/institution | REVOKE |
-| `/api/v1/audit/logs` | GET | JWT admin | — |
-| `/api/v1/audit/document/{hash}/history` | GET | JWT admin/institution | — |
-| `/api/v1/audit/stats` | GET | JWT admin | — |
+| `/api/v1/logs` | GET | JWT admin | — |
+| `/api/v1/document/{hash}/history` | GET | JWT admin/institution | — |
+| `/api/v1/stats` | GET | JWT admin | — |
 | `/api/v1/institutions` | POST/GET/PATCH | JWT admin | INSTITUTION_* |
 | `/api/v1/institutions/{id}/credits` | POST | JWT admin | CREDIT_ADD |
+| `/api/v1/institutions/{id}/credit-history` | GET | JWT admin | CREDIT_HISTORY |
+| `/api/v1/institutions/{id}/reset-password` | POST | JWT admin | PASSWORD_RESET |
+| `/api/v1/institutions/{id}/regenerate-api-key` | POST | JWT admin | API_KEY_REGEN |
+| `/api/v1/institutions/me/dashboard` | GET | JWT institution | DASHBOARD |
+| `/api/v1/institutions/me/credits` | GET | JWT institution | CREDITS_STATUS |
+| `/api/v1/institutions/me/credit-history` | GET | JWT institution | CREDIT_HISTORY |
 
 ---
 
@@ -189,6 +197,8 @@ ROLES = {
 | **Depends on** | `condition: service_healthy` | Ordem de inicialização controlada |
 | **Volumes persistentes** | `txeka-data` (BD), `txeka-logs` (auditoria) | Retenção e imutabilidade |
 | **Restart policy** | `unless-stopped` | Alta disponibilidade |
+
+> **⚠️ Problema Conhecido:** O `docker-compose.yml` contém fallbacks inseguros para `SECRET_KEY` e `JWT_SECRET_KEY`. Estes devem ser removidos e substituídos por validação obrigatória em produção.
 
 ### 5.3 Gestão de Segredos
 
@@ -330,7 +340,7 @@ Disponibilizaremos:
 
 - [README.md](../../README.md) — Apresentação do projeto
 - [POSITIONING.md](../../POSITIONING.md) — Posicionamento estratégico e regulatório
-- [Arquitetura Técnica](../technical/TECHNICAL.md) — Stack, schema e decisões técnicas
+- [Arquitetura Técnica](../technical/ARCHITECTURE.md) — Stack, schema e decisões técnicas
 - [Guia de Deploy](../technical/DEPLOYMENT.md) — Docker, pipeline CI/CD e infraestrutura
 - [Runbook de Produção](../technical/RUNBOOK.md) — Operações diárias e troubleshooting
 - [Dossiê de Conformidade Legal](COMPLIANCE.md) — Enquadramento jurídico completo

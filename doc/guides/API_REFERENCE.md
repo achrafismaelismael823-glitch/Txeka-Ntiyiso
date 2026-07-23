@@ -27,12 +27,12 @@ A API utiliza **JWT (JSON Web Tokens)** para autenticação stateless. Dois flux
 
 | Fluxo | Endpoint | Token | Expiração | Âmbito |
 |-------|----------|-------|-----------|--------|
-| **Admin** | `POST /admin/login` | Bearer | 90 dias | Gestão global do sistema |
-| **Instituição** | `POST /login` | Bearer | 30 dias | Emissão, verificação, dashboard |
+| **Admin** | `POST /api/v1/auth/admin/login` | Bearer | 90 dias | Gestão global do sistema |
+| **Instituição** | `POST /api/v1/auth/login` | Bearer | 30 dias | Emissão, verificação, dashboard |
 
 > **Header:** `Authorization: Bearer <token>`
 
-### POST /admin/login
+### POST /api/v1/auth/admin/login
 
 Login do administrador do sistema.
 
@@ -60,7 +60,7 @@ Login do administrador do sistema.
 
 ---
 
-### POST /login
+### POST /api/v1/auth/login
 
 Login de instituição registrada.
 
@@ -103,7 +103,7 @@ Login de instituição registrada.
 
 ## Emissão de Documentos
 
-### POST /certify
+### POST /api/v1/certify
 
 Emite um documento único (PDF). Gera hash SHA-256, QR code e regista audit log.
 
@@ -113,7 +113,7 @@ Emite um documento único (PDF). Gera hash SHA-256, QR code e regista audit log.
 
 **Request:**
 ```http
-POST /certify
+POST /api/v1/certify
 Authorization: Bearer <institution_token>
 Content-Type: multipart/form-data
 
@@ -129,7 +129,7 @@ institution_id: "INAGE"         # ID da instituição emissora
   "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "document_type": "DUAT",
   "institution_id": "INAGE",
-  "certificate_url": "https://txeka-ntiyiso-api.onrender.com/verify/e3b0c44298fc...",
+  "certificate_url": "https://txeka-ntiyiso-api.onrender.com/api/v1/verify/e3b0c44298fc...",
   "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANS...",
   "file_name": "duat_2026_001.pdf",
   "file_size": 245760,
@@ -149,7 +149,7 @@ institution_id: "INAGE"         # ID da instituição emissora
 
 ---
 
-### POST /certify/bulk
+### POST /api/v1/certify/bulk
 
 Emite múltiplos documentos em lote (até 100 por requisição).
 
@@ -207,7 +207,7 @@ Emite múltiplos documentos em lote (até 100 por requisição).
 
 ## Verificação
 
-### GET /verify/{doc_hash}
+### GET /api/v1/verify/{doc_hash}
 
 Verificação pública via URL. Acessível sem autenticação — ideal para QR codes, WhatsApp e links diretos.
 
@@ -262,7 +262,7 @@ Verificação pública via URL. Acessível sem autenticação — ideal para QR 
 
 ---
 
-### POST /verify
+### POST /api/v1/verify
 
 Verificação B2B/B2G via JSON. Mesma lógica do GET, mas com payload estruturado para integrações programáticas.
 
@@ -273,7 +273,7 @@ Verificação B2B/B2G via JSON. Mesma lógica do GET, mas com payload estruturad
 }
 ```
 
-**Response:** Idêntico ao GET /verify/{doc_hash}
+**Response:** Idêntico ao GET /api/v1/verify/{doc_hash}
 
 **Erros:**
 - `400 Bad Request` — Hash inválido ou ausente
@@ -285,7 +285,7 @@ Verificação B2B/B2G via JSON. Mesma lógica do GET, mas com payload estruturad
 
 > **Acesso:** Endpoints abaixo requerem token de **Admin** (`verify_role("admin")`)
 
-### POST /{institution_id}
+### POST /api/v1/institutions
 
 Cria uma nova instituição no sistema.
 
@@ -326,7 +326,7 @@ Cria uma nova instituição no sistema.
 
 ---
 
-### GET /{institution_id}
+### GET /api/v1/institutions/{institution_id}
 
 Obtém detalhes de uma instituição específica.
 
@@ -354,7 +354,7 @@ Obtém detalhes de uma instituição específica.
 
 ---
 
-### PATCH /{institution_id}
+### PATCH /api/v1/institutions/{institution_id}
 
 Atualiza dados de uma instituição.
 
@@ -395,7 +395,7 @@ Atualiza dados de uma instituição.
 
 ---
 
-### POST /{institution_id}/credits
+### POST /api/v1/institutions/{institution_id}/credits
 
 Adiciona créditos à instituição (gestão de pagamentos).
 
@@ -429,7 +429,7 @@ Adiciona créditos à instituição (gestão de pagamentos).
 
 ---
 
-### GET /{institution_id}/credit-history
+### GET /api/v1/institutions/{institution_id}/credit-history
 
 Histórico de transações de créditos de uma instituição.
 
@@ -459,7 +459,7 @@ Histórico de transações de créditos de uma instituição.
 
 ---
 
-### POST /{institution_id}/reset-password
+### POST /api/v1/institutions/{institution_id}/reset-password
 
 Reset da password de uma instituição. Gera nova password temporária.
 
@@ -481,7 +481,7 @@ Reset da password de uma instituição. Gera nova password temporária.
 
 ---
 
-### POST /{institution_id}/regenerate-api-key
+### POST /api/v1/institutions/{institution_id}/regenerate-api-key
 
 Regenera a API key de uma instituição. A key anterior é invalidada imediatamente.
 
@@ -502,7 +502,7 @@ Regenera a API key de uma instituição. A key anterior é invalidada imediatame
 
 > **Acesso:** Endpoints abaixo requerem token de **Instituição**
 
-### GET /me/dashboard
+### GET /api/v1/institutions/me/dashboard
 
 Dashboard completo da instituição autenticada.
 
@@ -543,7 +543,7 @@ Dashboard completo da instituição autenticada.
 
 ---
 
-### GET /me/credits
+### GET /api/v1/institutions/me/credits
 
 Status rápido de créditos da instituição.
 
@@ -558,7 +558,7 @@ Status rápido de créditos da instituição.
 
 ---
 
-### GET /me/credit-history
+### GET /api/v1/institutions/me/credit-history
 
 Histórico de transações de créditos da instituição autenticada.
 
@@ -568,7 +568,7 @@ Histórico de transações de créditos da instituição autenticada.
 | `skip` | int | 0 | Offset para paginação |
 | `limit` | int | 50 | Limite de resultados (1–100) |
 
-**Response:** Idêntico ao `GET /{institution_id}/credit-history`, mas filtrado para a instituição autenticada.
+**Response:** Idêntico ao `GET /api/v1/institutions/{institution_id}/credit-history`, mas filtrado para a instituição autenticada.
 
 ---
 
@@ -576,7 +576,7 @@ Histórico de transações de créditos da instituição autenticada.
 
 > **Acesso:** Endpoints abaixo requerem token de **Admin**
 
-### GET /logs
+### GET /api/v1/logs
 
 Consulta logs de auditoria com filtros avançados.
 
@@ -611,7 +611,7 @@ Consulta logs de auditoria com filtros avançados.
 
 ---
 
-### GET /document/{doc_hash}/history
+### GET /api/v1/document/{doc_hash}/history
 
 Histórico completo de auditoria de um documento específico.
 
@@ -643,7 +643,7 @@ Histórico completo de auditoria de um documento específico.
 
 ---
 
-### GET /stats
+### GET /api/v1/stats
 
 Estatísticas agregadas para dashboards administrativos.
 
@@ -674,7 +674,7 @@ Estatísticas agregadas para dashboards administrativos.
 
 ## Revogação
 
-### POST /emissions/{doc_id}/revoke
+### POST /api/v1/emissions/{doc_id}/revoke
 
 Revoga (invalida) um documento emitido. Ação irreversível.
 
@@ -825,10 +825,10 @@ A API implementa rate limiting via **slowapi**:
 
 | Endpoint | Limite |
 |----------|--------|
-| `/verify` (GET/POST) | 100 requisições / minuto |
-| `/certify` | 60 requisições / minuto |
-| `/certify/bulk` | 10 requisições / minuto |
-| `/login`, `/admin/login` | 5 tentativas / minuto |
+| `/api/v1/verify` (GET/POST) | 100 requisições / minuto |
+| `/api/v1/certify` | 60 requisições / minuto |
+| `/api/v1/certify/bulk` | 10 requisições / minuto |
+| `/api/v1/login`, `/api/v1/admin/login` | 5 tentativas / minuto |
 | Outros endpoints | 120 requisições / minuto |
 
 > **Header de resposta:** `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`
