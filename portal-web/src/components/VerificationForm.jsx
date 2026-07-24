@@ -19,7 +19,7 @@ export default function VerificationForm({ onVerificationResult }) {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.size > 50 * 1024 * 1024) {
-        setError({ message: 'Ficheiro muito grande. Maximo 50MB.', type: 'warning' });
+        setError({ message: 'Ficheiro muito grande. Máximo 50MB.', type: 'warning' });
         setFile(null);
         return;
       }
@@ -40,7 +40,7 @@ export default function VerificationForm({ onVerificationResult }) {
         hashToVerify = await calculateSHA256(file);
       } else {
         if (!hash) throw Object.assign(new Error('Digite um hash'), { translated: { code: 'VALIDATION', message: 'Digite um hash SHA-256.', type: 'warning' } });
-        if (!validateSHA256Hash(hash)) throw Object.assign(new Error('Hash invalido'), { translated: { code: 'VALIDATION', message: 'Hash invalido. Deve ter 64 caracteres hexadecimais.', type: 'warning' } });
+        if (!validateSHA256Hash(hash)) throw Object.assign(new Error('Hash inválido'), { translated: { code: 'VALIDATION', message: 'Hash inválido. Deve ter 64 caracteres hexadecimais.', type: 'warning' } });
         hashToVerify = hash;
       }
 
@@ -92,4 +92,3 @@ export default function VerificationForm({ onVerificationResult }) {
     </div>
   );
 }
-
