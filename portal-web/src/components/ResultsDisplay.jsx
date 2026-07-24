@@ -7,8 +7,8 @@ import { CheckCircle, XCircle, AlertCircle, Copy, Check, Download, Printer, Shar
 // dados_publicos: { doc_id, document_type, institution_id, created_at, revoked, revoked_at, revoked_reason }
 function getStatusConfig(status) {
   const configs = {
-    VALID: { label: 'Valido', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: '✅' },
-    INVALID: { label: 'Invalido', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', icon: '❌' },
+    VALID: { label: 'Válido', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: '✅' },
+    INVALID: { label: 'Inválido', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', icon: '❌' },
     EXPIRED: { label: 'Expirado', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', icon: '⏰' },
     REVOKED: { label: 'Revogado', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200', icon: '🚫' },
   };
@@ -44,14 +44,14 @@ export default function ResultsDisplay({ result, hash }) {
   const handlePrintQR = () => {
     if (!result.qr_code) return;
     const printWindow = window.open('', '', 'width=600,height=700');
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - Txeka Ntiyiso</title><style>body{font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;background:white;}.container{text-align:center;max-width:500px;}h1{color:#0B192C;margin-bottom:10px;}.doc-info{background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:20px;text-align:left;}.info-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e0e0e0;}.info-row:last-child{border-bottom:none;}.qr-container{margin:20px 0;padding:20px;background:white;border:2px solid #00D2C4;border-radius:8px;}.qr-container img{max-width:300px;height:auto;}.footer{color:#666;font-size:12px;margin-top:20px;padding-top:20px;border-top:1px solid #ddd;}@media print{body{background:white;}}</style></head><body><div class="container"><h1>Txeka Ntiyiso</h1><h2>Comprovante de Verificacao</h2><div class="doc-info"><div class="info-row"><strong>Documento:</strong><span>${dados?.doc_id || 'N/A'}</span></div><div class="info-row"><strong>Instituicao:</strong><span>${dados?.institution_id || 'N/A'}</span></div><div class="info-row"><strong>Status:</strong><span>${isRevoked ? 'Revogado' : 'Valido'}</span></div><div class="info-row"><strong>Data:</strong><span>${formatDate(dados?.created_at)}</span></div></div><div class="qr-container"><p><strong>Codigo QR de Verificacao</strong></p><img src="${result.qr_code}" alt="QR Code" /></div><div class="footer"><p>Escaneie este codigo QR para verificar a autenticidade do documento.</p><p>Hash: ${hash.substring(0, 16)}...</p><p>Txeka Ntiyiso - Verificacao Digital de Documentos</p></div></div></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>QR Code - Txeka Ntiyiso</title><style>body{font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;background:white;}.container{text-align:center;max-width:500px;}h1{color:#0B192C;margin-bottom:10px;}.doc-info{background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:20px;text-align:left;}.info-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e0e0e0;}.info-row:last-child{border-bottom:none;}.qr-container{margin:20px 0;padding:20px;background:white;border:2px solid #00D2C4;border-radius:8px;}.qr-container img{max-width:300px;height:auto;}.footer{color:#666;font-size:12px;margin-top:20px;padding-top:20px;border-top:1px solid #ddd;}@media print{body{background:white;}}</style></head><body><div class="container"><h1>Txeka Ntiyiso</h1><h2>Comprovante de Verificação</h2><div class="doc-info"><div class="info-row"><strong>Documento:</strong><span>${dados?.doc_id || 'N/A'}</span></div><div class="info-row"><strong>Instituição:</strong><span>${dados?.institution_id || 'N/A'}</span></div><div class="info-row"><strong>Status:</strong><span>${isRevoked ? 'Revogado' : 'Válido'}</span></div><div class="info-row"><strong>Data:</strong><span>${formatDate(dados?.created_at)}</span></div></div><div class="qr-container"><p><strong>Código QR de Verificação</strong></p><img src="${result.qr_code}" alt="QR Code" /></div><div class="footer"><p>Escaneie este código QR para verificar a autenticidade do documento.</p><p>Hash: ${hash.substring(0, 16)}...</p><p>Txeka Ntiyiso - Verificação Digital de Documentos</p></div></div></body></html>`);
     printWindow.document.close();
     printWindow.print();
   };
 
   const handleShareWhatsApp = () => {
     if (!result.qr_code) return;
-    const text = encodeURIComponent(`Documento Verificado no Txeka Ntiyiso\n\nDocumento: ${dados?.doc_id}\nInstituicao: ${dados?.institution_id}\nStatus: ${isRevoked ? 'Revogado' : 'Valido'}\n\nVerifique em: https://txeka-ntiyiso-portal.onrender.com`);
+    const text = encodeURIComponent(`Documento Verificado no Txeka Ntiyiso\n\nDocumento: ${dados?.doc_id}\nInstituição: ${dados?.institution_id}\nStatus: ${isRevoked ? 'Revogado' : 'Válido'}\n\nVerifique em: https://txeka-ntiyiso-portal.onrender.com`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -79,9 +79,9 @@ export default function ResultsDisplay({ result, hash }) {
 
       {isValid && result.qr_code && (
         <div className="mb-6 bg-white rounded-xl p-6 border-2 border-[#00D2C4]/30 text-center">
-          <p className="text-slate-600 text-sm font-semibold mb-4">Codigo QR de Verificacao</p>
+          <p className="text-slate-600 text-sm font-semibold mb-4">Código QR de Verificação</p>
           <img src={result.qr_code} alt="QR Code do Documento" className="mx-auto mb-4 w-48 h-48 border-2 border-slate-200 rounded-lg p-2 bg-white" />
-          <p className="text-slate-500 text-xs mb-4">Escaneie o codigo QR para compartilhar esta verificacao</p>
+          <p className="text-slate-500 text-xs mb-4">Escaneie o código QR para compartilhar esta verificação</p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={handleDownloadQR} className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition text-sm font-semibold">
               <Download className="h-4 w-4" /> Download
@@ -107,18 +107,18 @@ export default function ResultsDisplay({ result, hash }) {
             <p className="text-slate-800 font-semibold">{dados.document_type}</p>
           </div>
           <div className="bg-white rounded-xl p-3 border border-slate-100">
-            <p className="text-slate-500 text-xs font-semibold uppercase">Instituicao</p>
+            <p className="text-slate-500 text-xs font-semibold uppercase">Instituição</p>
             <p className="text-slate-800 font-semibold">{dados.institution_id}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-xl p-3 border border-slate-100">
-              <p className="text-slate-500 text-xs font-semibold uppercase">Data de Emissao</p>
+              <p className="text-slate-500 text-xs font-semibold uppercase">Data de Emissão</p>
               <p className="text-slate-800 font-semibold">{formatDate(dados.created_at)}</p>
             </div>
             <div className="bg-white rounded-xl p-3 border border-slate-100">
               <p className="text-slate-500 text-xs font-semibold uppercase">Status</p>
               <p className={`font-semibold ${isRevoked ? 'text-rose-600' : 'text-emerald-600'}`}>
-                {isRevoked ? '⚠️ Revogado' : '✓ Valido'}
+                {isRevoked ? '⚠️ Revogado' : '✓ Válido'}
               </p>
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function ResultsDisplay({ result, hash }) {
           <div>
             <p className="font-semibold text-amber-800 mb-1">Documento Revogado</p>
             <p className="text-sm text-amber-700">
-              Este documento foi revogado e nao e mais valido.
+              Este documento foi revogado e nao e mais válido.
               {dados.revoked_reason && <span className="block mt-1 font-medium">Motivo: {dados.revoked_reason}</span>}
             </p>
           </div>
