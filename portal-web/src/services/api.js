@@ -1,4 +1,7 @@
-// v3.0 — API Txeka Ntiyiso mapeada 1:1 com o contrato Swagger.
+// src/services/api.js
+// v4.0 — API Txeka Ntiyiso mapeada 1:1 com o contrato OpenAPI 3.1.0
+// Build-safe: sem optional chaining, sem nullish coalescing.
+// Acentuacao corrigida para portugues (pt-PT).
 
 import axios from 'axios';
 
@@ -28,7 +31,7 @@ api.interceptors.response.use(
     return response;
   },
   function(error) {
-    var message = 'Erro na comunicacao com o servidor.';
+    var message = 'Erro na comunicação com o servidor.';
     var status = 500;
     if (error.response) {
       status = error.response.status;
@@ -46,7 +49,7 @@ api.interceptors.response.use(
         message = data.message;
       }
     } else if (error.request) {
-      message = 'Sem resposta do servidor. Verifique a conexao.';
+      message = 'Sem resposta do servidor. Verifique a conexão.';
     }
     var customError = new Error(message);
     customError.status = status;
@@ -126,11 +129,6 @@ export async function resetInstitutionPassword(institution_id) {
   return api.post('/api/v1/institutions/' + institution_id + '/reset-password');
 }
 
-// Alias para compatibilidade com imports existentes
-export async function resetPassword(institution_id) {
-  return resetInstitutionPassword(institution_id);
-}
-
 export async function regenerateApiKey(institution_id) {
   return api.post('/api/v1/institutions/' + institution_id + '/regenerate-api-key');
 }
@@ -139,6 +137,9 @@ export async function regenerateApiKey(institution_id) {
 // DOCUMENTOS / CERTIFICACAO
 // ============================================
 
+// Nota: o endpoint /api/v1/certify exige multipart/form-data.
+// O frontend deve enviar um objeto FormData como argumento `data`.
+// O axios detecta FormData automaticamente e ajusta o Content-Type.
 export async function emitDocument(data) {
   return api.post('/api/v1/certify', data);
 }
@@ -166,7 +167,7 @@ export async function revokeDocument(doc_id, data) {
 export async function getAuditLogs(params) {
   var query = {};
   if (params && params.limit !== undefined) query.limit = params.limit;
-  if (params && params.skip !== undefined) query.skip = params.skip;
+  if (params && params.offset !== undefined) query.offset = params.offset;
   if (params && params.action) query.action = params.action;
   if (params && params.resource_type) query.resource_type = params.resource_type;
   if (params && params.institution_id) query.institution_id = params.institution_id;
@@ -209,5 +210,13 @@ export const publicApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-export default api;
+// ============================================
+// ALIASES DE COMPATIBILIDADE
+// ============================================
 
+export { getMyCreditHistory as getCreditHistory };
+export { verifyDocumentByHash as verifyByHash };
+export { verifyDocument as verifyByPost };
+export { resetInstitutionPassword as resetPassword };
+
+export default api;
