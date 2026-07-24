@@ -1,4 +1,3 @@
-// src/pages/SettingsPage.jsx
 // Configurações do utilizador — Perfil, segurança, tema, idioma, API keys
 // Integrado com AuthContext para dados da sessão
 
