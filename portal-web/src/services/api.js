@@ -1,6 +1,4 @@
-// src/services/api.js
-// v2.1 — API completa Txeka Ntiyiso. Sem optional chaining, sem nullish coalescing.
-// Adicionado: emitBulk para /api/v1/certify/bulk
+// v3.0 — API Txeka Ntiyiso mapeada 1:1 com o contrato Swagger.
 
 import axios from 'axios';
 
@@ -105,8 +103,12 @@ export async function createInstitution(data) {
   return api.post('/api/v1/institutions', data);
 }
 
+export async function getInstitution(id) {
+  return api.get('/api/v1/institutions/' + id);
+}
+
 export async function updateInstitution(id, data) {
-  return api.put('/api/v1/institutions/' + id, data);
+  return api.patch('/api/v1/institutions/' + id, data);
 }
 
 export async function addCredits(institution_id, data) {
@@ -122,6 +124,11 @@ export async function getInstitutionCreditHistory(institution_id, params) {
 
 export async function resetInstitutionPassword(institution_id) {
   return api.post('/api/v1/institutions/' + institution_id + '/reset-password');
+}
+
+// Alias para compatibilidade com imports existentes
+export async function resetPassword(institution_id) {
+  return resetInstitutionPassword(institution_id);
 }
 
 export async function regenerateApiKey(institution_id) {
@@ -148,8 +155,8 @@ export async function verifyDocumentByHash(hash) {
   return api.get('/api/v1/verify/' + hash);
 }
 
-export async function revokeDocument(data) {
-  return api.post('/api/v1/revoke', data);
+export async function revokeDocument(doc_id, data) {
+  return api.post('/api/v1/emissions/' + doc_id + '/revoke', data);
 }
 
 // ============================================
@@ -167,6 +174,10 @@ export async function getAuditLogs(params) {
   if (params && params.start_date) query.start_date = params.start_date;
   if (params && params.end_date) query.end_date = params.end_date;
   return api.get('/api/v1/audit/logs', { params: query });
+}
+
+export async function getDocumentAuditHistory(doc_hash) {
+  return api.get('/api/v1/audit/document/' + doc_hash + '/history');
 }
 
 export async function getAuditStats(params) {
