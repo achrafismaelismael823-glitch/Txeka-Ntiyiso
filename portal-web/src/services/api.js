@@ -1,3 +1,6 @@
+// src/services/api.js
+// v2.1 — API completa Txeka Ntiyiso. Sem optional chaining, sem nullish coalescing.
+// Adicionado: emitBulk para /api/v1/certify/bulk
 
 import axios from 'axios';
 
@@ -131,6 +134,10 @@ export async function regenerateApiKey(institution_id) {
 
 export async function emitDocument(data) {
   return api.post('/api/v1/certify', data);
+}
+
+export async function emitBulk(data) {
+  return api.post('/api/v1/certify/bulk', data);
 }
 
 export async function verifyDocument(data) {
