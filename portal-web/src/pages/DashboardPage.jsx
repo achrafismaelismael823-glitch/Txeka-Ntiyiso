@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from 'react-query';
 import { useOutletContext } from 'react-router-dom';
 import { 
-  FileText, CheckCircle, CreditCard, Activity
+  FileText, CheckCircle, CreditCard, Activity, Shield
 } from 'lucide-react';
 import { endpoints } from '../services/api';
 
