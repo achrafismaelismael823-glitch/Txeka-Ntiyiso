@@ -16,19 +16,39 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // Login para Instituições (ID + password)
   const login = useCallback(async (institutionId, password) => {
     const { data } = await endpoints.auth.login({ institution_id: institutionId, password });
     authService.setToken(data.access_token);
-    authService.setUser(data.institution);
-    setUser(data.institution);
+    
+    // Marca como tipo instituição
+    const userData = {
+      ...data.institution,
+      _type: 'institution',
+      _role: 'institution',
+    };
+    
+    authService.setUser(userData);
+    setUser(userData);
     return data;
   }, []);
 
+  // Login para Admin (email + password)
   const adminLogin = useCallback(async (email, password) => {
     const { data } = await endpoints.auth.adminLogin({ email, password });
     authService.setToken(data.access_token);
-    authService.setUser(data.user || data.institution);
-    setUser(data.user || data.institution);
+    
+    // Marca como tipo admin
+    const userData = {
+      ...data.user,
+      id: data.user?.email || 'admin',
+      name: data.user?.name || 'Administrador',
+      _type: 'admin',
+      _role: 'admin',
+    };
+    
+    authService.setUser(userData);
+    setUser(userData);
     return data;
   }, []);
 
@@ -37,10 +57,22 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  const isAdmin = user?.role === 'admin';
+  // Helper: é admin?
+  const isAdmin = user?._type === 'admin' || user?._role === 'admin';
+  
+  // Helper: é instituição?
+  const isInstitution = user?._type === 'institution' || user?._role === 'institution';
 
   return (
-    <AuthContext.Provider value={{ user, login, adminLogin, logout, isAdmin, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      adminLogin, 
+      logout, 
+      isAdmin, 
+      isInstitution,
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );
