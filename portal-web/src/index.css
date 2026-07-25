@@ -4,25 +4,18 @@
 
 @layer base {
   :root {
-    /* === CORES EXATAS DO LOGO TXEKA NTIYISO === */
-    --bg-deep: #080f1a;         /* Fundo mais escuro */
-    --bg-primary: #0a1929;      /* Azul-marinho do logo */
-    --bg-secondary: #0d2137;    /* Azul intermediário */
-    --bg-elevated: #112240;     /* Superfícies elevadas */
-    
-    --txeka-white: #f8fafc;     /* Branco prateado "Txeka" */
-    --ntiyiso-cyan: #2dd4bf;    /* Turquesa "Ntiyiso" */
-    --ntiyiso-cyan-soft: #5eead4; /* Ciano suave */
-    
-    --shield-cyan: #00e5ff;     /* Neon do escudo */
-    --shield-cyan-dark: #00b8cc;
-    --metal-light: #e2e8f0;     /* Prata claro */
-    --metal-mid: #94a3b8;       /* Prata médio */
-    --metal-dark: #475569;      /* Prata escuro */
-    
-    --silver: #c0c5ce;
-    --silver-dark: #8a9199;
-    --silver-light: #e2e5e9;
+    --bg-deep: #080f1a;
+    --bg-primary: #0a1929;
+    --bg-secondary: #0d2137;
+    --txeka-white: #f8fafc;
+    --txeka-dark: #1e293b;
+    --ntiyiso-teal: #14b8a6;
+    --ntiyiso-cyan: #2dd4bf;
+    --shield-cyan: #06b6d4;
+    --shield-glow: #22d3ee;
+    --silver: #94a3b8;
+    --silver-dark: #64748b;
+    --silver-light: #e2e8f0;
   }
 
   body {
@@ -32,20 +25,20 @@
   }
 
   ::selection {
-    background: rgba(0, 229, 255, 0.2);
+    background: rgba(6, 182, 212, 0.2);
     color: #fff;
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--bg-primary);
+    background: var(--bg-deep);
   }
   ::-webkit-scrollbar-thumb {
-    background: #1a3a5c;
-    border-radius: 4px;
+    background: #1e3a5f;
+    border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #2a4d75;
@@ -54,40 +47,40 @@
 
 @layer components {
   .glass-panel {
-    @apply backdrop-blur-xl border rounded-xl;
-    background: rgba(13, 33, 55, 0.55);
-    border-color: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: rgba(13, 33, 55, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   }
 
   .glass-panel-strong {
-    @apply backdrop-blur-2xl border rounded-xl;
-    background: rgba(17, 34, 64, 0.7);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    background: rgba(17, 34, 64, 0.65);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 1rem;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
   }
 
   .btn-primary {
-    @apply relative overflow-hidden px-6 py-2.5 rounded-lg font-semibold transition-all duration-300;
-    background: var(--shield-cyan);
+    @apply relative overflow-hidden px-6 py-2.5 rounded-lg font-bold transition-all duration-300;
+    background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);
     color: var(--bg-deep);
-    @apply hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+    @apply hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-primary:hover {
-    background: #33eaff;
-    box-shadow: 0 0 20px rgba(0, 229, 255, 0.4), 0 0 40px rgba(0, 229, 255, 0.2);
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.35), 0 4px 15px rgba(0, 0, 0, 0.2);
   }
 
   .btn-secondary {
     @apply px-6 py-2.5 rounded-lg font-medium border transition-all duration-300;
-    border-color: rgba(0, 229, 255, 0.25);
-    color: var(--shield-cyan);
+    border-color: rgba(6, 182, 212, 0.2);
+    color: #22d3ee;
     background: transparent;
   }
   .btn-secondary:hover {
-    background: rgba(0, 229, 255, 0.08);
-    border-color: rgba(0, 229, 255, 0.45);
-    box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+    background: rgba(6, 182, 212, 0.06);
+    border-color: rgba(6, 182, 212, 0.4);
   }
 
   .btn-danger {
@@ -97,72 +90,72 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-lg transition-all duration-200;
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    @apply w-full px-4 py-3 rounded-xl transition-all duration-200 text-sm;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     color: var(--txeka-white);
   }
   .input-field::placeholder {
-    color: rgba(138, 145, 153, 0.4);
+    color: rgba(148, 163, 184, 0.35);
   }
   .input-field:focus {
     outline: none;
-    border-color: rgba(0, 229, 255, 0.35);
-    box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.06);
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.05);
   }
 
   .nav-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200;
-    color: var(--silver-dark);
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-sm;
+    color: var(--silver);
   }
   .nav-link:hover {
-    color: var(--shield-cyan);
-    background: rgba(0, 229, 255, 0.04);
+    color: #22d3ee;
+    background: rgba(6, 182, 212, 0.04);
   }
   .nav-link.active {
-    color: var(--shield-cyan);
-    background: rgba(0, 229, 255, 0.08);
-    border-right: 2px solid var(--shield-cyan);
+    color: #22d3ee;
+    background: rgba(6, 182, 212, 0.08);
+    border-right: 2px solid #06b6d4;
   }
 
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-[0.7rem] font-semibold;
   }
   .badge-success {
-    background: rgba(16, 185, 129, 0.12);
+    background: rgba(16, 185, 129, 0.1);
     color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.25);
+    border: 1px solid rgba(16, 185, 129, 0.2);
   }
   .badge-warning {
-    background: rgba(245, 158, 11, 0.12);
+    background: rgba(245, 158, 11, 0.1);
     color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    border: 1px solid rgba(245, 158, 11, 0.2);
   }
   .badge-danger {
-    background: rgba(239, 68, 68, 0.12);
+    background: rgba(239, 68, 68, 0.1);
     color: #f87171;
-    border: 1px solid rgba(239, 68, 68, 0.25);
+    border: 1px solid rgba(239, 68, 68, 0.2);
   }
   .badge-info {
-    background: rgba(0, 229, 255, 0.08);
-    color: var(--shield-cyan);
-    border: 1px solid rgba(0, 229, 255, 0.2);
+    background: rgba(6, 182, 212, 0.08);
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.18);
   }
 
   .table-header {
-    @apply px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider;
+    @apply px-6 py-3 text-left text-[0.7rem] font-bold uppercase tracking-wider;
     color: var(--silver-dark);
   }
   .table-cell {
     @apply px-6 py-4 whitespace-nowrap text-sm;
-    color: var(--silver);
+    color: var(--silver-light);
   }
   .table-row {
-    @apply transition-colors;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background 0.2s;
   }
   .table-row:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.015);
   }
 
   .card-stat {
@@ -170,69 +163,28 @@
   }
   .card-stat::before {
     content: '';
-    @apply absolute top-0 left-0 w-full h-0.5;
-    background: linear-gradient(90deg, var(--shield-cyan) 0%, var(--ntiyiso-cyan) 100%);
+    @apply absolute top-0 left-0 w-full h-[2px];
+    background: linear-gradient(90deg, #06b6d4 0%, #2dd4bf 100%);
   }
 
-  /* ============================================
-     FUNDO EXATO DO LOGO — Azul-marinho texturizado
-     ============================================ */
   .bg-brand-fundo {
     background-color: var(--bg-primary);
     background-image: 
-      /* Textura fina de couro/papel */
-      url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
-      /* Iluminação sutil centro-direita (igual à foto) */
-      radial-gradient(ellipse at 60% 45%, rgba(0, 229, 255, 0.025) 0%, transparent 55%),
-      radial-gradient(ellipse at 30% 70%, rgba(8, 15, 26, 0.6) 0%, transparent 50%),
-      /* Base */
-      linear-gradient(165deg, #0d2137 0%, #0a1929 45%, #080f1a 100%);
-    background-size: 250px 250px, 100% 100%, 100% 100%, 100% 100%;
-    background-blend-mode: overlay, normal, normal, normal;
-  }
-
-  .bg-brand-fundo::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='0.4' stroke-opacity='0.025'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 140px 140px;
-    pointer-events: none;
-    z-index: 0;
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
+      radial-gradient(ellipse at 55% 40%, rgba(6, 182, 212, 0.02) 0%, transparent 50%),
+      linear-gradient(165deg, #0d2137 0%, #0a1929 40%, #080f1a 100%);
+    background-size: 250px 250px, 100% 100%, 100% 100%;
+    background-blend-mode: overlay, normal, normal;
   }
 
   .bg-brand-fundo-escuro {
     background-color: var(--bg-deep);
     background-image: 
-      url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
-      radial-gradient(ellipse at 50% 0%, rgba(0, 229, 255, 0.02) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E"),
+      radial-gradient(ellipse at 50% 0%, rgba(6, 182, 212, 0.015) 0%, transparent 50%),
       linear-gradient(180deg, #0a1929 0%, #080f1a 100%);
     background-size: 250px 250px, 100% 100%, 100% 100%;
     background-blend-mode: overlay, normal, normal;
-  }
-
-  /* Texto "Txeka" — Branco prateado com sombra 3D sutil */
-  .text-txeka {
-    color: var(--txeka-white);
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.1);
-    letter-spacing: -0.02em;
-  }
-
-  /* Texto "Ntiyiso" — Turquesa ciano elegante */
-  .text-ntiyiso {
-    color: var(--ntiyiso-cyan);
-    text-shadow: 0 2px 8px rgba(45, 212, 191, 0.25);
-    letter-spacing: 0.04em;
-  }
-}
-
-@layer utilities {
-  .text-glow-cyan {
-    text-shadow: 0 0 12px rgba(0, 229, 255, 0.45);
-  }
-  .border-glow-cyan {
-    box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
   }
 }
 
