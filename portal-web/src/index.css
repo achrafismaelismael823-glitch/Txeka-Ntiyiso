@@ -2,26 +2,145 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+@layer base {
+  :root {
+    --color-cyan: #00e5ff;
+    --color-cyan-dark: #00b8cc;
+    --color-bg: #050b14;
+    --color-surface: #0a1929;
+    --color-surface-elevated: #0d2137;
+    --color-border: #1a3a5c;
+  }
+
+  body {
+    @apply bg-tn-900 text-silver-light font-sans;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(0,229,255,0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(26,58,92,0.4) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(0,229,255,0.25);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a1929;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1a3a5c;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2a4d75;
+  }
 }
 
-/* Custom component classes */
 @layer components {
-  .card {
-    @apply bg-white rounded-2xl border border-slate-200 p-6 shadow-sm;
+  .glass-panel {
+    @apply bg-tn-800/60 backdrop-blur-xl border border-tn-500/30 rounded-xl;
+    box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37), inset 0 1px 0 rgba(255,255,255,0.05);
   }
-  
-  .input-field {
-    @apply w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[#00D2C4] transition;
+
+  .glass-panel-strong {
+    @apply bg-tn-700/80 backdrop-blur-2xl border border-tn-400/40 rounded-xl;
+    box-shadow: 0 8px 32px 0 rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
   }
-  
-  .label-field {
-    @apply text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2;
-  }
-  
+
   .btn-primary {
-    @apply bg-[#0B192C] hover:bg-slate-800 text-white font-semibold text-sm py-3 px-4 rounded-xl transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50;
+    @apply relative overflow-hidden px-6 py-2.5 rounded-lg font-semibold text-tn-900 bg-cyan transition-all duration-300;
+    @apply hover:bg-cyan-light hover:shadow-neon hover:-translate-y-0.5;
+    @apply active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-2.5 rounded-lg font-medium border border-tn-400 text-cyan bg-transparent transition-all duration-300;
+    @apply hover:bg-cyan/10 hover:border-cyan/50 hover:shadow-neon;
+  }
+
+  .btn-danger {
+    @apply px-6 py-2.5 rounded-lg font-semibold text-white bg-red-600/80 transition-all duration-300;
+    @apply hover:bg-red-500 hover:shadow-lg hover:-translate-y-0.5;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-tn-800/80 border border-tn-500/40 rounded-lg text-silver-light placeholder-silver-dark;
+    @apply focus:outline-none focus:border-cyan/60 focus:ring-1 focus:ring-cyan/30 transition-all duration-200;
+  }
+
+  .input-field:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-silver-dark transition-all duration-200;
+    @apply hover:text-cyan hover:bg-cyan/5;
+  }
+
+  .nav-link.active {
+    @apply text-cyan bg-cyan/10 border-r-2 border-cyan;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-emerald-500/15 text-emerald-400 border border-emerald-500/30;
+  }
+
+  .badge-warning {
+    @apply bg-amber-500/15 text-amber-400 border border-amber-500/30;
+  }
+
+  .badge-danger {
+    @apply bg-red-500/15 text-red-400 border border-red-500/30;
+  }
+
+  .badge-info {
+    @apply bg-cyan/10 text-cyan border border-cyan/30;
+  }
+
+  .table-header {
+    @apply px-6 py-3 text-left text-xs font-semibold text-silver-dark uppercase tracking-wider;
+  }
+
+  .table-cell {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-silver;
+  }
+
+  .table-row {
+    @apply border-b border-tn-600/30 transition-colors hover:bg-tn-700/30;
+  }
+
+  .card-stat {
+    @apply glass-panel p-6 relative overflow-hidden;
+  }
+
+  .card-stat::before {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-0.5 bg-cyan-gradient;
+  }
+
+  .divider {
+    @apply h-px bg-tn-500/30 my-4;
+  }
+
+  .page-transition {
+    @apply animate-slide-up;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px rgba(0,229,255,0.5);
+  }
+  .border-glow {
+    box-shadow: 0 0 10px rgba(0,229,255,0.2);
   }
 }
