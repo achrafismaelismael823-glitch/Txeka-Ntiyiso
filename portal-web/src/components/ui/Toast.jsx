@@ -1,16 +1,5 @@
-// Sistema de notificações global — stack múltiplo, auto-dismiss, animações
-// Uso: import { ToastProvider, useToast } from './Toast'
-
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
-
-const ToastContext = createContext(null);
-
-export const useToast = () => {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast deve ser usado dentro de ToastProvider');
-  return ctx;
-};
+import React, { useEffect } from 'react';
+import { X, CheckCircle, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 
 const icons = {
   success: CheckCircle,
@@ -20,68 +9,52 @@ const icons = {
 };
 
 const styles = {
-  success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-  error: 'bg-rose-50 border-rose-200 text-rose-800',
-  warning: 'bg-amber-50 border-amber-200 text-amber-800',
-  info: 'bg-blue-50 border-blue-200 text-blue-800',
+  success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  error: 'border-red-500/30 bg-red-500/10 text-red-400',
+  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  info: 'border-cyan/30 bg-cyan/10 text-cyan',
 };
 
-const iconColors = {
-  success: 'text-emerald-600',
-  error: 'text-rose-600',
-  warning: 'text-amber-600',
-  info: 'text-blue-600',
-};
+export const Toast = ({ id, type = 'info', message, onClose, duration = 5000 }) => {
+  const Icon = icons[type];
 
-export const ToastProvider = ({ children }) => {
-  const [toasts, setToasts] = useState([]);
-
-  const addToast = useCallback((message, type = 'info', duration = 4000) => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    if (duration > 0) {
-      setTimeout(() => removeToast(id), duration);
-    }
-    return id;
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  useEffect(() => {
+    const timer = setTimeout(onClose, duration);
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
 
   return (
-    <ToastContext.Provider value={{ addToast, removeToast }}>
-      {children}
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-[100] space-y-3 w-full max-w-sm pointer-events-none">
-        {toasts.map((toast) => {
-          const Icon = icons[toast.type];
-          return (
-            <div
-              key={toast.id}
-              className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-lg animate-in fade-in slide-in-from-right-4 ${styles[toast.type]}`}
-            >
-              <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${iconColors[toast.type]}`} />
-              <p className="text-sm font-semibold flex-1">{toast.message}</p>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="flex-shrink-0 p-1 hover:bg-black/5 rounded-lg transition"
-              >
-                <X className="w-4 h-4 opacity-50 hover:opacity-100" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </ToastContext.Provider>
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border backdrop-blur-sm shadow-lg animate-slide-up ${styles[type]}`}>
+      <Icon className="w-5 h-5 shrink-0" />
+      <p className="text-sm font-medium flex-1">{message}</p>
+      <button onClick={onClose} className="shrink-0 hover:opacity-70 transition-opacity">
+        <X className="w-4 h-4" />
+      </button>
+    </div>
   );
 };
 
-// Hook de conveniência
-export const toast = {
-  success: (msg, dur) => { /* usar dentro de componente com useToast */ },
-  error: (msg, dur) => { /* usar dentro de componente com useToast */ },
+export const ToastContainer = ({ toasts, removeToast }) => {
+  return (
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-full max-w-sm">
+      {toasts.map((t) => (
+        <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />
+      ))}
+    </div>
+  );
 };
 
-export default ToastProvider;
+export const useToast = () => {
+  const [toasts, setToasts] = React.useState([]);
 
+  const addToast = React.useCallback((message, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  }, []);
+
+  const removeToast = React.useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  return { toasts, addToast, removeToast };
+};
