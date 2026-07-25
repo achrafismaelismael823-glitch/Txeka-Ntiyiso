@@ -1,194 +1,177 @@
-// Página de login dual-mode: Instituição (ID+Senha) | Admin (Email+Senha)
-// Integrado com AuthContext, tratamento de erros, animações
-
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { ShieldCheck, Building2, UserCog, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { ShieldCheck, Building2, UserCog, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { login, adminLogin, isAuthenticated } = useAuth();
-  
-  const [mode, setMode] = useState('institution'); // 'institution' | 'admin'
-  const [institutionId, setInstitutionId] = useState('');
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [institutionId, setInstitutionId] = useState('INAGE');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [shake, setShake] = useState(false);
 
-  // Se já autenticado, redirecionar
-  useEffect(() => {
-    if (isAuthenticated) navigate('/dashboard');
-  }, [isAuthenticated, navigate]);
-
-  // Mostrar motivo do logout (sessão expirada, etc.)
-  const logoutReason = searchParams.get('reason');
-  useEffect(() => {
-    if (logoutReason) setError({ message: logoutReason, type: 'warning' });
-  }, [logoutReason]);
+  const { login, adminLogin } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setError(null);
 
-    let result;
-    if (mode === 'institution') {
-      result = await login(institutionId.trim().toUpperCase(), password);
-    } else {
-      result = await adminLogin(email.trim(), password);
-    }
-
-    setLoading(false);
-
-    if (result.success) {
+    try {
+      if (isAdminLogin) {
+        await adminLogin(email, password);
+      } else {
+        await login(email, password, institutionId);
+      }
       navigate('/dashboard');
-    } else {
-      setError({ message: result.error, type: 'error' });
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || 
+        'Falha na autenticação. Verifique as suas credenciais e tente novamente.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0B192C] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decorativo */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-[#00D2C4] rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-72 h-72 bg-[#00D2C4] rounded-full blur-3xl" />
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background Glow effects */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="flex justify-center">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <ShieldCheck className="h-10 w-10 text-white" />
+          </div>
+        </div>
+        <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-white">
+          Txeka Ntiyiso <span className="text-cyan-400 text-lg font-mono">v2.0.0</span>
+        </h2>
+        <p className="mt-2 text-center text-sm text-slate-400">
+          Plataforma de Validação Digital de Documentos Enterprise
+        </p>
       </div>
 
-      <div className={`relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 transition-transform ${shake ? 'animate-shake' : ''}`}>
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#00D2C4] rounded-2xl mb-4 shadow-lg shadow-[#00D2C4]/30">
-            <ShieldCheck className="w-8 h-8 text-[#0B192C]" />
-          </div>
-          <h1 className="text-2xl font-bold text-[#0B192C]">Txeka Ntiyiso</h1>
-          <p className="text-slate-500 text-sm mt-1">Portal de Verificação Documental</p>
-        </div>
-
-        {/* Toggle Mode */}
-        <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
-          <button
-            type="button"
-            onClick={() => { setMode('institution'); setError(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-              mode === 'institution' ? 'bg-white text-[#0B192C] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Building2 className="w-4 h-4" /> Instituição
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('admin'); setError(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-              mode === 'admin' ? 'bg-white text-[#0B192C] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <UserCog className="w-4 h-4" /> Administrador
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {mode === 'institution' ? (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">
-                ID da Instituição
-              </label>
-              <input
-                type="text"
-                value={institutionId}
-                onChange={(e) => setInstitutionId(e.target.value.toUpperCase())}
-                placeholder="Ex: INAGE, UEM, CFN"
-                className="w-full bg-slate-50 border border-slate-200 text-[#0B192C] text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[#00D2C4] focus:ring-2 focus:ring-[#00D2C4]/20 font-semibold uppercase transition"
-                disabled={loading}
-              />
-            </div>
-          ) : (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">
-                Email Administrativo
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@txekantiyiso.co.mz"
-                className="w-full bg-slate-50 border border-slate-200 text-[#0B192C] text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-[#00D2C4] focus:ring-2 focus:ring-[#00D2C4]/20 transition"
-                disabled={loading}
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">
-              Senha
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-50 border border-slate-200 text-[#0B192C] text-sm rounded-xl px-4 py-3 pr-12 focus:outline-none focus:border-[#00D2C4] focus:ring-2 focus:ring-[#00D2C4]/20 transition"
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
+        <div className="bg-slate-900/80 backdrop-blur-xl py-8 px-6 shadow-2xl rounded-2xl border border-slate-800 sm:px-10">
+          
+          {/* Seletor de Tipo de Acesso */}
+          <div className="flex rounded-xl bg-slate-950 p-1 mb-6 border border-slate-800">
+            <button
+              type="button"
+              onClick={() => { setIsAdminLogin(false); setError(''); }}
+              className={`flex-1 flex items-center justify-center py-2.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                !isAdminLogin 
+                  ? 'bg-cyan-500 text-slate-950 font-semibold shadow-md shadow-cyan-500/20' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Building2 className="w-4 h-4 mr-2" />
+              Instituição
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsAdminLogin(true); setError(''); }}
+              className={`flex-1 flex items-center justify-center py-2.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                isAdminLogin 
+                  ? 'bg-cyan-500 text-slate-950 font-semibold shadow-md shadow-cyan-500/20' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <UserCog className="w-4 h-4 mr-2" />
+              Administrador
+            </button>
           </div>
 
           {error && (
-            <div className={`flex items-start gap-3 p-3 rounded-xl text-sm ${
-              error.type === 'warning' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
-            }`}>
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <p className="font-medium">{error.message}</p>
+            <div className="mb-4 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center space-x-3 text-red-400 text-sm">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading || !password || (mode === 'institution' ? !institutionId : !email)}
-            className="w-full bg-[#0B192C] hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#0B192C]/20"
-          >
-            {loading ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> A autenticar...</>
-            ) : (
-              <><ShieldCheck className="w-5 h-5" /> Entrar</>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            {!isAdminLogin && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                  ID da Instituição
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={institutionId}
+                  onChange={(e) => setInstitutionId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm"
+                  placeholder="Ex: INAGE"
+                />
+              </div>
             )}
-          </button>
-        </form>
 
-        {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-slate-400">
-            Middleware de Integridade Criptográfica — v2.0.0
-          </p>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Correio Eletrónico / Utilizador
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm"
+                  placeholder="nome@instituicao.gov.mz"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Palavra-passe
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 flex items-center justify-center py-3.5 px-4 border border-transparent rounded-xl text-sm font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 shadow-lg shadow-cyan-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5 text-slate-950" />
+                  A autenticar...
+                </>
+              ) : (
+                'Entrar no Sistema'
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-xs text-slate-500">
+              Sistema protegido por criptografia SHA-256 e auditoria avançada.
+            </p>
+          </div>
         </div>
       </div>
-
-      {/* CSS para animação shake */}
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-8px); }
-          75% { transform: translateX(8px); }
-        }
-        .animate-shake { animation: shake 0.4s ease-in-out; }
-      `}</style>
     </div>
   );
 }
-
