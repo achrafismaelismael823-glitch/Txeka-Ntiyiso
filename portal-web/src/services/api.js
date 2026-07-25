@@ -1,18 +1,23 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// ============================================
+// INSTÂNCIA AXIOS BASE
+// ============================================
 
-const api = axios.create({
-  baseURL: API_URL,
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso.onrender.com';
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000,
 });
 
+// Interceptor: adiciona token em todas as requisições
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('access_token');
+    const token = localStorage.getItem('txeka_token') || sessionStorage.getItem('txeka_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -21,57 +26,64 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Interceptor: trata erros globais
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      Cookies.remove('access_token');
+      localStorage.removeItem('txeka_token');
+      sessionStorage.removeItem('txeka_token');
+      localStorage.removeItem('txeka_user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-export default api;
+// ============================================
+// ENDPOINTS ORGANIZADOS
+// ============================================
 
 export const endpoints = {
   auth: {
     login: (data) => api.post('/api/v1/auth/login', data),
     adminLogin: (params) => api.post('/api/v1/auth/admin/login', null, { params }),
   },
-  certify: {
-    emit: (formData, query) => api.post('/api/v1/certify', formData, { 
-      params: query,
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
+  
+  emission: {
+    certify: (data) => api.post('/api/v1/certify', data),
     bulk: (data) => api.post('/api/v1/certify/bulk', data),
+    revoke: (docId, data) => api.post(`/api/v1/emissions/${docId}/revoke`, data),
   },
-  verify: {
+  
+  verification: {
     get: (docHash) => api.get(`/api/v1/verify/${docHash}`),
     post: (data) => api.post('/api/v1/verify', data),
   },
-  emissions: {
-    revoke: (docId, data) => api.post(`/api/v1/emissions/${docId}/revoke`, data),
-  },
+  
   audit: {
     logs: (params) => api.get('/api/v1/audit/logs', { params }),
-    history: (docHash) => api.get(`/api/v1/audit/document/${docHash}/history`),
-    stats: (params) => api.get('/api/v1/audit/stats', { params }),
+    documentHistory: (docHash) => api.get(`/api/v1/audit/document/${docHash}/history`),
+    stats: () => api.get('/api/v1/audit/stats'),
   },
+  
   institutions: {
-    list: (params) => api.get('/api/v1/institutions', { params }),
+    list: () => api.get('/api/v1/institutions'),
     get: (id) => api.get(`/api/v1/institutions/${id}`),
     create: (data) => api.post('/api/v1/institutions', data),
     update: (id, data) => api.patch(`/api/v1/institutions/${id}`, data),
     addCredits: (id, data) => api.post(`/api/v1/institutions/${id}/credits`, data),
-    creditHistory: (id, params) => api.get(`/api/v1/institutions/${id}/credit-history`, { params }),
-    resetPassword: (id) => api.post(`/api/v1/institutions/${id}/reset-password`),
+    creditHistory: (id) => api.get(`/api/v1/institutions/${id}/credit-history`),
+    resetPassword: (id, data) => api.post(`/api/v1/institutions/${id}/reset-password`, data),
     regenerateApiKey: (id) => api.post(`/api/v1/institutions/${id}/regenerate-api-key`),
     me: {
       dashboard: () => api.get('/api/v1/institutions/me/dashboard'),
       credits: () => api.get('/api/v1/institutions/me/credits'),
-      creditHistory: (params) => api.get('/api/v1/institutions/me/credit-history', { params }),
+      creditHistory: () => api.get('/api/v1/institutions/me/credit-history'),
     },
   },
+  
   health: () => api.get('/health'),
 };
+
+export default api;
