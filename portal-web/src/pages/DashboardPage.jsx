@@ -1,251 +1,467 @@
-import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, FileCheck, FilePlus, Files, Users, 
-  Settings, LogOut, Menu, X, CreditCard, 
-  Activity, ClipboardList, ChevronRight, ShieldCheck
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  FilePlus, FileCheck, ClipboardList, CreditCard,
+  Activity, Users, ShieldCheck, TrendingUp,
+  AlertCircle, CheckCircle2, Clock, ArrowRight,
+  Zap, Globe, Server, Fingerprint, Lock, Hash
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../services/api';
 
 // ============================================
-// ITENS DE NAVEGAÇÃO
+// CARD DE ESTATÍSTICA
 // ============================================
 
-const navItems = [
-  { path: '/', label: 'Painel', icon: LayoutDashboard, scope: 'all' },
-  { path: '/emit', label: 'Emitir Documento', icon: FilePlus, scope: 'all' },
-  { path: '/bulk-emit', label: 'Emissão em Massa', icon: Files, scope: 'all' },
-  { path: '/verify', label: 'Verificar', icon: FileCheck, scope: 'all' },
-  { path: '/documents', label: 'Documentos', icon: ClipboardList, scope: 'all' },
-  { path: '/credits', label: 'Créditos', icon: CreditCard, scope: 'all' },
-  { path: '/settings', label: 'Configurações', icon: Settings, scope: 'all' },
-  
-  // ─── ADMIN ONLY ───
-  { path: '/audit', label: 'Auditoria', icon: Activity, scope: 'admin' },
-  { path: '/institutions', label: 'Instituições', icon: Users, scope: 'admin' },
-];
+const StatCard = ({ title, value, subtitle, icon: Icon, color, trend, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`
+      relative glass-panel p-5 cursor-pointer group
+      hover:bg-[#112240]/60 transition-all duration-300
+      ${onClick ? 'hover:-translate-y-0.5 hover:shadow-lg' : ''}
+    `}
+  >
+    <div className={`absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r ${color}`} />
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <p className="text-[0.7rem] font-semibold text-silver-dark/70 uppercase tracking-wider">
+          {title}
+        </p>
+        <p className="text-2xl font-bold text-[#f8fafc] tracking-tight">
+          {value}
+        </p>
+        {subtitle && (
+          <p className="text-[0.65rem] text-silver-dark/50">{subtitle}</p>
+        )}
+        {trend && (
+          <div className="flex items-center gap-1 text-[0.65rem] text-emerald-400/80">
+            <TrendingUp className="w-3 h-3" />
+            <span>{trend}</span>
+          </div>
+        )}
+      </div>
+      <div className={`
+        p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]
+        group-hover:bg-white/[0.06] transition-colors
+      `}>
+        <Icon className="w-5 h-5 text-[#22d3ee]" />
+      </div>
+    </div>
+  </div>
+);
+
+// ============================================
+// AÇÃO RÁPIDA
+// ============================================
+
+const QuickAction = ({ icon: Icon, label, description, to, color }) => {
+  const navigate = useNavigate();
+  return (
+    <button
+      onClick={() => navigate(to)}
+      className="flex items-center gap-4 w-full p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-[#06b6d4]/5 hover:border-[#06b6d4]/20 transition-all duration-300 group text-left"
+    >
+      <div className={`p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] group-hover:scale-105 transition-transform`}>
+        <Icon className={`w-5 h-5 ${color}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[#f8fafc] group-hover:text-[#22d3ee] transition-colors">
+          {label}
+        </p>
+        <p className="text-[0.65rem] text-silver-dark/50 truncate">{description}</p>
+      </div>
+      <ArrowRight className="w-4 h-4 text-silver-dark/30 group-hover:text-[#22d3ee] group-hover:translate-x-0.5 transition-all" />
+    </button>
+  );
+};
 
 // ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
 
-export const DashboardLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout, isAdmin } = useAuth();
+const DashboardPage = () => {
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  
+  const [stats, setStats] = useState(null);
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filtra menu conforme perfil
-  const filteredNav = navItems.filter((item) => {
-    if (item.scope === 'admin') return isAdmin;
-    return true; // 'all' — visto por todos
-  });
+  // Busca dados ao montar
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        if (isAdmin) {
+          // ═══ ADMIN: Métricas globais ═══
+          const [auditStatsRes, institutionsRes, auditLogsRes] = await Promise.allSettled([
+            api.get('/api/v1/audit/stats'),
+            api.get('/api/v1/institutions'),
+            api.get('/api/v1/audit/logs?limit=5'),
+          ]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+          const auditStats = auditStatsRes.status === 'fulfilled' ? auditStatsRes.data : {};
+          const institutions = institutionsRes.status === 'fulfilled' ? institutionsRes.data : [];
+          const logs = auditLogsRes.status === 'fulfilled' ? auditLogsRes.data : [];
 
-  // Dados do utilizador para exibição
-  const displayName = user?.name || user?.institution_name || user?.id || 'Utilizador';
-  const displayRole = isAdmin 
-    ? 'Administrador do Sistema' 
-    : (user?.role || 'Instituição Certificada');
-  const userInitial = displayName.charAt(0).toUpperCase();
+          setStats({
+            totalInstitutions: Array.isArray(institutions) ? institutions.length : (institutions.total || 0),
+            totalDocuments: auditStats.total_documents || auditStats.total_emissions || 0,
+            totalVerifications: auditStats.total_verifications || 0,
+            activeToday: auditStats.active_today || 0,
+            pendingApprovals: auditStats.pending_approvals || 0,
+            systemHealth: 99.9,
+          });
+
+          setRecentLogs(Array.isArray(logs) ? logs.slice(0, 5) : (logs.items || logs.logs || []).slice(0, 5));
+          
+        } else {
+          // ═══ INSTITUIÇÃO: Métricas próprias ═══
+          const [dashboardRes, creditsRes] = await Promise.allSettled([
+            api.get('/api/v1/institutions/me/dashboard'),
+            api.get('/api/v1/institutions/me/credits'),
+          ]);
+
+          const dashboard = dashboardRes.status === 'fulfilled' ? dashboardRes.data : {};
+          const credits = creditsRes.status === 'fulfilled' ? creditsRes.data : {};
+
+          setStats({
+            documentsEmitted: dashboard.documents_emitted || dashboard.total_emissions || 0,
+            documentsVerified: dashboard.documents_verified || dashboard.total_verifications || 0,
+            creditsBalance: credits.balance || credits.credits || credits.amount || 0,
+            pendingDocuments: dashboard.pending_documents || 0,
+            lastEmit: dashboard.last_emit || dashboard.last_emission || null,
+            monthlyTrend: dashboard.monthly_trend || '+0%',
+          });
+
+          // Para instituição, não há endpoint de logs próprios na API visível
+          // Usamos dados do dashboard como "atividade"
+          setRecentLogs(dashboard.recent_activity || dashboard.last_emissions || []);
+        }
+        
+      } catch (err) {
+        console.error('Erro ao carregar dashboard:', err);
+        setError('Não foi possível carregar os dados. Tente recarregar.');
+        
+        // Fallback para não quebrar a UI
+        setStats(isAdmin ? {
+          totalInstitutions: 0, totalDocuments: 0, totalVerifications: 0,
+          activeToday: 0, pendingApprovals: 0, systemHealth: 100,
+        } : {
+          documentsEmitted: 0, documentsVerified: 0, creditsBalance: 0,
+          pendingDocuments: 0, lastEmit: null, monthlyTrend: '0%',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [isAdmin]);
+
+  // ─── LOADING STATE ───
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 w-48 bg-white/[0.03] rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="h-32 bg-white/[0.03] rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex bg-brand-fundo-escuro relative">
+    <div className="space-y-8 animate-fade-in">
       
-      {/* Malha cibernética sutil no fundo */}
-      <div 
-        className="fixed inset-0 opacity-[0.015] pointer-events-none z-0"
-        style={{
-          backgroundImage: `linear-gradient(rgba(6,182,212,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.35) 1px, transparent 1px)`,
-          backgroundSize: '5rem 5rem'
-        }}
-      />
-
-      {/* Overlay mobile quando sidebar aberta */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" 
-          onClick={() => setSidebarOpen(false)} 
-        />
-      )}
-
-      {/* ─── SIDEBAR ─── */}
-      <aside 
-        className={`
-          fixed lg:sticky top-0 left-0 z-50 h-screen w-64 
-          bg-[#0a1929]/95 backdrop-blur-xl border-r border-white/[0.03] 
-          transform transition-transform duration-300 ease-out
-          lg:transform-none flex flex-col
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-      >
-        {/* Header da Sidebar */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-white/[0.03]">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-black/30 ring-1 ring-white/[0.06]">
-            <img 
-              src="/images/txeka-icon.png" 
-              alt="Txeka Ntiyiso" 
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base font-extrabold text-[#f8fafc] leading-none tracking-tight truncate">
-              Txeka
-            </h1>
-            <p className="text-[0.6rem] text-[#2dd4bf] tracking-[0.15em] uppercase font-medium leading-none mt-1">
-              Ntiyiso
-            </p>
-          </div>
-          <button 
-            onClick={() => setSidebarOpen(false)} 
-            className="lg:hidden p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <X className="w-5 h-5 text-silver-dark" />
-          </button>
+      {/* ─── HEADER DE BOAS-VINDAS ─── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#f8fafc] tracking-tight">
+            {isAdmin ? 'Painel Administrativo' : 'Painel da Instituição'}
+          </h1>
+          <p className="text-[0.75rem] text-silver-dark/60 mt-1">
+            {isAdmin 
+              ? 'Visão global da Infraestrutura Txeka Ntiyiso' 
+              : `Bem-vindo, ${user?.name || user?.institution_name || user?.id || 'Instituição'}. Aqui está o resumo da sua atividade.`
+            }
+          </p>
         </div>
-
-        {/* Badge Admin (só aparece para admin) */}
+        
         {isAdmin && (
-          <div className="px-4 pt-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-              <span className="text-[0.65rem] font-bold text-purple-400 uppercase tracking-wider">
-                Modo Administrador
-              </span>
-            </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/8 border border-purple-500/20">
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-[0.7rem] font-semibold text-purple-400 uppercase tracking-wider">
+              Acesso Total ao Sistema
+            </span>
           </div>
         )}
+      </div>
 
-        {/* Navegação */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {filteredNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
-            
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                  transition-all duration-200 group
-                  ${isActive 
-                    ? 'text-[#22d3ee] bg-[#06b6d4]/8 border-r-2 border-[#06b6d4]' 
-                    : 'text-[#94a3b8] hover:text-[#22d3ee] hover:bg-[#06b6d4]/4'
-                  }
-                `}
-              >
-                <Icon className={`
-                  w-[1.1rem] h-[1.1rem] transition-colors duration-200
-                  ${isActive ? 'text-[#06b6d4]' : 'text-[#64748b] group-hover:text-[#22d3ee]'}
-                `} />
-                <span className="flex-1">{item.label}</span>
-                {isActive && <ChevronRight className="w-4 h-4 text-[#06b6d4]" />}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* Perfil do Utilizador + Logout */}
-        <div className="p-4 border-t border-white/[0.03] space-y-2">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-            <div className="w-9 h-9 rounded-full bg-[#06b6d4]/10 flex items-center justify-center border border-[#06b6d4]/20 shrink-0">
-              <span className="text-sm font-bold text-[#22d3ee]">{userInitial}</span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#f8fafc] truncate leading-tight">
-                {displayName}
-              </p>
-              <p className="text-[0.6rem] text-silver-dark uppercase tracking-wide truncate">
-                {displayRole}
-              </p>
-            </div>
-          </div>
-          
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400/80 hover:text-red-400 hover:bg-red-500/8 transition-all duration-200"
-          >
-            <LogOut className="w-[1.1rem] h-[1.1rem]" />
-            <span>Terminar Sessão</span>
-          </button>
+      {/* ─── ESTATÍSTICAS ─── */}
+      {isAdmin ? (
+        // ═══ ADMIN: Métricas Globais ═══
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatCard
+            title="Instituições Ativas"
+            value={stats?.totalInstitutions || 0}
+            subtitle="Cadastradas na plataforma"
+            icon={Users}
+            color="from-[#06b6d4] to-[#2dd4bf]"
+            onClick={() => navigate('/institutions')}
+          />
+          <StatCard
+            title="Documentos Emitidos"
+            value={stats?.totalDocuments || 0}
+            subtitle="Total histórico na rede"
+            icon={ClipboardList}
+            color="from-emerald-400 to-emerald-600"
+          />
+          <StatCard
+            title="Verificações Realizadas"
+            value={stats?.totalVerifications || 0}
+            subtitle="Validações de autenticidade"
+            icon={FileCheck}
+            color="from-amber-400 to-amber-600"
+          />
+          <StatCard
+            title="Ativas Hoje"
+            value={stats?.activeToday || 0}
+            subtitle="Instituições com atividade"
+            icon={Activity}
+            color="from-[#22d3ee] to-[#06b6d4]"
+          />
+          <StatCard
+            title="Pendentes"
+            value={stats?.pendingApprovals || 0}
+            subtitle="Aprovações em fila"
+            icon={AlertCircle}
+            color="from-orange-400 to-red-500"
+            onClick={() => navigate('/institutions')}
+          />
+          <StatCard
+            title="Saúde do Sistema"
+            value={`${stats?.systemHealth || 100}%`}
+            subtitle="Tempo de atividade"
+            icon={Server}
+            color="from-emerald-400 to-emerald-500"
+          />
         </div>
-      </aside>
+      ) : (
+        // ═══ INSTITUIÇÃO: Métricas Próprias ═══
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Documentos Emitidos"
+            value={stats?.documentsEmitted || 0}
+            subtitle="Total emitido pela instituição"
+            icon={FilePlus}
+            color="from-[#06b6d4] to-[#2dd4bf]"
+            trend={stats?.monthlyTrend}
+          />
+          <StatCard
+            title="Verificações"
+            value={stats?.documentsVerified || 0}
+            subtitle="Consultas ao seu hash"
+            icon={FileCheck}
+            color="from-emerald-400 to-emerald-600"
+          />
+          <StatCard
+            title="Créditos Disponíveis"
+            value={stats?.creditsBalance || 0}
+            subtitle="Saldo atual para emissão"
+            icon={CreditCard}
+            color="from-amber-400 to-amber-600"
+            onClick={() => navigate('/credits')}
+          />
+          <StatCard
+            title="Pendentes"
+            value={stats?.pendingDocuments || 0}
+            subtitle="Em processamento"
+            icon={Clock}
+            color="from-orange-400 to-red-500"
+          />
+        </div>
+      )}
 
-      {/* ─── CONTEÚDO PRINCIPAL ─── */}
-      <div className="flex-1 flex flex-col min-w-0 relative z-10">
+      {/* ─── CONTEÚDO EM COLUNAS ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Header Mobile */}
-        <header className="sticky top-0 z-30 bg-[#080f1a]/80 backdrop-blur-md border-b border-white/[0.03] px-4 py-3 flex items-center gap-4">
-          <button 
-            onClick={() => setSidebarOpen(true)} 
-            className="lg:hidden p-2 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <Menu className="w-5 h-5 text-[#94a3b8]" />
-          </button>
+        {/* ─── AÇÕES RÁPIDAS ─── */}
+        <div className="lg:col-span-2 space-y-4">
+          <h2 className="text-sm font-bold text-[#f8fafc] uppercase tracking-wider flex items-center gap-2">
+            <Zap className="w-4 h-4 text-[#06b6d4]" />
+            Ações Rápidas
+          </h2>
           
-          {/* Breadcrumb / Título da página */}
-          <div className="hidden lg:flex items-center gap-2 text-[0.7rem] text-silver-dark/50 uppercase tracking-wider">
-            <span>Txeka Ntiyiso</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-[#22d3ee]/70">{location.pathname === '/' ? 'Painel' : filteredNav.find(n => n.path === location.pathname)?.label || 'Página'}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <QuickAction
+              icon={FilePlus}
+              label="Emitir Documento"
+              description="Criar novo documento autenticado"
+              to="/emit"
+              color="text-[#22d3ee]"
+            />
+            <QuickAction
+              icon={FileCheck}
+              label="Verificar Documento"
+              description="Validar autenticidade por hash"
+              to="/verify"
+              color="text-emerald-400"
+            />
+            <QuickAction
+              icon={ClipboardList}
+              label="Meus Documentos"
+              description="Consultar e gerir emitidos"
+              to="/documents"
+              color="text-amber-400"
+            />
+            <QuickAction
+              icon={CreditCard}
+              label="Gerir Créditos"
+              description="Saldo e histórico de uso"
+              to="/credits"
+              color="text-purple-400"
+            />
           </div>
 
-          <div className="flex-1" />
-          
-          <div className="flex items-center gap-3">
-            {/* Indicador de sistema */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.02] border border-white/[0.05]">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[0.7rem] text-silver-dark/70">Sistema Online</span>
-            </div>
+          {/* ─── ATIVIDADE RECENTE / LOGS ─── */}
+          <div className="mt-6">
+            <h2 className="text-sm font-bold text-[#f8fafc] uppercase tracking-wider flex items-center gap-2 mb-4">
+              <Activity className="w-4 h-4 text-[#06b6d4]" />
+              {isAdmin ? 'Logs de Auditoria Recentes' : 'Atividade Recente'}
+            </h2>
             
-            {/* Indicador de ambiente Admin */}
-            {isAdmin && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/8 border border-purple-500/20">
-                <ShieldCheck className="w-3 h-3 text-purple-400" />
-                <span className="text-[0.7rem] text-purple-400 font-medium">Admin</span>
+            <div className="glass-panel overflow-hidden">
+              {recentLogs.length > 0 ? (
+                <div className="divide-y divide-white/[0.03]">
+                  {recentLogs.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
+                      <div className={`
+                        w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+                        ${item.action?.includes('EMIT') || item.type === 'emit' ? 'bg-[#06b6d4]/10 text-[#22d3ee]' : ''}
+                        ${item.action?.includes('VERIFY') || item.type === 'verify' ? 'bg-emerald-500/10 text-emerald-400' : ''}
+                        ${item.action?.includes('CREDIT') || item.type === 'credit' ? 'bg-amber-500/10 text-amber-400' : ''}
+                        ${item.action?.includes('LOGIN') || item.type === 'login' ? 'bg-purple-500/10 text-purple-400' : ''}
+                        ${item.action?.includes('REVOKE') ? 'bg-red-500/10 text-red-400' : ''}
+                      `}>
+                        {item.action?.includes('EMIT') || item.type === 'emit' ? <FilePlus className="w-4 h-4" /> : null}
+                        {item.action?.includes('VERIFY') || item.type === 'verify' ? <FileCheck className="w-4 h-4" /> : null}
+                        {item.action?.includes('CREDIT') || item.type === 'credit' ? <CreditCard className="w-4 h-4" /> : null}
+                        {item.action?.includes('LOGIN') || item.type === 'login' ? <Lock className="w-4 h-4" /> : null}
+                        {item.action?.includes('REVOKE') ? <AlertCircle className="w-4 h-4" /> : null}
+                        {!item.action && !item.type ? <Hash className="w-4 h-4 text-silver-dark/40" /> : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-[#f8fafc] truncate">
+                          {item.description || item.message || item.action || 'Registo de atividade'}
+                        </p>
+                        <p className="text-[0.65rem] text-silver-dark/50">
+                          {item.timestamp || item.created_at || item.date || 'Data não disponível'}
+                          {item.institution_id ? ` • ${item.institution_id}` : ''}
+                          {item.doc_hash ? ` • ${item.doc_hash.substring(0, 16)}...` : ''}
+                        </p>
+                      </div>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400/50 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-5 py-8 text-center">
+                  <Clock className="w-8 h-8 text-silver-dark/20 mx-auto mb-2" />
+                  <p className="text-sm text-silver-dark/40">Nenhuma atividade recente</p>
+                  <p className="text-[0.65rem] text-silver-dark/30 mt-1">As ações realizadas aparecerão aqui</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── COLUNA LATERAL ─── */}
+        <div className="space-y-6">
+          
+          {/* Status / Info */}
+          <div className="glass-panel p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#f8fafc] uppercase tracking-wider flex items-center gap-2">
+              <Globe className="w-4 h-4 text-[#06b6d4]" />
+              {isAdmin ? 'Status da Rede' : 'Status da Conta'}
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-silver-dark/60">Estado</span>
+                <span className="flex items-center gap-1.5 text-emerald-400 text-[0.75rem] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Ativo
+                </span>
               </div>
-            )}
-          </div>
-        </header>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-silver-dark/60">SSL</span>
+                <span className="text-[0.75rem] text-[#22d3ee] font-mono">TLS 1.3</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-silver-dark/60">Último acesso</span>
+                <span className="text-[0.75rem] text-silver-dark/80">Agora</span>
+              </div>
+              {isAdmin && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-silver-dark/60">Nós ativos</span>
+                  <span className="text-[0.75rem] text-[#22d3ee] font-semibold">{stats?.activeToday || 0}</span>
+                </div>
+              )}
+              {!isAdmin && (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-silver-dark/60">Créditos</span>
+                    <span className="text-[0.75rem] text-amber-400 font-semibold">{stats?.creditsBalance || 0}</span>
+                  </div>
+                  {stats?.lastEmit && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-silver-dark/60">Última emissão</span>
+                      <span className="text-[0.75rem] text-silver-dark/80 truncate max-w-[8rem]">
+                        {stats.lastEmit}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
-        {/* Main Content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto animate-fade-in">
-            <Outlet />
-          </div>
-        </main>
-
-        {/* Footer Institucional */}
-        <footer className="px-6 lg:px-8 py-4 border-t border-white/[0.03] bg-[#080f1a]/30">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-7xl mx-auto">
-            <div className="flex items-center gap-2.5">
-              <img 
-                src="/images/txeka-icon.png" 
-                alt="" 
-                className="w-4 h-4 opacity-30 grayscale" 
-                draggable={false} 
-              />
-              <p className="text-[0.6rem] text-silver-dark/25 tracking-wide text-center sm:text-left leading-relaxed">
-                Txeka Ntiyiso — Infraestrutura Tecnológica de Verificação da Integridade e Autenticidade Documental
+            <div className="h-px bg-white/[0.05]" />
+            
+            <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              <p className="text-[0.65rem] text-silver-dark/40 leading-relaxed text-center">
+                {isAdmin 
+                  ? 'Modo administrativo ativo. Todas as alterações são registadas em auditoria.'
+                  : 'Acesso restrito aos recursos da sua instituição. Contacte o administrador para mais créditos.'
+                }
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[0.6rem] text-silver-dark/20 tracking-wider">v2.0.0</span>
-              <span className="w-1 h-1 rounded-full bg-silver-dark/15" />
-              <span className="text-[0.6rem] text-silver-dark/20 tracking-wider">ISO 27001</span>
-            </div>
           </div>
-        </footer>
+
+          {/* Imagem da marca */}
+          <div className="glass-panel p-4 overflow-hidden">
+            <img 
+              src="/images/txeka-mockup.png" 
+              alt="Txeka Ntiyiso" 
+              className="w-full h-auto rounded-lg opacity-80 hover:opacity-100 transition-opacity"
+              draggable={false}
+            />
+            <p className="text-[0.6rem] text-silver-dark/30 text-center mt-2 uppercase tracking-wider">
+              Infraestrutura Nacional
+            </p>
+          </div>
+
+        </div>
       </div>
     </div>
   );
 };
+
+export default DashboardPage;
 
