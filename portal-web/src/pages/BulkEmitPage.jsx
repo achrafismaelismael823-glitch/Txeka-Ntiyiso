@@ -1,316 +1,155 @@
-// Emissão em lote B2B/B2G: Drop múltiplos PDFs → Chunking 10 em 10 → Base64 transiente → Progresso visual
-// Pilar Pipeline Técnico: memória do browser, nunca estoura, respeita o contrato /api/v1/certify/bulk
+import React, { useState, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { useDropzone } from 'react-dropzone';
+import { Upload, FileText, X, Plus, Loader2, AlertCircle, Trash2 } from 'lucide-react';
+import { endpoints } from '../services/api';
+import { fileToBase64 } from '../utils/crypto';
 
-import React, { useState, useRef, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { emitBulk } from '../services/api';
-import { calculateSHA256, fileToBase64, chunkArray } from '../utils/crypto';
-import {
-  Upload,
-  FileText,
-  X,
-  Loader2,
-  CheckCircle,
-  AlertCircle,
-  Layers,
-  Zap,
-  Trash2,
-  Play,
-  RotateCcw
-} from 'lucide-react';
+const BulkEmitPage = () => {
+  const { addToast } = useOutletContext();
+  const [institutionId, setInstitutionId] = useState('');
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
 
-const CHUNK_SIZE = 10;
+  const onDrop = useCallback(async (acceptedFiles) => {
+    const newDocs = await Promise.all(
+      acceptedFiles.filter(f => f.type === 'application/pdf').map(async (file) => ({
+        file_name: file.name,
+        document_type: 'DUAT',
+        content: await fileToBase64(file),
+        size: file.size,
+      }))
+    );
+    setDocuments(prev => [...prev, ...newDocs]);
+    if (newDocs.length < acceptedFiles.length) {
+      addToast('Apenas arquivos PDF foram adicionados', 'warning');
+    }
+  }, [addToast]);
 
-export default function BulkEmitPage() {
-  const { institutionId } = useAuth();
-  const [files, setFiles] = useState([]);
-  const [docType, setDocType] = useState('DUAT');
-  const [processing, setProcessing] = useState(false);
-  const [currentChunk, setCurrentChunk] = useState(0);
-  const [totalChunks, setTotalChunks] = useState(0);
-  const [results, setResults] = useState([]);
-  const [errors, setErrors] = useState([]);
-  const [dragActive, setDragActive] = useState(false);
-  const inputRef = useRef(null);
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'application/pdf': ['.pdf'] },
+    multiple: true,
+  });
 
-  const docTypes = ['DUAT', 'CERTIDÃO', 'DIPLOMA', 'LICENÇA', 'CONTRATO', 'OUTRO'];
+  const updateDoc = (idx, field, value) => {
+    setDocuments(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+  };
 
-  const handleDrag = (e) => {
+  const removeDoc = (idx) => {
+    setDocuments(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
-    else if (e.type === 'dragleave') setDragActive(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    const dropped = Array.from(e.dataTransfer.files).filter((f) => f.type === 'application/pdf');
-    addFiles(dropped);
-  };
-
-  const handleFileSelect = (e) => {
-    const selected = Array.from(e.target.files).filter((f) => f.type === 'application/pdf');
-    addFiles(selected);
-  };
-
-  const addFiles = (newFiles) => {
-    const enriched = newFiles.map((f, idx) => ({
-      id: `${f.name}-${Date.now()}-${idx}`,
-      file: f,
-      name: f.name,
-      size: f.size,
-      status: 'pending', // pending | hashing | ready | uploading | success | error
-      hash: null,
-      error: null,
-    }));
-    setFiles((prev) => [...prev, ...enriched]);
-    // Hash em background
-    enriched.forEach((item) => hashFile(item));
-  };
-
-  const hashFile = async (item) => {
-    setFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: 'hashing' } : f)));
+    if (!institutionId.trim()) {
+      addToast('ID da instituição é obrigatório', 'error');
+      return;
+    }
+    if (documents.length === 0) {
+      addToast('Adicione pelo menos um documento', 'error');
+      return;
+    }
+    setLoading(true);
     try {
-      const hash = await calculateSHA256(item.file);
-      setFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: 'ready', hash } : f)));
-    } catch {
-      setFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: 'error', error: 'Falha no hash' } : f)));
+      const payload = {
+        institution_id: institutionId,
+        documents: documents.map(({ size, ...rest }) => rest),
+      };
+      const { data } = await endpoints.certify.bulk(payload);
+      setResult(data);
+      addToast(`${documents.length} documentos emitidos com sucesso!`, 'success');
+      setDocuments([]);
+    } catch (err) {
+      addToast(err.response?.data?.detail?.[0]?.msg || 'Erro na emissão em massa', 'error');
+    } finally {
+      setLoading(false);
     }
   };
-
-  const removeFile = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
-
-  const clearAll = () => {
-    if (!processing && window.confirm('Limpar todos os ficheiros?')) {
-      setFiles([]);
-      setResults([]);
-      setErrors([]);
-    }
-  };
-
-  const processChunks = async () => {
-    const readyFiles = files.filter((f) => f.status === 'ready');
-    if (readyFiles.length === 0) return;
-
-    setProcessing(true);
-    setResults([]);
-    setErrors([]);
-
-    const chunks = chunkArray(readyFiles, CHUNK_SIZE);
-    setTotalChunks(chunks.length);
-    const allResults = [];
-    const allErrors = [];
-
-    for (let i = 0; i < chunks.length; i++) {
-      setCurrentChunk(i + 1);
-      const chunk = chunks[i];
-
-      // Converter para Base64 transiente (memória volátil)
-      const documents = await Promise.all(
-        chunk.map(async (item) => ({
-          document_type: docType,
-          file_name: item.name,
-          content: await fileToBase64(item.file),
-        }))
-      );
-
-      try {
-        const response = await emitBulk({
-          institution_id: institutionId,
-          documents,
-        });
-        allResults.push(...(response.data?.results || []));
-        setFiles((prev) =>
-          prev.map((f) => (chunk.find((c) => c.id === f.id) ? { ...f, status: 'success' } : f))
-        );
-      } catch (err) {
-        const msg = err.userMessage || 'Erro no lote';
-        allErrors.push({ chunk: i + 1, error: msg });
-        setFiles((prev) =>
-          prev.map((f) => (chunk.find((c) => c.id === f.id) ? { ...f, status: 'error', error: msg } : f))
-        );
-      }
-
-      // Limpar Base64 da memória após envio
-      documents.forEach((d) => (d.content = null));
-    }
-
-    setResults(allResults);
-    setErrors(allErrors);
-    setProcessing(false);
-  };
-
-  const progressPercent = totalChunks > 0 ? Math.round((currentChunk / totalChunks) * 100) : 0;
-  const readyCount = files.filter((f) => f.status === 'ready').length;
-  const successCount = files.filter((f) => f.status === 'success').length;
-  const errorCount = files.filter((f) => f.status === 'error').length;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#0B192C] flex items-center gap-2">
-          <Layers className="w-6 h-6 text-[#00D2C4]" /> Emissão em Lote
-        </h2>
-        <p className="text-slate-500 text-sm mt-1">
-          Chunking controlado de {CHUNK_SIZE} em {CHUNK_SIZE} • Base64 transiente • Zero retenção
-        </p>
+        <h1 className="text-2xl font-bold text-silver-light">Emissão em Massa</h1>
+        <p className="text-sm text-silver-dark mt-1">Emita múltiplos documentos de uma só vez (B2B/B2G)</p>
       </div>
 
-      {/* Stats Bar */}
-      {files.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Total', value: files.length, color: 'text-[#0B192C]' },
-            { label: 'Prontos', value: readyCount, color: 'text-emerald-600' },
-            { label: 'Emitidos', value: successCount, color: 'text-blue-600' },
-            { label: 'Erros', value: errorCount, color: 'text-rose-600' },
-          ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-slate-500 font-semibold">{s.label}</p>
-            </div>
-          ))}
+      <div className="glass-panel p-6 space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-silver mb-2">ID da Instituição</label>
+          <input
+            type="text"
+            value={institutionId}
+            onChange={(e) => setInstitutionId(e.target.value.toUpperCase())}
+            placeholder="Ex: INAGE"
+            className="input-field max-w-md"
+          />
         </div>
-      )}
 
-      {/* Drop Zone */}
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => !processing && inputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-all ${
-          dragActive ? 'border-[#00D2C4] bg-[#00D2C4]/5' : 'border-slate-300 bg-white'
-        } ${processing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-slate-400'}`}
-      >
-        <input ref={inputRef} type="file" accept=".pdf" multiple onChange={handleFileSelect} className="hidden" disabled={processing} />
-        <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-          <Upload className="w-7 h-7 text-slate-400" />
-        </div>
-        <p className="text-sm font-semibold text-[#0B192C]">Arraste múltiplos PDFs ou clique para seleccionar</p>
-        <p className="text-xs text-slate-400 mt-1">Máx. 50MB cada • Chunking automático de {CHUNK_SIZE}</p>
-      </div>
-
-      {/* Tipo de Documento */}
-      {files.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {docTypes.map((type) => (
-            <button
-              key={type}
-              onClick={() => setDocType(type)}
-              disabled={processing}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition border-2 ${
-                docType === type
-                  ? 'border-[#00D2C4] bg-[#00D2C4]/10 text-[#0B192C]'
-                  : 'border-slate-200 text-slate-600 hover:border-slate-300'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* File List */}
-      {files.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b border-slate-100">
-            <p className="text-sm font-bold text-[#0B192C]">Fila de Processamento</p>
-            <button onClick={clearAll} disabled={processing} className="text-xs text-rose-500 hover:text-rose-700 font-semibold flex items-center gap-1 transition">
-              <Trash2 className="w-3.5 h-3.5" /> Limpar
-            </button>
-          </div>
-          <div className="max-h-96 overflow-y-auto">
-            {files.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 p-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition">
-                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-4 h-4 text-slate-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#0B192C] truncate">{item.name}</p>
-                  <p className="text-xs text-slate-400">{(item.size / 1024).toFixed(1)} KB</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {item.status === 'hashing' && <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />}
-                  {item.status === 'ready' && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
-                  {item.status === 'uploading' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
-                  {item.status === 'success' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
-                  {item.status === 'error' && <AlertCircle className="w-4 h-4 text-rose-500" title={item.error} />}
-                  {!processing && (
-                    <button onClick={() => removeFile(item.id)} className="p-1 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded transition">
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Progresso */}
-      {processing && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[#00D2C4] animate-pulse" />
-              <span className="text-sm font-bold text-[#0B192C]">A processar lote {currentChunk} de {totalChunks}</span>
-            </div>
-            <span className="text-sm font-bold text-[#00D2C4]">{progressPercent}%</span>
-          </div>
-          <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#00D2C4] rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <p className="text-xs text-slate-400 mt-2">Base64 transiente • Memória volátil • Sem retenção no servidor</p>
-        </div>
-      )}
-
-      {/* Ações */}
-      {files.length > 0 && !processing && (
-        <button
-          onClick={processChunks}
-          disabled={readyCount === 0}
-          className="w-full bg-[#0B192C] hover:bg-slate-800 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg"
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+            isDragActive ? 'border-cyan bg-cyan/5' : 'border-tn-500/40 hover:border-cyan/50'
+          }`}
         >
-          <Play className="w-5 h-5" /> Processar {readyCount} Documento{readyCount !== 1 ? 's' : ''}
-        </button>
-      )}
+          <input {...getInputProps()} />
+          <Upload className="w-8 h-8 mx-auto text-silver-dark mb-2" />
+          <p className="text-sm text-silver">
+            {isDragActive ? 'Solte os PDFs aqui' : 'Arraste múltiplos PDFs ou clique para selecionar'}
+          </p>
+        </div>
 
-      {/* Resultados Finais */}
-      {!processing && (results.length > 0 || errors.length > 0) && (
-        <div className="space-y-3">
-          {results.length > 0 && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-              <p className="text-sm text-emerald-800 font-semibold">{results.length} documento(s) emitido(s) com sucesso.</p>
+        {documents.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-silver">{documents.length} documento(s) adicionado(s)</p>
+              <button onClick={() => setDocuments([])} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
+                <Trash2 className="w-3 h-3" /> Limpar todos
+              </button>
             </div>
-          )}
-          {errors.length > 0 && (
-            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="w-5 h-5 text-rose-600" />
-                <p className="text-sm font-bold text-rose-800">{errors.length} erro(s) no processamento</p>
-              </div>
-              {errors.map((e, i) => (
-                <p key={i} className="text-xs text-rose-600 ml-7">Lote {e.chunk}: {e.error}</p>
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {documents.map((doc, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-tn-800/50 border border-tn-500/20">
+                  <FileText className="w-5 h-5 text-cyan shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-silver truncate">{doc.file_name}</p>
+                    <p className="text-xs text-silver-dark">{(doc.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <input
+                    type="text"
+                    value={doc.document_type}
+                    onChange={(e) => updateDoc(idx, 'document_type', e.target.value.toUpperCase())}
+                    placeholder="Tipo"
+                    className="w-24 px-2 py-1 text-xs bg-tn-700 border border-tn-500/30 rounded text-silver-light"
+                  />
+                  <button onClick={() => removeDoc(idx)} className="p-1 rounded hover:bg-red-500/20">
+                    <X className="w-4 h-4 text-red-400" />
+                  </button>
+                </div>
               ))}
             </div>
-          )}
-          <button
-            onClick={() => { setFiles([]); setResults([]); setErrors([]); setCurrentChunk(0); setTotalChunks(0); }}
-            className="w-full py-3 border-2 border-slate-200 hover:border-[#00D2C4] text-slate-600 hover:text-[#0B192C] font-semibold rounded-xl transition flex items-center justify-center gap-2"
-          >
-            <RotateCcw className="w-4 h-4" /> Novo Lote
-          </button>
+          </div>
+        )}
+
+        <button onClick={handleSubmit} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          {loading ? 'A processar...' : `Emitir ${documents.length} Documento(s)`}
+        </button>
+      </div>
+
+      {result && (
+        <div className="glass-panel p-6 border-l-4 border-l-emerald-500">
+          <div className="flex items-center gap-3 mb-2">
+            <AlertCircle className="w-5 h-5 text-emerald-400" />
+            <h3 className="font-semibold text-silver-light">Emissão Concluída</h3>
+          </div>
+          <pre className="text-xs text-silver-dark overflow-x-auto">{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default BulkEmitPage;
 
