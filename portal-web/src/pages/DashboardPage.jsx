@@ -27,11 +27,9 @@ const DashboardPage = () => {
         api.get('/api/v1/audit/stats'),
         api.get('/api/v1/audit/logs', { params: { limit: 5 } }),
       ]);
-      setStats(statsRes.status === 'fulfilled' ? statsRes.data : {});
-      const logs = logsRes.status === 'fulfilled' ? logsRes.data : [];
+      setStats(statsRes.status === 'fulfilled' ? statsRes.value.data : {});
+      const logs = logsRes.status === 'fulfilled' ? logsRes.value.data : [];
       let items = Array.isArray(logs) ? logs : (logs.items || logs.logs || []);
-      
-      // Instituição só vê os seus logs
       if (isInstitution && institutionId) {
         items = items.filter((log) => log.institution_id === institutionId);
       }
@@ -44,11 +42,11 @@ const DashboardPage = () => {
   };
 
   const cards = [
-    { label: 'Emissões Totais', value: stats?.total_emissions || 0, icon: FileCheck, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
+    { label: 'Emissões', value: stats?.total_emissions || 0, icon: FileCheck, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
     { label: 'Verificações', value: stats?.total_verifications || 0, icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
     { label: 'Revogações', value: stats?.total_revocations || 0, icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-    { label: 'Créditos', value: user?.credits ?? '—', icon: CreditCard, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', hide: isAdmin },
-  ].filter((c) => !c.hide);
+    { label: 'Créditos', value: user?.credits ?? (isAdmin ? '∞' : '—'), icon: CreditCard, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  ];
 
   if (loading) {
     return (
@@ -141,7 +139,7 @@ const DashboardPage = () => {
               <FileCheck className="w-5 h-5 text-emerald-400" />
               <div>
                 <p className="text-sm font-medium text-slate-100">Emitir Documento</p>
-                <p className="text-[0.65rem] text-slate-500">Certificar novo documento</p>
+                <p className="text-[0.65rem] text-slate-500">Com QR Code e hash SHA-256</p>
               </div>
               <ArrowRight className="w-4 h-4 text-slate-600 ml-auto" />
             </button>
