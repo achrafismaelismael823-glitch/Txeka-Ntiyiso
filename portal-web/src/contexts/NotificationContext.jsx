@@ -7,17 +7,17 @@ export const NotificationProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
   const idRef = useRef(0);
 
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const addToast = useCallback((message, type = 'info', duration = 5000) => {
     const id = ++idRef.current;
     setToasts((prev) => [...prev, { id, message, type, duration }]);
     if (duration > 0) {
       setTimeout(() => removeToast(id), duration);
     }
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  }, [removeToast]);
 
   const icons = {
     success: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
@@ -48,7 +48,10 @@ export const NotificationProvider = ({ children }) => {
           >
             {icons[toast.type]}
             <p className="text-sm text-slate-100 flex-1">{toast.message}</p>
-            <button onClick={() => removeToast(toast.id)} className="text-slate-400 hover:text-white transition-colors">
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="text-slate-400 hover:text-white transition-colors"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
