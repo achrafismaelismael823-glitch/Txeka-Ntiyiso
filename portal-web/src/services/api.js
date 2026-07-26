@@ -9,19 +9,15 @@ export const api = axios.create({
   timeout: 30000,
 });
 
-// Interceptor de requisição: injeta token
 api.interceptors.request.use(
   (config) => {
     const token = authService.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor de resposta: tratamento global de erros
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,7 +28,7 @@ api.interceptors.response.use(
       authService.logout();
       window.location.href = '/login?expired=1';
     }
-    
+
     let message = 'Erro de comunicação com o servidor';
     if (typeof detail === 'string') message = detail;
     else if (Array.isArray(detail) && detail[0]?.msg) message = detail[0].msg;
