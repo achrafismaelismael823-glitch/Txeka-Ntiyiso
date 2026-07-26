@@ -1,12 +1,10 @@
-import Cookies from 'js-cookie';
-
-const TOKEN_KEY = 'access_token';
-const USER_KEY = 'user_data';
+const TOKEN_KEY = 'txeka_token';
+const USER_KEY = 'txeka_user';
 
 export const authService = {
-  setToken: (token) => Cookies.set(TOKEN_KEY, token, { expires: 7, secure: true, sameSite: 'strict' }),
-  getToken: () => Cookies.get(TOKEN_KEY),
-  removeToken: () => Cookies.remove(TOKEN_KEY),
+  setToken: (token) => localStorage.setItem(TOKEN_KEY, token),
+  getToken: () => localStorage.getItem(TOKEN_KEY),
+  removeToken: () => localStorage.removeItem(TOKEN_KEY),
   
   setUser: (user) => localStorage.setItem(USER_KEY, JSON.stringify(user)),
   getUser: () => {
@@ -18,11 +16,11 @@ export const authService = {
   },
   removeUser: () => localStorage.removeItem(USER_KEY),
   
-  isAuthenticated: () => !!Cookies.get(TOKEN_KEY),
+  isAuthenticated: () => !!localStorage.getItem(TOKEN_KEY),
   
   logout: () => {
-    Cookies.remove(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
   },
 };
-
