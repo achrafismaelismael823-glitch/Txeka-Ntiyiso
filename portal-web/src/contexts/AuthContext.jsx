@@ -16,18 +16,20 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // Login Instituição: POST /api/v1/auth/login (body JSON)
+  // Login Instituição: POST /api/v1/auth/login
   const login = useCallback(async (institutionId, password) => {
     const { data } = await endpoints.auth.login({ 
       institution_id: institutionId, 
       password 
     });
+    
     authService.setToken(data.access_token);
     
+    // Estrutura real: data.institution contém tudo
     const userData = {
-      ...data.institution,
+      ...data.institution,           // id, name, contact_email, credits, etc.
+      role: data.institution?.role || 'institution',
       _type: 'institution',
-      _role: 'institution',
       token: data.access_token,
     };
     
@@ -36,18 +38,21 @@ export const AuthProvider = ({ children }) => {
     return data;
   }, []);
 
-  // Login Admin: POST /api/v1/auth/admin/login (query params!)
+  // Login Admin: POST /api/v1/auth/admin/login (query params)
   const adminLogin = useCallback(async (email, password) => {
     const { data } = await endpoints.auth.adminLogin({ email, password });
+    
     authService.setToken(data.access_token);
     
+    // Admin não tem objeto institution — vem do JWT
     const userData = {
-      ...data.user,
-      id: data.user?.email || 'admin',
-      name: data.user?.name || 'Administrador',
+      id: 'admin',
+      name: 'Administrador Txeka Ntiyiso',
+      email: email,
+      role: 'admin',
       _type: 'admin',
-      _role: 'admin',
       token: data.access_token,
+      expires_in_days: data.expires_in_days || 90,
     };
     
     authService.setUser(userData);
@@ -60,8 +65,9 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  const isAdmin = user?._type === 'admin' || user?._role === 'admin';
-  const isInstitution = user?._type === 'institution' || user?._role === 'institution';
+  // Usa o JWT decodificado + user object para determinar role
+  const isAdmin = user?.role === 'admin' || authService.isAdmin();
+  const isInstitution = user?.role === 'institution';
 
   return (
     <AuthContext.Provider value={{ 
