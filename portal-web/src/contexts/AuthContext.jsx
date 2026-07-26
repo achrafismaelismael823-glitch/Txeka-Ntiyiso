@@ -16,81 +16,63 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // Login Instituição — PROPAGA ERRO se falhar
+  const handleLoginError = (error) => {
+    authService.logout();
+    setUser(null);
+    throw error;
+  };
+
   const login = useCallback(async (institutionId, password) => {
     try {
-      const { data } = await endpoints.auth.login({ 
-        institution_id: institutionId, 
-        password 
-      });
-
-      // Se a API retornar erro (status 4xx/5xx), o axios já lança exceção
-      // Mas se retornar 200 com dados inválidos, verificamos
-      if (!data.access_token) {
-        throw new Error('Resposta inválida do servidor — token não recebido');
-      }
+      const { data } = await endpoints.auth.login({ institution_id: institutionId, password });
+      if (!data.access_token) throw new Error('Token não recebido');
 
       authService.setToken(data.access_token);
-      
-      const userData = {
-        ...data.institution,
-        role: data.institution?.role || 'institution',
-        _type: 'institution',
-        token: data.access_token,
+      const userData = { 
+        ...data.institution, 
+        role: 'institution', 
+        id: data.institution.id,
+        token: data.access_token 
       };
-      
       authService.setUser(userData);
       setUser(userData);
       return data;
-      
     } catch (error) {
-      // LIMPA tudo se falhar — garante que não fica estado sujo
-      authService.logout();
-      setUser(null);
-      // PROPAGA o erro para o componente mostrar mensagem
-      throw error;
+      handleLoginError(error);
     }
   }, []);
 
-  // Login Admin — PROPAGA ERRO se falhar
   const adminLogin = useCallback(async (email, password) => {
     try {
       const { data } = await endpoints.auth.adminLogin({ email, password });
-
-      if (!data.access_token) {
-        throw new Error('Resposta inválida do servidor — token não recebido');
-      }
+      if (!data.access_token) throw new Error('Token não recebido');
 
       authService.setToken(data.access_token);
-      
       const userData = {
-        id: 'admin',
-        name: 'Administrador Txeka Ntiyiso',
-        email: email,
-        role: 'admin',
-        _type: 'admin',
+        id: 'admin', 
+        name: 'Administrador Txeka Ntiyiso', 
+        email,
+        role: 'admin', 
         token: data.access_token,
         expires_in_days: data.expires_in_days || 90,
       };
-      
       authService.setUser(userData);
       setUser(userData);
       return data;
-      
     } catch (error) {
-      authService.logout();
-      setUser(null);
-      throw error;
+      handleLoginError(error);
     }
   }, []);
 
   const logout = useCallback(() => {
     authService.logout();
     setUser(null);
+    window.location.href = '/login';
   }, []);
 
   const isAdmin = user?.role === 'admin';
   const isInstitution = user?.role === 'institution';
+  const institutionId = isInstitution ? user?.id : null;
 
   return (
     <AuthContext.Provider value={{ 
@@ -100,9 +82,11 @@ export const AuthProvider = ({ children }) => {
       logout, 
       isAdmin, 
       isInstitution,
+      institutionId,
       loading 
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
