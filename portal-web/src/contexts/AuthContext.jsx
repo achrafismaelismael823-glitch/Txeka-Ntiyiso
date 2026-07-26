@@ -16,52 +16,37 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const handleLoginError = (error) => {
-    authService.logout();
-    setUser(null);
-    throw error;
-  };
-
   const login = useCallback(async (institutionId, password) => {
-    try {
-      const { data } = await endpoints.auth.login({ institution_id: institutionId, password });
-      if (!data.access_token) throw new Error('Token não recebido');
+    const { data } = await endpoints.auth.login({ institution_id: institutionId, password });
+    if (!data.access_token) throw new Error('Token não recebido');
 
-      authService.setToken(data.access_token);
-      const userData = { 
-        ...data.institution, 
-        role: 'institution', 
-        id: data.institution.id,
-        token: data.access_token 
-      };
-      authService.setUser(userData);
-      setUser(userData);
-      return data;
-    } catch (error) {
-      handleLoginError(error);
-    }
+    authService.setToken(data.access_token);
+    const userData = { 
+      ...data.institution, 
+      role: 'institution', 
+      id: data.institution.id,
+      token: data.access_token 
+    };
+    authService.setUser(userData);
+    setUser(userData);
+    return data;
   }, []);
 
   const adminLogin = useCallback(async (email, password) => {
-    try {
-      const { data } = await endpoints.auth.adminLogin({ email, password });
-      if (!data.access_token) throw new Error('Token não recebido');
+    const { data } = await endpoints.auth.adminLogin({ email, password });
+    if (!data.access_token) throw new Error('Token não recebido');
 
-      authService.setToken(data.access_token);
-      const userData = {
-        id: 'admin', 
-        name: 'Administrador Txeka Ntiyiso', 
-        email,
-        role: 'admin', 
-        token: data.access_token,
-        expires_in_days: data.expires_in_days || 90,
-      };
-      authService.setUser(userData);
-      setUser(userData);
-      return data;
-    } catch (error) {
-      handleLoginError(error);
-    }
+    const userData = {
+      id: 'admin', 
+      name: 'Administrador Txeka Ntiyiso', 
+      email,
+      role: 'admin', 
+      token: data.access_token,
+      expires_in_days: data.expires_in_days || 90,
+    };
+    authService.setUser(userData);
+    setUser(userData);
+    return data;
   }, []);
 
   const logout = useCallback(() => {
@@ -76,17 +61,10 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      adminLogin, 
-      logout, 
-      isAdmin, 
-      isInstitution,
-      institutionId,
-      loading 
+      user, login, adminLogin, logout, 
+      isAdmin, isInstitution, institutionId, loading 
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
