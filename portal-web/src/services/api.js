@@ -1,10 +1,7 @@
 import axios from 'axios';
+import { authService } from './auth';
 
-// ============================================
-// URL DA API — usa variável de ambiente ou fallback para produção
-// ============================================
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.txekantiyiso.co.mz';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,79 +9,78 @@ export const api = axios.create({
   timeout: 30000,
 });
 
-// Interceptor: injeta token Bearer em TODAS as requisições
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('txeka_token') || sessionStorage.getItem('txeka_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Interceptor de requisição: injeta token
+api.interceptors.request.use(
+  (config) => {
+    const token = authService.getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-// Interceptor: trata 401 (token expirado/inválido)
+// Interceptor de resposta: tratamento global de erros
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('txeka_token');
-      sessionStorage.removeItem('txeka_token');
-      localStorage.removeItem('txeka_user');
-      window.location.href = '/login';
+    const status = error.response?.status;
+    const detail = error.response?.data?.detail;
+
+    if (status === 401) {
+      authService.logout();
+      window.location.href = '/login?expired=1';
     }
+    
+    // Normaliza mensagem de erro
+    let message = 'Erro de comunicação com o servidor';
+    if (typeof detail === 'string') message = detail;
+    else if (Array.isArray(detail) && detail[0]?.msg) message = detail[0].msg;
+    else if (error.message) message = error.message;
+
+    error.normalizedMessage = message;
     return Promise.reject(error);
   }
 );
 
-// ============================================
-// ENDPOINTS ORGANIZADOS (conforme OpenAPI)
-// ============================================
-
 export const endpoints = {
   auth: {
-    // Instituição: POST body JSON
     login: (data) => api.post('/api/v1/auth/login', data),
-    // Admin: POST query params (email, password)
-    adminLogin: (params) => api.post('/api/v1/auth/admin/login', null, { params }),
+    adminLogin: (data) => api.post('/api/v1/auth/admin/login', data),
+    refresh: () => api.post('/api/v1/auth/refresh'),
   },
-  
-  emission: {
-    // multipart/form-data — passar config com headers manualmente
-    certify: (formData, config) => api.post('/api/v1/certify', formData, {
-      ...config,
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-    bulk: (data) => api.post('/api/v1/certify/bulk', data),
-    revoke: (docId, data) => api.post(`/api/v1/emissions/${docId}/revoke`, data),
-  },
-  
-  verification: {
-    get: (docHash) => api.get(`/api/v1/verify/${docHash}`),
-    post: (data) => api.post('/api/v1/verify', data),
-  },
-  
   audit: {
     logs: (params) => api.get('/api/v1/audit/logs', { params }),
+    stats: () => api.get('/api/v1/audit/stats'),
     documentHistory: (docHash) => api.get(`/api/v1/audit/document/${docHash}/history`),
-    stats: (params) => api.get('/api/v1/audit/stats', { params }),
   },
-  
   institutions: {
     list: (params) => api.get('/api/v1/institutions', { params }),
-    get: (id) => api.get(`/api/v1/institutions/${id}`),
     create: (data) => api.post('/api/v1/institutions', data),
     update: (id, data) => api.patch(`/api/v1/institutions/${id}`, data),
-    addCredits: (id, data) => api.post(`/api/v1/institutions/${id}/credits`, data),
-    creditHistory: (id, params) => api.get(`/api/v1/institutions/${id}/credit-history`, { params }),
     resetPassword: (id) => api.post(`/api/v1/institutions/${id}/reset-password`),
     regenerateApiKey: (id) => api.post(`/api/v1/institutions/${id}/regenerate-api-key`),
-    me: {
-      dashboard: () => api.get('/api/v1/institutions/me/dashboard'),
-      credits: () => api.get('/api/v1/institutions/me/credits'),
-      creditHistory: (params) => api.get('/api/v1/institutions/me/credit-history', { params }),
-    },
+    credits: () => api.get('/api/v1/institutions/me/credits'),
+    creditHistory: (params) => api.get('/api/v1/institutions/me/credit-history', { params }),
+    addCredits: (id, data) => api.post(`/api/v1/institutions/${id}/credits`, data),
   },
-  
-  health: () => api.get('/health'),
+  certify: {
+    // Emissão única com multipart/form-data
+    single: (formData) => api.post('/api/v1/certify', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    // Emissão massiva (JSON)
+    bulk: (data) => api.post('/api/v1/certify/bulk', data),
+  },
+  verify: {
+    // Verificação pública (sem auth)
+    public: (hash) => api.get(`/api/v1/verify/${hash}`),
+    // Verificação B2B (com auth)
+    b2b: (hash) => api.post('/api/v1/verify', { hash }),
+  },
+  emissions: {
+    // Revogação: path param é doc_id (não doc_hash)
+    revoke: (docId, data) => api.post(`/api/v1/emissions/${docId}/revoke`, data),
+  },
 };
-
-export default api;
