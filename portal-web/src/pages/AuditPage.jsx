@@ -1,118 +1,180 @@
-import React, { useState } from 'react';
-import { useQuery } from 'react-query';
-import { useOutletContext } from 'react-router-dom';
-import { Activity, Filter } from 'lucide-react';
-import { endpoints } from '../services/api';
-import { DataTable } from '../components/ui/DataTable';
+import React, { useState, useEffect, useContext } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { api } from '../services/api';
+import { NotificationContext } from '../contexts/NotificationContext';
+import {
+  Activity, Loader2, AlertTriangle, Search, X, FileText,
+  Calendar, Hash, Building2, Clock, Filter
+} from 'lucide-react';
 
 const AuditPage = () => {
-  const { addToast } = useOutletContext();
-  const [filters, setFilters] = useState({
-    action: '',
-    resource_type: '',
-    institution_id: '',
-    start_date: '',
-    end_date: '',
-    limit: 100,
-  });
+  const { isAdmin, isInstitution, institutionId } = useAuth();
+  const { notify } = useContext(NotificationContext);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('ALL'); // ALL, EMIT, VERIFY, REVOKE, LOGIN
 
-  const { data, isLoading, refetch } = useQuery(
-    ['audit-logs', filters],
-    () => endpoints.audit.logs(filters),
-    { 
-      enabled: false,
-      onError: () => addToast('Erro ao carregar logs', 'error'),
+  useEffect(() => {
+    fetchLogs();
+  }, [isAdmin, isInstitution, institutionId]);
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const params = { limit: 200 };
+      if (filter !== 'ALL') params.action = filter;
+      // Instituição só vê os seus logs
+      if (isInstitution && institutionId) {
+        params.institution_id = institutionId;
+      }
+      const { data } = await api.get('/api/v1/audit/logs', { params });
+      let items = Array.isArray(data) ? data : (data.items || data.logs || []);
+      setLogs(items);
+    } catch (err) {
+      setError('Erro ao carregar logs de auditoria');
+    } finally {
+      setLoading(false);
     }
-  );
-
-  const logs = data?.data?.logs || [];
-
-  const actionColors = {
-    EMIT: 'badge-success',
-    VERIFY: 'badge-info',
-    REVOKE: 'badge-danger',
-    LOGIN: 'badge-warning',
-    EXPORT: 'badge-info',
   };
 
-  const columns = [
-    { key: 'timestamp', title: 'Data/Hora', render: (r) => new Date(r.timestamp).toLocaleString('pt-BR') },
-    { key: 'action', title: 'Ação', render: (r) => (
-      <span className={`badge ${actionColors[r.action] || 'badge-info'}`}>{r.action}</span>
-    )},
-    { key: 'resource_type', title: 'Recurso', render: (r) => <span className="text-xs uppercase">{r.resource_type}</span> },
-    { key: 'user_email', title: 'Utilizador', render: (r) => r.user_email || 'Sistema' },
-    { key: 'institution_id', title: 'Instituição', render: (r) => r.institution_id || '-' },
-    { key: 'details', title: 'Detalhes', render: (r) => (
-      <span className="text-xs text-silver-dark truncate max-w-xs block">{JSON.stringify(r.details || {})}</span>
-    )},
-  ];
+  useEffect(() => {
+    fetchLogs();
+  }, [filter]);
+
+  const filtered = logs.filter((log) => {
+    const term = search.toLowerCase();
+    return !term ||
+      (log.action || '').toLowerCase().includes(term) ||
+      (log.institution_id || '').toLowerCase().includes(term) ||
+      (log.doc_hash || '').toLowerCase().includes(term) ||
+      (log.description || '').toLowerCase().includes(term);
+  });
+
+  const actionColors = {
+    EMIT: 'bg-cyan-500/10 text-cyan-400',
+    VERIFY: 'bg-emerald-500/10 text-emerald-400',
+    REVOKE: 'bg-red-500/10 text-red-400',
+    LOGIN: 'bg-purple-500/10 text-purple-400',
+    BULK_EMIT: 'bg-amber-500/10 text-amber-400',
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-silver-light">Auditoria</h1>
-          <p className="text-sm text-silver-dark mt-1">Logs de auditoria do sistema</p>
-        </div>
-        <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
-          <Filter className="w-4 h-4" /> Filtrar
-        </button>
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Auditoria</h1>
+        <p className="text-xs text-slate-500 mt-1">Registo completo de actividades da plataforma</p>
       </div>
 
-      <div className="glass-panel p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <select 
-            value={filters.action} 
-            onChange={(e) => setFilters(f => ({ ...f, action: e.target.value }))}
-            className="input-field text-sm"
-          >
-            <option value="">Todas as Ações</option>
-            <option value="EMIT">EMIT</option>
-            <option value="VERIFY">VERIFY</option>
-            <option value="REVOKE">REVOKE</option>
-            <option value="LOGIN">LOGIN</option>
-            <option value="EXPORT">EXPORT</option>
-          </select>
-          <select 
-            value={filters.resource_type} 
-            onChange={(e) => setFilters(f => ({ ...f, resource_type: e.target.value }))}
-            className="input-field text-sm"
-          >
-            <option value="">Todos os Recursos</option>
-            <option value="DOCUMENT">DOCUMENT</option>
-            <option value="CERTIFICATE">CERTIFICATE</option>
-            <option value="INSTITUTION">INSTITUTION</option>
-          </select>
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/[0.08] border border-red-500/20 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-400/90">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             type="text"
-            value={filters.institution_id}
-            onChange={(e) => setFilters(f => ({ ...f, institution_id: e.target.value }))}
-            placeholder="Instituição"
-            className="input-field text-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Pesquisar logs..."
+            className="w-full pl-10 pr-10 py-2.5 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
           />
-          <input
-            type="datetime-local"
-            value={filters.start_date}
-            onChange={(e) => setFilters(f => ({ ...f, start_date: e.target.value }))}
-            className="input-field text-sm"
-          />
-          <input
-            type="datetime-local"
-            value={filters.end_date}
-            onChange={(e) => setFilters(f => ({ ...f, end_date: e.target.value }))}
-            className="input-field text-sm"
-          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-500" />
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="px-4 py-2.5 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/30 text-sm"
+          >
+            <option value="ALL">Todas</option>
+            <option value="EMIT">Emissão</option>
+            <option value="VERIFY">Verificação</option>
+            <option value="REVOKE">Revogação</option>
+            <option value="LOGIN">Login</option>
+            <option value="BULK_EMIT">Emissão Massiva</option>
+          </select>
         </div>
       </div>
 
-      <div className="glass-panel">
-        <DataTable 
-          columns={columns} 
-          data={logs} 
-          emptyText={isLoading ? 'A carregar...' : 'Nenhum log encontrado'}
-          keyExtractor={(r, i) => i}
-        />
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
+        {filtered.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-white/[0.05] text-[0.65rem] uppercase tracking-wider text-slate-500">
+                  <th className="px-5 py-3 font-semibold">Acção</th>
+                  {isAdmin && <th className="px-5 py-3 font-semibold">Instituição</th>}
+                  <th className="px-5 py-3 font-semibold">Descrição</th>
+                  <th className="px-5 py-3 font-semibold">Hash</th>
+                  <th className="px-5 py-3 font-semibold">Data</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.03]">
+                {filtered.map((log, idx) => (
+                  <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[0.65rem] font-bold uppercase ${actionColors[log.action] || 'bg-white/[0.03] text-slate-400'}`}>
+                        <Activity className="w-3 h-3" />
+                        {log.action}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="w-3 h-3 text-slate-500" />
+                          <span className="text-xs font-mono text-slate-400 uppercase">{log.institution_id || '-'}</span>
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm text-slate-100">{log.description || '-'}</p>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {log.doc_hash ? (
+                        <div className="flex items-center gap-1.5">
+                          <Hash className="w-3 h-3 text-slate-500" />
+                          <span className="text-xs font-mono text-cyan-400">{(log.doc_hash).substring(0, 12)}...</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <Clock className="w-3 h-3" />
+                        {new Date(log.timestamp || log.created_at).toLocaleString('pt-MZ')}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="px-5 py-12 text-center">
+            <FileText className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+            <p className="text-sm text-slate-500">Nenhum registo encontrado</p>
+          </div>
+        )}
       </div>
     </div>
   );
