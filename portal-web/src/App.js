@@ -1,85 +1,90 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import { useAuth } from './hooks/useAuth';
+import DashboardLayout from './components/layout/DashboardLayout';
 
-import DashboardLayout from './layouts/DashboardLayout';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import DocumentsPage from './pages/DocumentsPage';
-import EmitPage from './pages/EmitPage';
-import BulkEmitPage from './pages/BulkEmitPage';
-import CreditsPage from './pages/CreditsPage';
-import InstitutionsPage from './pages/InstitutionsPage';
-import AuditPage from './pages/AuditPage';
-import SettingsPage from './pages/SettingsPage';
-import VerifyPage from './pages/VerifyPage';
-import NotFoundPage from './pages/NotFoundPage';
+// Lazy loading para otimizar bundle (CRA suporta React.lazy + Suspense)
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const DocumentsPage = React.lazy(() => import('./pages/DocumentsPage'));
+const EmitPage = React.lazy(() => import('./pages/EmitPage'));
+const BulkEmitPage = React.lazy(() => import('./pages/BulkEmitPage'));
+const VerifyPage = React.lazy(() => import('./pages/VerifyPage'));
+const AuditPage = React.lazy(() => import('./pages/AuditPage'));
+const CreditsPage = React.lazy(() => import('./pages/CreditsPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const InstitutionsPage = React.lazy(() => import('./pages/InstitutionsPage'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 
-const PrivateRoute = ({ children, adminOnly = false }) => {
-  const { user, loading, isAdmin } = useAuth();
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-slate-950">
+    <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
+  </div>
+);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+const ProtectedRoute = ({ children, adminOnly, institutionOnly }) => {
+  const { isAuthenticated, isAdmin, isInstitution, loading } = useAuth();
+  const location = useLocation();
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (loading) return <PageLoader />;
+  if (!isAuthenticated()) return <Navigate to="/login" state={{ from: location }} replace />;
+  
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
-
+  if (institutionOnly && !isInstitution) return <Navigate to="/" replace />;
+  
   return children;
 };
 
-const App = () => {
-  return (
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (isAuthenticated()) return <Navigate to="/" replace />;
+  return children;
+};
+
+const AppRoutes = () => (
+  <Routes>
+    {/* Rotas públicas */}
+    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+    <Route path="/verify/:hash?" element={<VerifyPage />} />
+    
+    {/* Rotas protegidas com layout */}
+    <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+      <Route path="/" element={<DashboardPage />} />
+      <Route path="/documents" element={<DocumentsPage />} />
+      <Route path="/emit" element={<EmitPage />} />
+      <Route path="/audit" element={<AuditPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      
+      {/* Apenas instituição */}
+      <Route path="/bulk-emit" element={
+        <ProtectedRoute institutionOnly><BulkEmitPage /></ProtectedRoute>
+      } />
+      <Route path="/credits" element={
+        <ProtectedRoute institutionOnly><CreditsPage /></ProtectedRoute>
+      } />
+      
+      {/* Apenas admin */}
+      <Route path="/institutions" element={
+        <ProtectedRoute adminOnly><InstitutionsPage /></ProtectedRoute>
+      } />
+    </Route>
+
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
+
+const App = () => (
+  <BrowserRouter>
     <AuthProvider>
       <NotificationProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/verify/:hash?" element={<VerifyPage />} />
-
-            <Route
-              element={
-                <PrivateRoute>
-                  <DashboardLayout />
-                </PrivateRoute>
-              }
-            >
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/documents" element={<DocumentsPage />} />
-              <Route path="/emit" element={<EmitPage />} />
-              <Route path="/bulk-emit" element={<BulkEmitPage />} />
-              <Route path="/credits" element={<CreditsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route
-                path="/institutions"
-                element={
-                  <PrivateRoute adminOnly>
-                    <InstitutionsPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/audit"
-                element={
-                  <PrivateRoute adminOnly>
-                    <AuditPage />
-                  </PrivateRoute>
-                }
-              />
-            </Route>
-
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </BrowserRouter>
+        <React.Suspense fallback={<PageLoader />}>
+          <AppRoutes />
+        </React.Suspense>
       </NotificationProvider>
     </AuthProvider>
-  );
-};
+  </BrowserRouter>
+);
 
 export default App;
