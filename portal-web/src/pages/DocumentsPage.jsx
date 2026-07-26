@@ -24,10 +24,7 @@ const DocumentsPage = () => {
     try {
       setLoading(true);
       const params = { action: 'EMIT', limit: 100 };
-      // Instituição só vê os seus documentos
-      if (isInstitution && institutionId) {
-        params.institution_id = institutionId;
-      }
+      if (isInstitution && institutionId) params.institution_id = institutionId;
       const { data } = await api.get('/api/v1/audit/logs', { params });
       let items = Array.isArray(data) ? data : (data.items || data.logs || []);
       setDocuments(items);
@@ -39,10 +36,12 @@ const DocumentsPage = () => {
   };
 
   const handleRevoke = async () => {
-    if (!selectedDoc?.doc_id || !revokeReason.trim()) return;
+    // API espera doc_id no path, não doc_hash
+    const docId = selectedDoc?.doc_id || selectedDoc?.id;
+    if (!docId || !revokeReason.trim()) return;
     try {
       setRevoking(true);
-      await api.post(`/api/v1/emissions/${selectedDoc.doc_id}/revoke`, { reason: revokeReason.trim() });
+      await api.post(`/api/v1/emissions/${docId}/revoke`, { reason: revokeReason.trim() });
       notify('Documento revogado com sucesso', 'success');
       setSelectedDoc(null);
       setRevokeReason('');
@@ -61,10 +60,14 @@ const DocumentsPage = () => {
     return false;
   };
 
+  const getDocHash = (doc) => doc.hash_sha256 || doc.doc_hash || doc.hash || '';
+  const getDocId = (doc) => doc.doc_id || doc.id;
+
   const filtered = documents.filter((doc) => {
     const term = search.toLowerCase();
     return !term ||
-      (doc.doc_hash || '').toLowerCase().includes(term) ||
+      (getDocHash(doc)).toLowerCase().includes(term) ||
+      (getDocId(doc)).toLowerCase().includes(term) ||
       (doc.institution_id || '').toLowerCase().includes(term);
   });
 
@@ -92,7 +95,7 @@ const DocumentsPage = () => {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por hash ou instituição..." className="w-full pl-10 pr-10 py-2.5 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm" />
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por hash, doc ID ou instituição..." className="w-full pl-10 pr-10 py-2.5 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm" />
         {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"><X className="w-4 h-4" /></button>}
       </div>
 
@@ -103,6 +106,7 @@ const DocumentsPage = () => {
               <thead>
                 <tr className="border-b border-white/[0.05] text-[0.65rem] uppercase tracking-wider text-slate-500">
                   <th className="px-5 py-3 font-semibold">Documento</th>
+                  <th className="px-5 py-3 font-semibold">Doc ID</th>
                   <th className="px-5 py-3 font-semibold">Hash</th>
                   {isAdmin && <th className="px-5 py-3 font-semibold">Instituição</th>}
                   <th className="px-5 py-3 font-semibold">Data</th>
@@ -121,12 +125,13 @@ const DocumentsPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5"><span className="text-xs font-mono text-slate-400">{(doc.doc_hash || doc.hash || '').substring(0, 16)}...</span></td>
+                    <td className="px-5 py-3.5"><span className="text-xs font-mono text-slate-300">{getDocId(doc) || '—'}</span></td>
+                    <td className="px-5 py-3.5"><span className="text-xs font-mono text-slate-400">{(getDocHash(doc)).substring(0, 14)}...</span></td>
                     {isAdmin && <td className="px-5 py-3.5"><span className="text-xs font-mono text-slate-400 uppercase">{doc.institution_id || '-'}</span></td>}
                     <td className="px-5 py-3.5"><div className="flex items-center gap-2 text-xs text-slate-500"><Calendar className="w-3 h-3" />{new Date(doc.timestamp || doc.created_at || Date.now()).toLocaleDateString('pt-MZ')}</div></td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => window.open(`/verify/${doc.doc_hash || doc.hash}`, '_blank')} className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-cyan-500/10 hover:border-cyan-500/20 hover:text-cyan-400 transition-colors text-slate-400" title="Verificar"><ExternalLink className="w-4 h-4" /></button>
+                        <button onClick={() => window.open(`/verify/${getDocHash(doc)}`, '_blank')} className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-cyan-500/10 hover:border-cyan-500/20 hover:text-cyan-400 transition-colors text-slate-400" title="Verificar"><ExternalLink className="w-4 h-4" /></button>
                         {canRevoke(doc) && (
                           <button onClick={() => setSelectedDoc(doc)} className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-colors text-slate-400" title="Revogar"><XCircle className="w-4 h-4" /></button>
                         )}
@@ -149,7 +154,10 @@ const DocumentsPage = () => {
               <div className="p-2 rounded-lg bg-red-500/10"><ShieldCheck className="w-5 h-5 text-red-400" /></div>
               <h3 className="text-lg font-bold text-slate-100">Revogar Documento</h3>
             </div>
-            <p className="text-sm text-slate-500">Hash: <span className="font-mono text-cyan-400">{selectedDoc.doc_hash?.substring(0, 20)}...</span></p>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-500">Doc ID: <span className="font-mono text-cyan-400">{getDocId(selectedDoc)}</span></p>
+              <p className="text-xs text-slate-500">Hash: <span className="font-mono text-cyan-400">{(getDocHash(selectedDoc)).substring(0, 20)}...</span></p>
+            </div>
             <textarea value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)} placeholder="Motivo da revogação (obrigatório)..." className="w-full px-4 py-3 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500/30 text-sm min-h-[6rem] resize-none" />
             <div className="flex gap-3">
               <button onClick={() => { setSelectedDoc(null); setRevokeReason(''); }} className="flex-1 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-slate-400 hover:bg-white/[0.06] transition-colors">Cancelar</button>
