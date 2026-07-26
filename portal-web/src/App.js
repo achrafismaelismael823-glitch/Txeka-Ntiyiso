@@ -1,155 +1,80 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuth } from './hooks/useAuth';
-import { DashboardLayout } from './layouts/DashboardLayout';
-import { ErrorBoundary } from './components/ErrorBoundary';
 
+import DashboardLayout from './layouts/DashboardLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import DocumentsPage from './pages/DocumentsPage';
 import EmitPage from './pages/EmitPage';
 import BulkEmitPage from './pages/BulkEmitPage';
-import VerifyPage from './pages/VerifyPage';
-import DocumentsPage from './pages/DocumentsPage';
 import CreditsPage from './pages/CreditsPage';
+ InstitutionsPage from './pages/InstitutionsPage';
 import AuditPage from './pages/AuditPage';
-import InstitutionsPage from './pages/InstitutionsPage';
 import SettingsPage from './pages/SettingsPage';
+import VerifyPage from './pages/VerifyPage';
 import NotFoundPage from './pages/NotFoundPage';
 
-// ============================================
-// GUARDAS DE ROTA
-// ============================================
+const PrivateRoute = ({ children, adminOnly = false }) => {
+  const { user, loading, isAdmin } = useAuth();
 
-// Rota pública: só acessível se NÃO estiver logado
-const PublicRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-brand-fundo">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[0.7rem] text-silver-dark/60 uppercase tracking-widest">A carregar sessão...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-  
-  if (user) {
-    // Já logado? Redireciona conforme o tipo
-    if (user._type === 'admin' || user._role === 'admin') {
-      return <Navigate to="/audit" replace />;
-    }
-    return <Navigate to="/" replace />;
-  }
-  
-  return children;
-};
 
-// Rota privada genérica: qualquer usuário autenticado
-const PrivateRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-brand-fundo">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[0.7rem] text-silver-dark/60 uppercase tracking-widest">A carregar sessão...</p>
-        </div>
-      </div>
-    );
-  }
-  
   if (!user) return <Navigate to="/login" replace />;
+  if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
+
   return children;
 };
 
-// Rota exclusiva para Admin
-const AdminRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-brand-fundo">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[0.7rem] text-silver-dark/60 uppercase tracking-widest">A carregar sessão...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!user) return <Navigate to="/login" replace />;
-  if (user._type !== 'admin' && user._role !== 'admin') {
-    // Instituição tentando aceder a rota admin? Manda para o painel dela
-    return <Navigate to="/" replace />;
-  }
-  return children;
-};
-
-// ============================================
-// APP PRINCIPAL
-// ============================================
-
-function App() {
+const App = () => {
   return (
-    <ErrorBoundary>
-      <Routes>
-        {/* Login público */}
-        <Route 
-          path="/login" 
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          } 
-        />
+    <AuthProvider>
+      <NotificationProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/verify/:hash?" element={<VerifyPage />} />
 
-        {/* Área autenticada com layout */}
-        <Route 
-          path="/" 
-          element={
-            <PrivateRoute>
-              <DashboardLayout />
-            </PrivateRoute>
-          }
-        >
-          {/* INSTITUIÇÃO: Dashboard pessoal (index) */}
-          <Route index element={<DashboardPage />} />
-          
-          {/* TODOS (Admin + Instituição): Operações core */}
-          <Route path="emit" element={<EmitPage />} />
-          <Route path="bulk-emit" element={<BulkEmitPage />} />
-          <Route path="verify" element={<VerifyPage />} />
-          <Route path="documents" element={<DocumentsPage />} />
-          <Route path="credits" element={<CreditsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          
-          {/* ADMIN ONLY: Gestão do sistema */}
-          <Route 
-            path="audit" 
-            element={
-              <AdminRoute>
-                <AuditPage />
-              </AdminRoute>
-            } 
-          />
-          <Route 
-            path="institutions" 
-            element={
-              <AdminRoute>
-                <InstitutionsPage />
-              </AdminRoute>
-            } 
-          />
-        </Route>
+            <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/emit" element={<EmitPage />} />
+              <Route path="/bulk-emit" element={<BulkEmitPage />} />
+              <Route path="/credits" element={<CreditsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route
+                path="/institutions"
+                element={
+                  <PrivateRoute adminOnly>
+                    <InstitutionsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/audit"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AuditPage />
+                  </PrivateRoute>
+                }
+              />
+            </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </ErrorBoundary>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </BrowserRouter>
+      </NotificationProvider>
+    </AuthProvider>
   );
-}
+};
 
 export default App;
+
