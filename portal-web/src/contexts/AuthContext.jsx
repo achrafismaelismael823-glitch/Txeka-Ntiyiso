@@ -16,48 +16,72 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // Login Instituição: POST /api/v1/auth/login
+  // Login Instituição — PROPAGA ERRO se falhar
   const login = useCallback(async (institutionId, password) => {
-    const { data } = await endpoints.auth.login({ 
-      institution_id: institutionId, 
-      password 
-    });
-    
-    authService.setToken(data.access_token);
-    
-    // Estrutura real: data.institution contém tudo
-    const userData = {
-      ...data.institution,           // id, name, contact_email, credits, etc.
-      role: data.institution?.role || 'institution',
-      _type: 'institution',
-      token: data.access_token,
-    };
-    
-    authService.setUser(userData);
-    setUser(userData);
-    return data;
+    try {
+      const { data } = await endpoints.auth.login({ 
+        institution_id: institutionId, 
+        password 
+      });
+
+      // Se a API retornar erro (status 4xx/5xx), o axios já lança exceção
+      // Mas se retornar 200 com dados inválidos, verificamos
+      if (!data.access_token) {
+        throw new Error('Resposta inválida do servidor — token não recebido');
+      }
+
+      authService.setToken(data.access_token);
+      
+      const userData = {
+        ...data.institution,
+        role: data.institution?.role || 'institution',
+        _type: 'institution',
+        token: data.access_token,
+      };
+      
+      authService.setUser(userData);
+      setUser(userData);
+      return data;
+      
+    } catch (error) {
+      // LIMPA tudo se falhar — garante que não fica estado sujo
+      authService.logout();
+      setUser(null);
+      // PROPAGA o erro para o componente mostrar mensagem
+      throw error;
+    }
   }, []);
 
-  // Login Admin: POST /api/v1/auth/admin/login (query params)
+  // Login Admin — PROPAGA ERRO se falhar
   const adminLogin = useCallback(async (email, password) => {
-    const { data } = await endpoints.auth.adminLogin({ email, password });
-    
-    authService.setToken(data.access_token);
-    
-    // Admin não tem objeto institution — vem do JWT
-    const userData = {
-      id: 'admin',
-      name: 'Administrador Txeka Ntiyiso',
-      email: email,
-      role: 'admin',
-      _type: 'admin',
-      token: data.access_token,
-      expires_in_days: data.expires_in_days || 90,
-    };
-    
-    authService.setUser(userData);
-    setUser(userData);
-    return data;
+    try {
+      const { data } = await endpoints.auth.adminLogin({ email, password });
+
+      if (!data.access_token) {
+        throw new Error('Resposta inválida do servidor — token não recebido');
+      }
+
+      authService.setToken(data.access_token);
+      
+      const userData = {
+        id: 'admin',
+        name: 'Administrador Txeka Ntiyiso',
+        email: email,
+        role: 'admin',
+        _type: 'admin',
+        token: data.access_token,
+        expires_in_days: data.expires_in_days || 90,
+      };
+      
+      authService.setUser(userData);
+      setUser(userData);
+      return data;
+      
+    } catch (error) {
+      authService.logout();
+      setUser(null);
+      throw error;
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -65,8 +89,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  // Usa o JWT decodificado + user object para determinar role
-  const isAdmin = user?.role === 'admin' || authService.isAdmin();
+  const isAdmin = user?.role === 'admin';
   const isInstitution = user?.role === 'institution';
 
   return (
