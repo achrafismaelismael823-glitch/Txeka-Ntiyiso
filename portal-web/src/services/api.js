@@ -33,7 +33,6 @@ api.interceptors.response.use(
       window.location.href = '/login?expired=1';
     }
     
-    // Normaliza mensagem de erro
     let message = 'Erro de comunicação com o servidor';
     if (typeof detail === 'string') message = detail;
     else if (Array.isArray(detail) && detail[0]?.msg) message = detail[0].msg;
@@ -66,21 +65,16 @@ export const endpoints = {
     addCredits: (id, data) => api.post(`/api/v1/institutions/${id}/credits`, data),
   },
   certify: {
-    // Emissão única com multipart/form-data
     single: (formData) => api.post('/api/v1/certify', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    // Emissão massiva (JSON)
     bulk: (data) => api.post('/api/v1/certify/bulk', data),
   },
   verify: {
-    // Verificação pública (sem auth)
     public: (hash) => api.get(`/api/v1/verify/${hash}`),
-    // Verificação B2B (com auth)
     b2b: (hash) => api.post('/api/v1/verify', { hash }),
   },
   emissions: {
-    // Revogação: path param é doc_id (não doc_hash)
     revoke: (docId, data) => api.post(`/api/v1/emissions/${docId}/revoke`, data),
   },
 };
