@@ -1,132 +1,191 @@
 import React from 'react';
-import { CheckCircle, XCircle, Shield, Hash, ExternalLink, Calendar, Building2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import {
+  CheckCircle2, XCircle, Hash, FileText, ExternalLink,
+  Shield, Calendar, QrCode, Copy, Check
+} from 'lucide-react';
 
-export const EmitResult = ({ data }) => {
-  if (!data) return null;
-  return (
-    <div className="glass-panel p-6 space-y-4 animate-slide-up">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center">
-          <CheckCircle className="w-5 h-5 text-emerald-400" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-silver-light">Documento Emitido</h3>
-          <p className="text-xs text-silver-dark">{data.message}</p>
-        </div>
-      </div>
+const ResultsDisplay = ({ results, type = 'emit' }) => {
+  const [copied, setCopied] = React.useState(false);
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-3">
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-tn-800/50">
-            <Hash className="w-4 h-4 text-cyan mt-0.5" />
-            <div className="min-w-0">
-              <p className="text-xs text-silver-dark mb-1">Hash SHA-256</p>
-              <p className="text-xs font-mono text-silver break-all">{data.hash_sha256}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-tn-800/50">
-            <Shield className="w-4 h-4 text-cyan mt-0.5" />
-            <div>
-              <p className="text-xs text-silver-dark mb-1">Doc ID</p>
-              <p className="text-sm font-mono text-silver">{data.doc_id}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-tn-800/50">
-            <Calendar className="w-4 h-4 text-cyan mt-0.5" />
-            <div>
-              <p className="text-xs text-silver-dark mb-1">Timestamp</p>
-              <p className="text-sm text-silver">{new Date(data.timestamp).toLocaleString('pt-MZ')}</p>
-            </div>
-          </div>
-        </div>
+  if (!results) return null;
 
-        <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-white">
-          <QRCodeSVG value={data.certificate_url || data.qr_code} size={160} level="H" />
-          <p className="mt-3 text-xs text-tn-900 font-medium">Escaneie para verificar</p>
-        </div>
-      </div>
+  const isBulk = type === 'bulk';
+  // Normaliza a resposta: API retorna hash_sha256 ou hash
+  const normalizeItem = (item) => ({
+    ...item,
+    hash: item.hash_sha256 || item.hash || item.doc_hash,
+    docId: item.doc_id,
+  });
 
-      {data.certificate_url && (
-        <a 
-          href={data.certificate_url} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="btn-secondary w-full flex items-center justify-center gap-2 mt-2"
-        >
-          <ExternalLink className="w-4 h-4" />
-          Abrir Certificado
-        </a>
-      )}
-    </div>
-  );
-};
+  const success = isBulk
+    ? (results.successful || []).map(normalizeItem)
+    : results.hash_sha256 || results.hash
+    ? [normalizeItem(results)]
+    : [];
 
-export const VerifyResult = ({ data }) => {
-  if (!data) return null;
-  const d = data.dados_publicos;
-  const isValid = data.status === 'valid' || data.status === 'VERIFIED';
+  const failed = isBulk ? (results.failed || []) : [];
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className={`glass-panel p-6 space-y-4 animate-slide-up border-l-4 ${isValid ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isValid ? 'bg-emerald-500/15' : 'bg-red-500/15'}`}>
-          {isValid ? <CheckCircle className="w-6 h-6 text-emerald-400" /> : <XCircle className="w-6 h-6 text-red-400" />}
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-silver-light">
-            {isValid ? 'Documento Válido' : 'Documento Inválido'}
-          </h3>
-          <p className="text-sm text-silver-dark">Status: <span className="text-cyan font-medium">{data.status}</span></p>
-        </div>
-      </div>
+    <div className="space-y-4 animate-fade-in">
+      {success.length > 0 && (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-sm font-bold text-emerald-400">
+              {isBulk ? `${success.length} Sucesso(s)` : results.message || 'Documento Certificado'}
+            </h3>
+          </div>
 
-      {d && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-tn-800/50">
-              <Shield className="w-4 h-4 text-cyan mt-0.5" />
-              <div>
-                <p className="text-xs text-silver-dark mb-1">Doc ID</p>
-                <p className="text-sm font-mono text-silver">{d.doc_id}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-tn-800/50">
-              <Building2 className="w-4 h-4 text-cyan mt-0.5" />
-              <div>
-                <p className="text-xs text-silver-dark mb-1">Instituição</p>
-                <p className="text-sm text-silver">{d.institution_id}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-tn-800/50">
-              <Calendar className="w-4 h-4 text-cyan mt-0.5" />
-              <div>
-                <p className="text-xs text-silver-dark mb-1">Emitido em</p>
-                <p className="text-sm text-silver">{new Date(d.created_at).toLocaleString('pt-MZ')}</p>
-              </div>
-            </div>
-            {d.revoked && (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                <XCircle className="w-4 h-4 text-red-400 mt-0.5" />
-                <div>
-                  <p className="text-xs text-red-400 mb-1">Revogado em</p>
-                  <p className="text-sm text-red-300">{d.revoked_at ? new Date(d.revoked_at).toLocaleString('pt-MZ') : 'Data desconhecida'}</p>
-                  {d.revoked_reason && <p className="text-xs text-red-300/70 mt-1">Motivo: {d.revoked_reason}</p>}
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+            {success.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-4"
+              >
+                {/* QR Code + Certificado */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2 space-y-3">
+                    {item.docId && (
+                      <div className="flex items-start gap-3">
+                        <Shield className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Doc ID</p>
+                          <p className="text-sm font-mono text-slate-100">{item.docId}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-3">
+                      <Hash className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Hash SHA-256</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-mono text-cyan-400 break-all">{item.hash}</p>
+                          <button
+                            onClick={() => handleCopy(item.hash)}
+                            className="p-1 rounded-md hover:bg-white/[0.05] text-slate-400 transition-colors shrink-0"
+                            title="Copiar hash"
+                          >
+                            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {item.timestamp && (
+                      <div className="flex items-start gap-3">
+                        <Calendar className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Timestamp</p>
+                          <p className="text-xs text-slate-300">
+                            {new Date(item.timestamp).toLocaleString('pt-MZ')}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {item.certificate_url && (
+                      <a
+                        href={item.certificate_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 hover:underline transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Abrir Certificado Público
+                      </a>
+                    )}
+                  </div>
+
+                  {/* QR Code */}
+                  <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-white/[0.1]">
+                    {item.qr_code ? (
+                      item.qr_code.startsWith('data:') ? (
+                        <img
+                          src={item.qr_code}
+                          alt="QR Code"
+                          className="w-32 h-32 object-contain"
+                        />
+                      ) : (
+                        <QRCodeSVG
+                          value={item.qr_code}
+                          size={128}
+                          level="H"
+                          bgColor="#ffffff"
+                          fgColor="#0f172a"
+                        />
+                      )
+                    ) : item.certificate_url ? (
+                      <QRCodeSVG
+                        value={item.certificate_url}
+                        size={128}
+                        level="H"
+                        bgColor="#ffffff"
+                        fgColor="#0f172a"
+                      />
+                    ) : (
+                      <QrCode className="w-16 h-16 text-slate-300" />
+                    )}
+                    <p className="mt-2 text-[0.6rem] text-slate-500 font-medium">Escaneie para verificar</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-white/[0.03]">
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="text-xs text-slate-400">
+                    {item.document_type || 'Documento Certificado'}
+                  </span>
+                  <button
+                    onClick={() => window.open(`/verify/${item.hash}`, '_blank')}
+                    className="ml-auto text-[0.65rem] text-cyan-400 hover:underline"
+                  >
+                    Verificar →
+                  </button>
                 </div>
               </div>
-            )}
+            ))}
           </div>
-          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-tn-800/30">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center ${isValid ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
-              {isValid ? <Shield className="w-12 h-12 text-emerald-400" /> : <XCircle className="w-12 h-12 text-red-400" />}
-            </div>
-            <p className="mt-4 text-sm font-medium text-silver">
-              {isValid ? 'Autenticidade confirmada' : 'Autenticidade rejeitada'}
-            </p>
+        </div>
+      )}
+
+      {failed.length > 0 && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <XCircle className="w-5 h-5 text-red-400" />
+            <h3 className="text-sm font-bold text-red-400">
+              {isBulk ? `${failed.length} Falha(s)` : 'Erro na Emissão'}
+            </h3>
+          </div>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {failed.map((item, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]"
+              >
+                <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-slate-300">
+                    {item.document_type || item.filename || 'Documento'}
+                  </p>
+                  <p className="text-[0.65rem] text-red-400/70 mt-0.5">
+                    {item.error || item.detail || 'Erro desconhecido'}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default ResultsDisplay;
 
