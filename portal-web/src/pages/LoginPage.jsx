@@ -1,145 +1,143 @@
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { ShieldCheck, Loader2, Building2, Mail, Lock, AlertTriangle } from 'lucide-react';
+import React, { useState, useContext } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
+import { NotificationContext } from '../contexts/NotificationContext';
+import { ShieldCheck, Building2, User, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
-  const [mode, setMode] = useState('institution');
-  const [form, setForm] = useState({ id: '', email: '', password: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { login, adminLogin } = useAuth();
+  const { login, adminLogin } = useContext(AuthContext);
+  const { notify } = useContext(NotificationContext);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const expired = searchParams.get('expired');
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
+
+  const [mode, setMode] = useState('institution'); // 'institution' | 'admin'
+  const [institutionId, setInstitutionId] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+
     try {
       if (mode === 'institution') {
-        await login(form.id, form.password);
+        await login(institutionId.trim(), password);
+        notify('Sessão iniciada com sucesso', 'success');
       } else {
-        await adminLogin(form.email, form.password);
+        await adminLogin(email.trim(), password);
+        notify('Sessão de administrador iniciada', 'success');
       }
-      navigate('/');
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err.normalizedMessage || 'Erro de autenticação');
+      notify(err.normalizedMessage || 'Credenciais inválidas', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 space-y-6 relative z-10">
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 mx-auto">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-6 animate-fade-in">
+        {/* Logo */}
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto">
             <ShieldCheck className="w-8 h-8 text-cyan-400" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-100">Txeka Ntiyiso</h1>
-          <p className="text-sm text-slate-500">Portal de Certificação Digital</p>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-100">Txeka Ntiyiso</h1>
+            <p className="text-sm text-slate-500">Plataforma de Certificação Blockchain</p>
+          </div>
         </div>
 
-        {expired && (
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 text-xs text-amber-400">
-            <AlertTriangle className="w-4 h-4" />
-            Sessão expirada. Por favor, autentique-se novamente.
-          </div>
-        )}
-
-        <div className="flex p-1 rounded-xl bg-black/20 border border-white/[0.05]">
+        {/* Toggle */}
+        <div className="flex p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl">
           <button
-            onClick={() => { setMode('institution'); setError(null); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-              mode === 'institution' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:text-slate-100'
+            type="button"
+            onClick={() => setMode('institution')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              mode === 'institution'
+                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                : 'text-slate-500 hover:text-slate-300'
             }`}
           >
+            <Building2 className="w-4 h-4" />
             Instituição
           </button>
           <button
-            onClick={() => { setMode('admin'); setError(null); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-              mode === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-slate-100'
+            type="button"
+            onClick={() => setMode('admin')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              mode === 'admin'
+                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                : 'text-slate-500 hover:text-slate-300'
             }`}
           >
+            <User className="w-4 h-4" />
             Administrador
           </button>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'institution' ? (
-            <div className="space-y-1.5">
-              <label className="text-[0.65rem] font-semibold text-slate-400 uppercase tracking-wider">
-                ID da Instituição
-              </label>
-              <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  type="text"
-                  required
-                  value={form.id}
-                  onChange={(e) => setForm({ ...form, id: e.target.value.toUpperCase() })}
-                  placeholder="Ex: CFN"
-                  className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/[0.06] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm font-mono uppercase"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <label className="text-[0.65rem] font-semibold text-slate-400 uppercase tracking-wider">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="admin@txeka.co.mz"
-                  className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/[0.06] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <label className="text-[0.65rem] font-semibold text-slate-400 uppercase tracking-wider">
-              Senha
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              {mode === 'institution' ? 'ID da Instituição' : 'Email'}
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              {mode === 'institution' ? (
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              ) : (
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              )}
               <input
-                type="password"
+                type={mode === 'institution' ? 'text' : 'email'}
+                value={mode === 'institution' ? institutionId : email}
+                onChange={(e) => mode === 'institution' ? setInstitutionId(e.target.value) : setEmail(e.target.value)}
+                placeholder={mode === 'institution' ? 'Ex: CFN, ISTN' : 'admin@txeka.co.mz'}
+                className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
                 required
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/[0.06] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
               />
             </div>
           </div>
 
-          {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {error}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Palavra-passe</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full pl-4 pr-10 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-          )}
+          </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
+            disabled={loading || !password}
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 text-slate-950 font-bold rounded-xl transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Entrar'}
           </button>
         </form>
+
+        <p className="text-center text-xs text-slate-600">
+          {mode === 'institution'
+            ? 'Utilize as credenciais fornecidas pelo administrador'
+            : 'Acesso restrito à equipa de gestão'}
+        </p>
       </div>
     </div>
   );
