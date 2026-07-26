@@ -11,7 +11,7 @@ import DocumentsPage from './pages/DocumentsPage';
 import EmitPage from './pages/EmitPage';
 import BulkEmitPage from './pages/BulkEmitPage';
 import CreditsPage from './pages/CreditsPage';
- InstitutionsPage from './pages/InstitutionsPage';
+import InstitutionsPage from './pages/InstitutionsPage';
 import AuditPage from './pages/AuditPage';
 import SettingsPage from './pages/SettingsPage';
 import VerifyPage from './pages/VerifyPage';
@@ -43,7 +43,13 @@ const App = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/verify/:hash?" element={<VerifyPage />} />
 
-            <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+            <Route
+              element={
+                <PrivateRoute>
+                  <DashboardLayout />
+                </PrivateRoute>
+              }
+            >
               <Route path="/" element={<DashboardPage />} />
               <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/emit" element={<EmitPage />} />
@@ -77,4 +83,3 @@ const App = () => {
 };
 
 export default App;
-
