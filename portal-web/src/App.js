@@ -1,8 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import DashboardLayout from './layouts/DashboardLayout'; // ← CORRIGIDO: era ./components/layout/
+import { useAuth } from './hooks/useAuth';
+import DashboardLayout from './layouts/DashboardLayout';
 
 // Lazy loading
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
