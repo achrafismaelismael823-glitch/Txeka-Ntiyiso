@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }) => {
 
       authService.setToken(data.access_token);
       
-      // A API retorna institution object completo
       const userData = {
         ...data.institution,
         role: data.institution?.role || 'institution',
@@ -80,6 +79,7 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = user?.role === 'admin';
   const isInstitution = user?.role === 'institution';
   const institutionId = isInstitution ? user?.id : null;
+  const isAuthenticated = !!user;
 
   return (
     <AuthContext.Provider value={{
@@ -87,6 +87,7 @@ export const AuthProvider = ({ children }) => {
       login,
       adminLogin,
       logout,
+      isAuthenticated,
       isAdmin,
       isInstitution,
       institutionId,
