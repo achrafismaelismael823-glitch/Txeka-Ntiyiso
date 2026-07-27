@@ -3,8 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
-  Settings, Key, RefreshCw, Loader2, CheckCircle2, AlertTriangle,
-  Copy, Check, Eye, EyeOff, ShieldCheck
+  Key, RefreshCw, Loader2, Eye, EyeOff, ShieldCheck
 } from 'lucide-react';
 
 const SettingsPage = () => {
@@ -42,7 +41,6 @@ const SettingsPage = () => {
         <p className="text-xs text-slate-500 mt-1">Gestão de credenciais e segurança</p>
       </div>
 
-      {/* Dados da conta */}
       <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 space-y-5">
         <div className="flex items-center gap-3 pb-4 border-b border-white/[0.05]">
           <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
@@ -77,7 +75,6 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      {/* API Key */}
       {!isAdmin && (
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 space-y-5">
           <div className="flex items-center gap-3 pb-4 border-b border-white/[0.05]">
@@ -93,7 +90,7 @@ const SettingsPage = () => {
           {apiKey ? (
             <div className="p-4 rounded-xl bg-black/20 border border-amber-500/20 space-y-3">
               <div className="flex items-center gap-2 text-amber-400">
-                <AlertTriangle className="w-4 h-4" />
+                <Key className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">Guarde esta chave — só é mostrada uma vez</span>
               </div>
               <div className="flex items-center gap-2">
@@ -104,7 +101,7 @@ const SettingsPage = () => {
                   {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
                 <button onClick={() => handleCopy(apiKey)} className="p-2 text-slate-500 hover:text-slate-300">
-                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  {copied ? <ShieldCheck className="w-4 h-4 text-emerald-400" /> : <Key className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -128,4 +125,3 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
-
