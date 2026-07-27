@@ -1,28 +1,25 @@
 import axios from 'axios';
 import { authService } from './auth';
 
-// O .env já inclui /api/v1, então não adicionamos de novo
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com/api/v1';
+// Normaliza a URL: remove /api/v1 do final se existir, porque os endpoints já o incluem
+const rawUrl = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
+const API_BASE_URL = rawUrl.replace(/\/api\/v1\/?$/, '');
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${API_BASE_URL}/api/v1`,
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
 });
 
-// Interceptor de requisição
 api.interceptors.request.use(
   (config) => {
     const token = authService.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor de resposta
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -30,7 +27,6 @@ api.interceptors.response.use(
     const data = error.response?.data;
     const url = error.config?.url || '';
 
-    // NÃO redirecionar em 401 se for login
     if (status === 401 && !url.includes('/auth/login')) {
       authService.logout();
       window.location.href = '/login?expired=1';
@@ -49,9 +45,7 @@ api.interceptors.response.use(
 
 export const endpoints = {
   auth: {
-    // Admin login usa query params
     adminLogin: (email, password) => api.post(`/auth/admin/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`),
-    // Institution login usa body JSON
     login: (data) => api.post('/auth/login', data),
     refresh: () => api.post('/auth/refresh'),
   },
@@ -74,9 +68,7 @@ export const endpoints = {
     addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
   },
   certify: {
-    single: (formData) => api.post('/certify', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    single: (formData) => api.post('/certify', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
     bulk: (data) => api.post('/certify/bulk', data),
   },
   verify: {
