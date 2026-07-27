@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth'; // ← CORRIGIDO: era ../../hooks/useAuth
 import {
   LayoutDashboard, FileText, FileCheck, FileStack, ShieldCheck,
   Activity, CreditCard, Settings, Building2, LogOut, Menu, X,
-  ChevronRight, Bell, User
+  ChevronRight, User
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -139,7 +139,7 @@ const DashboardLayout = () => {
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-64 min-h-screen">
-        <div className="lg:hidden h-16" /> {/* Spacer for mobile header */}
+        <div className="lg:hidden h-16" />
         <div className="max-w-7xl mx-auto p-4 lg:p-8">
           <Outlet />
         </div>
