@@ -2,7 +2,6 @@ import React, { useState, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { NotificationContext } from '../contexts/NotificationContext';
-import { api } from '../services/api';
 import {
   ShieldCheck, Building2, User, Eye, EyeOff, Loader2,
   Wifi, WifiOff, AlertTriangle, Server
@@ -26,14 +25,14 @@ const LoginPage = () => {
   const [apiHealth, setApiHealth] = useState(null);
   const [apiHealthDetail, setApiHealthDetail] = useState(null);
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com/api/v1';
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
 
   const testApiConnection = async () => {
     setApiHealth('checking');
     setApiHealthDetail(null);
     setDiag(null);
     try {
-      const healthUrl = API_BASE.replace(/\/api\/v1\/?$/, '') + '/health';
+      const healthUrl = API_BASE + '/health';
       const res = await fetch(healthUrl, { method: 'GET', mode: 'cors' });
       const text = await res.text().catch(() => '');
       setApiHealth('ok');
@@ -209,7 +208,7 @@ const LoginPage = () => {
           }`}>
             <p><span className="text-slate-500">URL:</span> {apiHealthDetail.url}</p>
             {apiHealthDetail.status && <p><span className="text-slate-500">Status:</span> {apiHealthDetail.status}</p>}
-            {apiHealthDetail.body && <p><span className="text-slate-500">Resposta:</span> {apiHealthDetail.body}</p>}
+            {apiHealthDetail.body && <p><span className="text-slate-500">Resposta:</span> {apiHealthDetail.body.substring(0, 200)}{apiHealthDetail.body.length > 200 ? '...' : ''}</p>}
             {apiHealthDetail.error && <p><span className="text-slate-500">Erro:</span> {apiHealthDetail.error}</p>}
           </div>
         )}
