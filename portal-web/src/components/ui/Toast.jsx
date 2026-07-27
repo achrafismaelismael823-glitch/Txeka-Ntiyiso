@@ -1,48 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 
-const Toast = ({ message, type = 'info', onClose, duration = 5000 }) => {
-  React.useEffect(() => {
+const icons = {
+  success: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
+  error: <AlertTriangle className="w-5 h-5 text-red-400" />,
+  info: <Info className="w-5 h-5 text-cyan-400" />,
+};
+
+const styles = {
+  success: 'bg-emerald-500/10 border-emerald-500/20',
+  error: 'bg-red-500/10 border-red-500/20',
+  info: 'bg-cyan-500/10 border-cyan-500/20',
+};
+
+export const Toast = ({ id, message, type = 'info', duration = 5000, onRemove }) => {
+  useEffect(() => {
     if (duration > 0) {
-      const timer = setTimeout(onClose, duration);
+      const timer = setTimeout(() => onRemove(id), duration);
       return () => clearTimeout(timer);
     }
-  }, [duration, onClose]);
-
-  const config = {
-    success: {
-      icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
-      border: 'border-emerald-500/20',
-      bg: 'bg-emerald-500/10',
-    },
-    error: {
-      icon: <AlertTriangle className="w-5 h-5 text-red-400" />,
-      border: 'border-red-500/20',
-      bg: 'bg-red-500/10',
-    },
-    info: {
-      icon: <Info className="w-5 h-5 text-cyan-400" />,
-      border: 'border-cyan-500/20',
-      bg: 'bg-cyan-500/10',
-    },
-  };
-
-  const { icon, border, bg } = config[type] || config.info;
+  }, [id, duration, onRemove]);
 
   return (
-    <div
-      className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-2xl animate-slide-in ${bg} ${border}`}
-    >
-      {icon}
+    <div className={`flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-2xl animate-slide-in ${styles[type]}`}>
+      {icons[type]}
       <p className="text-sm text-slate-100 flex-1">{message}</p>
-      <button
-        onClick={onClose}
-        className="text-slate-400 hover:text-white transition-colors shrink-0"
-      >
+      <button onClick={() => onRemove(id)} className="text-slate-400 hover:text-white transition-colors">
         <X className="w-4 h-4" />
       </button>
     </div>
   );
 };
-
-export default Toast;
