@@ -4,7 +4,7 @@ import { endpoints } from '../services/api';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Search, ShieldCheck, AlertTriangle, CheckCircle2, XCircle,
-  Loader2, FileText, Building2, Calendar, Hash, Copy, Check
+  Loader2, FileText, Building2, Calendar, Hash, Copy, Check, Globe
 } from 'lucide-react';
 
 const VerifyPage = () => {
@@ -14,7 +14,7 @@ const VerifyPage = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
@@ -34,14 +34,31 @@ const VerifyPage = () => {
       setResult(data);
       if (!urlHash) navigate(`/verify/${cleanHash}`, { replace: true });
     } catch (err) {
-      setError(err.normalizedMessage || 'Documento não encontrado');
+      setError(err.normalizedMessage || 'Documento não encontrado ou inválido');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (urlHash) handleVerify();
+    if (urlHash) {
+      const verifyOnLoad = async () => {
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        try {
+          const cleanHash = urlHash.trim();
+          const { data } = await endpoints.verify.public(cleanHash);
+          setResult(data);
+        } catch (err) {
+          setError(err.normalizedMessage || 'Documento não encontrado ou inválido');
+        } finally {
+          setLoading(false);
+        }
+      };
+      verifyOnLoad();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlHash]);
 
   const d = result?.dados_publicos || result;
@@ -91,7 +108,9 @@ const VerifyPage = () => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-emerald-400">Documento Autêntico</h3>
-                <p className="text-xs text-slate-500">Verificado em {new Date().toLocaleString('pt-MZ')}</p>
+                <p className="text-xs text-slate-500">
+                  Verificado em {new Date().toLocaleString('pt-MZ')}
+                </p>
               </div>
             </div>
 
@@ -101,13 +120,17 @@ const VerifyPage = () => {
                   <div className="flex items-center gap-2 text-[0.6rem] text-slate-500 uppercase tracking-wider">
                     <FileText className="w-3 h-3" /> Tipo
                   </div>
-                  <p className="text-sm font-medium text-slate-100">{d.document_type || '—'}</p>
+                  <p className="text-sm font-medium text-slate-100">
+                    {d.document_type || '—'}
+                  </p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
                   <div className="flex items-center gap-2 text-[0.6rem] text-slate-500 uppercase tracking-wider">
                     <Building2 className="w-3 h-3" /> Instituição
                   </div>
-                  <p className="text-sm font-medium text-slate-100">{d.institution_name || d.institution_id || '—'}</p>
+                  <p className="text-sm font-medium text-slate-100">
+                    {d.institution_name || d.institution_id || '—'}
+                  </p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
                   <div className="flex items-center gap-2 text-[0.6rem] text-slate-500 uppercase tracking-wider">
@@ -122,12 +145,29 @@ const VerifyPage = () => {
                     <Hash className="w-3 h-3" /> Hash
                   </div>
                   <div className="flex items-center gap-2">
-                    <p className="text-xs font-mono text-cyan-400 truncate">{(d.hash_sha256 || d.hash || '').substring(0, 24)}...</p>
-                    <button onClick={() => handleCopy(d.hash_sha256 || d.hash)} className="text-slate-500 hover:text-slate-300">
-                      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <p className="text-xs font-mono text-cyan-400 truncate">
+                      {(d.hash_sha256 || d.hash || '').substring(0, 24)}...
+                    </p>
+                    <button
+                      onClick={() => handleCopy(d.hash_sha256 || d.hash)}
+                      className="text-slate-500 hover:text-slate-300"
+                    >
+                      {copied ? (
+                        <Check className="w-3 h-3 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
                     </button>
                   </div>
                 </div>
+                {d.doc_id && (
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1 sm:col-span-2">
+                    <div className="flex items-center gap-2 text-[0.6rem] text-slate-500 uppercase tracking-wider">
+                      <Globe className="w-3 h-3" /> Doc ID
+                    </div>
+                    <p className="text-sm font-mono text-slate-100">{d.doc_id}</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-white/[0.1]">
@@ -138,7 +178,9 @@ const VerifyPage = () => {
                   bgColor="#ffffff"
                   fgColor="#0f172a"
                 />
-                <p className="mt-2 text-[0.6rem] text-slate-500 font-medium">Verificação actual</p>
+                <p className="mt-2 text-[0.6rem] text-slate-500 font-medium">
+                  Escaneie para verificar
+                </p>
               </div>
             </div>
 
@@ -162,4 +204,3 @@ const VerifyPage = () => {
 };
 
 export default VerifyPage;
-
