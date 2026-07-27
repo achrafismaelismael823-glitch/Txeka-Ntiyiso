@@ -10,9 +10,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const stored = authService.getUser();
-    if (stored && authService.isAuthenticated()) {
-      setUser(stored);
-    }
+    if (stored && authService.isAuthenticated()) setUser(stored);
     setLoading(false);
   }, []);
 
@@ -22,21 +20,13 @@ export const AuthProvider = ({ children }) => {
     throw error;
   };
 
-  // Login de Instituição
   const login = useCallback(async (institutionId, password) => {
     try {
       const { data } = await endpoints.auth.login({ institution_id: institutionId, password });
       if (!data.access_token) throw new Error('Token não recebido');
 
       authService.setToken(data.access_token);
-      
-      const userData = {
-        ...data.institution,
-        role: data.institution?.role || 'institution',
-        id: data.institution?.id,
-        token: data.access_token,
-      };
-      
+      const userData = { ...data.institution, role: 'institution', id: data.institution?.id, token: data.access_token };
       authService.setUser(userData);
       setUser(userData);
       return data;
@@ -45,23 +35,13 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Login de Administrador
   const adminLogin = useCallback(async (email, password) => {
     try {
       const { data } = await endpoints.auth.adminLogin(email, password);
       if (!data.access_token) throw new Error('Token não recebido');
 
       authService.setToken(data.access_token);
-      
-      const userData = {
-        id: 'admin',
-        name: 'Administrador Txeka Ntiyiso',
-        email,
-        role: 'admin',
-        token: data.access_token,
-        expires_in_days: data.expires_in_days || 90,
-      };
-      
+      const userData = { id: 'admin', name: 'Administrador', email, role: 'admin', token: data.access_token };
       authService.setUser(userData);
       setUser(userData);
       return data;
@@ -76,21 +56,16 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/login';
   }, []);
 
-  const isAdmin = user?.role === 'admin';
-  const isInstitution = user?.role === 'institution';
-  const institutionId = isInstitution ? user?.id : null;
-  const isAuthenticated = !!user;
-
   return (
     <AuthContext.Provider value={{
       user,
       login,
       adminLogin,
       logout,
-      isAuthenticated,
-      isAdmin,
-      isInstitution,
-      institutionId,
+      isAuthenticated: !!user,
+      isAdmin: user?.role === 'admin',
+      isInstitution: user?.role === 'institution',
+      institutionId: user?.role === 'institution' ? user?.id : null,
       loading,
     }}>
       {children}
