@@ -5,7 +5,6 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuth } from './hooks/useAuth';
 import DashboardLayout from './layouts/DashboardLayout';
 
-// Lazy loading
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 const DocumentsPage = React.lazy(() => import('./pages/DocumentsPage'));
@@ -27,13 +26,10 @@ const PageLoader = () => (
 const ProtectedRoute = ({ children, adminOnly, institutionOnly }) => {
   const { isAuthenticated, isAdmin, isInstitution, loading } = useAuth();
   const location = useLocation();
-
   if (loading) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
-  
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
   if (institutionOnly && !isInstitution) return <Navigate to="/" replace />;
-  
   return children;
 };
 
@@ -48,26 +44,16 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
     <Route path="/verify/:hash?" element={<VerifyPage />} />
-    
     <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
       <Route path="/" element={<DashboardPage />} />
       <Route path="/documents" element={<DocumentsPage />} />
       <Route path="/emit" element={<EmitPage />} />
       <Route path="/audit" element={<AuditPage />} />
       <Route path="/settings" element={<SettingsPage />} />
-      
-      <Route path="/bulk-emit" element={
-        <ProtectedRoute institutionOnly><BulkEmitPage /></ProtectedRoute>
-      } />
-      <Route path="/credits" element={
-        <ProtectedRoute institutionOnly><CreditsPage /></ProtectedRoute>
-      } />
-      
-      <Route path="/institutions" element={
-        <ProtectedRoute adminOnly><InstitutionsPage /></ProtectedRoute>
-      } />
+      <Route path="/bulk-emit" element={<ProtectedRoute institutionOnly><BulkEmitPage /></ProtectedRoute>} />
+      <Route path="/credits" element={<ProtectedRoute institutionOnly><CreditsPage /></ProtectedRoute>} />
+      <Route path="/institutions" element={<ProtectedRoute adminOnly><InstitutionsPage /></ProtectedRoute>} />
     </Route>
-
     <Route path="*" element={<NotFoundPage />} />
   </Routes>
 );
