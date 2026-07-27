@@ -4,8 +4,8 @@ import { NotificationContext } from '../contexts/NotificationContext';
 import { DataTable } from '../components/ui/DataTable';
 import { Modal } from '../components/ui/Modal';
 import {
-  Building2, Plus, Loader2, Search, X, CheckCircle2, XCircle,
-  RefreshCw, CreditCard, Key, Edit3, AlertTriangle
+  Plus, Loader2, Search, X, CheckCircle2,
+  RefreshCw, Key, Edit3
 } from 'lucide-react';
 
 const InstitutionsPage = () => {
@@ -16,7 +16,6 @@ const InstitutionsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  // Form states
   const [formId, setFormId] = useState('');
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
@@ -26,20 +25,21 @@ const InstitutionsPage = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+    const fetchInstitutions = async () => {
+      try {
+        setLoading(true);
+        const { data } = await endpoints.institutions.list({ limit: 200 });
+        if (mounted) setInstitutions(Array.isArray(data) ? data : data.items || []);
+      } catch (err) {
+        if (mounted) notify(err.normalizedMessage || 'Erro ao carregar instituições', 'error');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
     fetchInstitutions();
-  }, []);
-
-  const fetchInstitutions = async () => {
-    try {
-      setLoading(true);
-      const { data } = await endpoints.institutions.list({ limit: 200 });
-      setInstitutions(Array.isArray(data) ? data : data.items || []);
-    } catch (err) {
-      notify(err.normalizedMessage || 'Erro ao carregar instituições', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => { mounted = false; };
+  }, [notify]);
 
   const openCreate = () => {
     setEditing(null);
@@ -90,7 +90,6 @@ const InstitutionsPage = () => {
         notify('Instituição criada', 'success');
       }
 
-      // Adicionar créditos se preenchido
       if (formCredits && Number(formCredits) > 0) {
         await endpoints.institutions.addCredits(formId.trim(), {
           amount: Number(formCredits),
@@ -99,7 +98,8 @@ const InstitutionsPage = () => {
       }
 
       setModalOpen(false);
-      fetchInstitutions();
+      const { data } = await endpoints.institutions.list({ limit: 200 });
+      setInstitutions(Array.isArray(data) ? data : data.items || []);
     } catch (err) {
       notify(err.normalizedMessage || 'Erro ao gravar', 'error');
     } finally {
@@ -240,7 +240,6 @@ const InstitutionsPage = () => {
         <DataTable columns={columns} data={filtered} loading={loading} emptyText="Nenhuma instituição encontrada" />
       </div>
 
-      {/* Modal Criar/Editar */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar Instituição' : 'Nova Instituição'} maxWidth="max-w-md">
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-1">
@@ -338,4 +337,3 @@ const InstitutionsPage = () => {
 };
 
 export default InstitutionsPage;
-
