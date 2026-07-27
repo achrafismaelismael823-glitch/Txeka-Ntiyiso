@@ -5,7 +5,7 @@ import { NotificationContext } from '../contexts/NotificationContext';
 import { api } from '../services/api';
 import {
   ShieldCheck, Building2, User, Eye, EyeOff, Loader2,
-  Wifi, WifiOff, AlertTriangle, Server, ArrowRight
+  Wifi, WifiOff, AlertTriangle, Server
 } from 'lucide-react';
 
 const LoginPage = () => {
@@ -22,9 +22,8 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Estados de diagnóstico — mostram na tela o que aconteceu
   const [diag, setDiag] = useState(null);
-  const [apiHealth, setApiHealth] = useState(null); // null | 'checking' | 'ok' | 'fail'
+  const [apiHealth, setApiHealth] = useState(null);
   const [apiHealthDetail, setApiHealthDetail] = useState(null);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com/api/v1';
@@ -34,7 +33,6 @@ const LoginPage = () => {
     setApiHealthDetail(null);
     setDiag(null);
     try {
-      // Tenta chamar /health na API (endpoint público)
       const healthUrl = API_BASE.replace(/\/api\/v1\/?$/, '') + '/health';
       const res = await fetch(healthUrl, { method: 'GET', mode: 'cors' });
       const text = await res.text().catch(() => '');
@@ -44,7 +42,7 @@ const LoginPage = () => {
     } catch (err) {
       setApiHealth('fail');
       setApiHealthDetail({ error: err.message, url: API_BASE });
-      notify('API não responde — possível erro de rede/CORS', 'error');
+      notify('API não responde', 'error');
     }
   };
 
@@ -65,15 +63,16 @@ const LoginPage = () => {
     } catch (err) {
       const info = {
         message: err.normalizedMessage || err.message || 'Erro desconhecido',
-        status: err.response?.status || 'NO_RESPONSE',
+        status: err.response?.status || err.apiStatus || 'NO_RESPONSE',
         statusText: err.response?.statusText || '',
-        url: err.config?.url || 'NO_URL',
-        fullUrl: err.config?.baseURL ? `${err.config.baseURL}${err.config.url}` : err.config?.url,
-        method: err.config?.method?.toUpperCase() || '',
-        requestData: err.config?.data ? (() => { try { return JSON.parse(err.config.data); } catch { return err.config.data; } })() : null,
-        responseData: err.response?.data || null,
-        isNetworkError: !err.response,
-        isCorsError: err.message?.includes('Network Error') || err.message?.includes('CORS'),
+        url: err.config?.url || err.apiUrl || 'NO_URL',
+        fullUrl: err.config?.baseURL ? `${err.config.baseURL}${err.config.url}` : (err.apiBaseURL ? `${err.apiBaseURL}${err.apiUrl}` : (err.apiUrl || 'NO_URL')),
+        method: err.config?.method?.toUpperCase() || 'POST',
+        requestData: mode === 'institution'
+          ? { institution_id: institutionId.trim(), password: '***' }
+          : { email: email.trim(), password: '***' },
+        responseData: err.response?.data || err.apiResponse || null,
+        isNetworkError: !err.response && !err.apiResponse,
       };
       setDiag(info);
       notify(info.message, 'error');
@@ -85,7 +84,6 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-5 animate-fade-in">
-        {/* Logo */}
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto">
             <ShieldCheck className="w-8 h-8 text-cyan-400" />
@@ -96,7 +94,6 @@ const LoginPage = () => {
           </div>
         </div>
 
-        {/* Toggle modo */}
         <div className="flex p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl">
           <button
             type="button"
@@ -122,7 +119,6 @@ const LoginPage = () => {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -181,7 +177,6 @@ const LoginPage = () => {
           </button>
         </form>
 
-        {/* Botão testar API */}
         <button
           type="button"
           onClick={testApiConnection}
@@ -198,7 +193,7 @@ const LoginPage = () => {
             <Server className="w-3.5 h-3.5" />
           )}
           {apiHealth === 'checking'
-            ? 'A testar ligação...'
+            ? 'A testar...'
             : apiHealth === 'ok'
             ? 'API Online ✓'
             : apiHealth === 'fail'
@@ -206,27 +201,19 @@ const LoginPage = () => {
             : 'Testar Ligação à API'}
         </button>
 
-        {/* Resultado do teste de API */}
         {apiHealthDetail && (
           <div className={`rounded-xl border p-3 text-xs font-mono space-y-1 ${
             apiHealth === 'ok'
               ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
               : 'bg-red-500/5 border-red-500/20 text-red-400'
           }`}>
-            <p><span className="text-slate-500">URL:</span> {apiHealthDetail.url || apiHealthDetail.url}</p>
-            {apiHealthDetail.status && (
-              <p><span className="text-slate-500">Status:</span> {apiHealthDetail.status}</p>
-            )}
-            {apiHealthDetail.body && (
-              <p><span className="text-slate-500">Resposta:</span> {apiHealthDetail.body}</p>
-            )}
-            {apiHealthDetail.error && (
-              <p><span className="text-slate-500">Erro:</span> {apiHealthDetail.error}</p>
-            )}
+            <p><span className="text-slate-500">URL:</span> {apiHealthDetail.url}</p>
+            {apiHealthDetail.status && <p><span className="text-slate-500">Status:</span> {apiHealthDetail.status}</p>}
+            {apiHealthDetail.body && <p><span className="text-slate-500">Resposta:</span> {apiHealthDetail.body}</p>}
+            {apiHealthDetail.error && <p><span className="text-slate-500">Erro:</span> {apiHealthDetail.error}</p>}
           </div>
         )}
 
-        {/* PAINEL DE DIAGNÓSTICO — aparece quando o login falha */}
         {diag && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3 text-left">
             <div className="flex items-center gap-2 text-red-400 text-xs font-bold uppercase tracking-wider">
@@ -235,51 +222,34 @@ const LoginPage = () => {
             </div>
 
             <div className="space-y-1.5 text-xs font-mono">
-              <p>
-                <span className="text-slate-500">Mensagem:</span>{' '}
-                <span className="text-red-300">{diag.message}</span>
-              </p>
-              <p>
-                <span className="text-slate-500">Status HTTP:</span>{' '}
-                <span className={diag.status >= 400 ? 'text-red-400' : 'text-emerald-400'}>
-                  {diag.status} {diag.statusText}
-                </span>
-              </p>
-              <p>
-                <span className="text-slate-500">Método:</span>{' '}
-                <span className="text-cyan-400">{diag.method}</span>
-              </p>
-              <p>
-                <span className="text-slate-500">URL chamada:</span>{' '}
-                <span className="text-cyan-400 break-all">{diag.fullUrl || diag.url}</span>
-              </p>
+              <p><span className="text-slate-500">Mensagem:</span> <span className="text-red-300">{diag.message}</span></p>
+              <p><span className="text-slate-500">Status HTTP:</span> <span className={diag.status >= 400 ? 'text-red-400' : 'text-emerald-400'}>{diag.status} {diag.statusText}</span></p>
+              <p><span className="text-slate-500">Método:</span> <span className="text-cyan-400">{diag.method}</span></p>
+              <p><span className="text-slate-500">URL:</span> <span className="text-cyan-400 break-all">{diag.fullUrl}</span></p>
 
               {diag.isNetworkError && (
                 <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300">
                   <p className="font-bold">Erro de Rede / CORS</p>
-                  <p className="text-[0.65rem] mt-0.5">
-                    O browser bloqueou a requisição antes de chegar à API.
-                    Verifica se o backend tem CORS habilitado para o domínio do frontend.
-                  </p>
+                  <p className="text-[0.65rem]">O browser bloqueou a requisição antes de chegar à API.</p>
                 </div>
               )}
 
               {diag.requestData && (
                 <div>
                   <p className="text-slate-500 mb-0.5">Request Body:</p>
-                  <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-emerald-400 overflow-x-auto">
-                    {JSON.stringify(diag.requestData, null, 2)}
-                  </pre>
+                  <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-emerald-400 overflow-x-auto">{JSON.stringify(diag.requestData, null, 2)}</pre>
                 </div>
               )}
 
               {diag.responseData && (
                 <div>
-                  <p className="text-slate-500 mb-0.5">Response Body:</p>
-                  <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-amber-400 overflow-x-auto">
-                    {JSON.stringify(diag.responseData, null, 2)}
-                  </pre>
+                  <p className="text-slate-500 mb-0.5">Response Body (o que a API devolveu):</p>
+                  <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-amber-400 overflow-x-auto">{typeof diag.responseData === 'string' ? diag.responseData : JSON.stringify(diag.responseData, null, 2)}</pre>
                 </div>
+              )}
+
+              {!diag.responseData && !diag.isNetworkError && (
+                <p className="text-amber-400 text-[0.65rem]">A API não devolveu body na resposta.</p>
               )}
             </div>
           </div>
