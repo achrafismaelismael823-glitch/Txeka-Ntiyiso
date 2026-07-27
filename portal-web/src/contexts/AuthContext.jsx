@@ -14,39 +14,78 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const handleLoginError = (error) => {
-    authService.logout();
-    setUser(null);
-    throw error;
-  };
-
   const login = useCallback(async (institutionId, password) => {
     try {
-      const { data } = await endpoints.auth.login({ institution_id: institutionId, password });
-      if (!data.access_token) throw new Error('Token não recebido');
+      const response = await endpoints.auth.login({ institution_id: institutionId, password });
+      let data = response.data;
 
-      authService.setToken(data.access_token);
-      const userData = { ...data.institution, role: 'institution', id: data.institution?.id, token: data.access_token };
+      // Se a API retornar string em vez de JSON, faz parse
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch { /* ignora */ }
+      }
+
+      const token = data?.access_token || data?.token;
+      if (!token) {
+        const err = new Error('Token não recebido');
+        err.apiResponse = data;
+        err.apiStatus = response.status;
+        err.apiUrl = response.config?.url;
+        err.apiBaseURL = response.config?.baseURL;
+        throw err;
+      }
+
+      authService.setToken(token);
+      const userData = {
+        ...data.institution,
+        role: data.institution?.role || 'institution',
+        id: data.institution?.id || institutionId,
+        token: token,
+      };
       authService.setUser(userData);
       setUser(userData);
       return data;
     } catch (error) {
-      handleLoginError(error);
+      authService.logout();
+      setUser(null);
+      throw error;
     }
   }, []);
 
   const adminLogin = useCallback(async (email, password) => {
     try {
-      const { data } = await endpoints.auth.adminLogin(email, password);
-      if (!data.access_token) throw new Error('Token não recebido');
+      const response = await endpoints.auth.adminLogin(email, password);
+      let data = response.data;
 
-      authService.setToken(data.access_token);
-      const userData = { id: 'admin', name: 'Administrador', email, role: 'admin', token: data.access_token };
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch { /* ignora */ }
+      }
+
+      const token = data?.access_token || data?.token;
+      if (!token) {
+        const err = new Error('Token não recebido');
+        err.apiResponse = data;
+        err.apiStatus = response.status;
+        err.apiUrl = response.config?.url;
+        err.apiBaseURL = response.config?.baseURL;
+        throw err;
+      }
+
+      authService.setToken(token);
+      const userData = {
+        id: 'admin',
+        name: 'Administrador Txeka Ntiyiso',
+        email,
+        role: 'admin',
+        token: token,
+        expires_in_days: data?.expires_in_days || 90,
+      };
       authService.setUser(userData);
       setUser(userData);
       return data;
     } catch (error) {
-      handleLoginError(error);
+      authService.logout();
+      setUser(null);
+      throw error;
     }
   }, []);
 
