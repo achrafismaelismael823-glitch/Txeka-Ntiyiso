@@ -2,9 +2,9 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import DashboardLayout from './components/layout/DashboardLayout';
+import DashboardLayout from './layouts/DashboardLayout'; // ← CORRIGIDO: era ./components/layout/
 
-// Lazy loading para otimizar bundle (CRA suporta React.lazy + Suspense)
+// Lazy loading
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 const DocumentsPage = React.lazy(() => import('./pages/DocumentsPage'));
@@ -45,11 +45,9 @@ const PublicRoute = ({ children }) => {
 
 const AppRoutes = () => (
   <Routes>
-    {/* Rotas públicas */}
     <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
     <Route path="/verify/:hash?" element={<VerifyPage />} />
     
-    {/* Rotas protegidas com layout */}
     <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
       <Route path="/" element={<DashboardPage />} />
       <Route path="/documents" element={<DocumentsPage />} />
@@ -57,7 +55,6 @@ const AppRoutes = () => (
       <Route path="/audit" element={<AuditPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       
-      {/* Apenas instituição */}
       <Route path="/bulk-emit" element={
         <ProtectedRoute institutionOnly><BulkEmitPage /></ProtectedRoute>
       } />
@@ -65,7 +62,6 @@ const AppRoutes = () => (
         <ProtectedRoute institutionOnly><CreditsPage /></ProtectedRoute>
       } />
       
-      {/* Apenas admin */}
       <Route path="/institutions" element={
         <ProtectedRoute adminOnly><InstitutionsPage /></ProtectedRoute>
       } />
