@@ -29,7 +29,7 @@ const ProtectedRoute = ({ children, adminOnly, institutionOnly }) => {
   const location = useLocation();
 
   if (loading) return <PageLoader />;
-  if (!isAuthenticated()) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
   if (institutionOnly && !isInstitution) return <Navigate to="/" replace />;
@@ -40,7 +40,7 @@ const ProtectedRoute = ({ children, adminOnly, institutionOnly }) => {
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <PageLoader />;
-  if (isAuthenticated()) return <Navigate to="/" replace />;
+  if (isAuthenticated) return <Navigate to="/" replace />;
   return children;
 };
 
