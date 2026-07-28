@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { NotificationContext } from '../contexts/NotificationContext';
+import { endpoints } from '../services/api';
 import {
   ShieldCheck, Building2, User, Eye, EyeOff, Loader2,
   Wifi, WifiOff, AlertTriangle, Server
@@ -25,22 +26,19 @@ const LoginPage = () => {
   const [apiHealth, setApiHealth] = useState(null);
   const [apiHealthDetail, setApiHealthDetail] = useState(null);
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
-
   const testApiConnection = async () => {
     setApiHealth('checking');
     setApiHealthDetail(null);
     setDiag(null);
     try {
-      const healthUrl = API_BASE + '/health';
-      const res = await fetch(healthUrl, { method: 'GET', mode: 'cors' });
+      const res = await endpoints.health.check();
       const text = await res.text().catch(() => '');
       setApiHealth('ok');
-      setApiHealthDetail({ status: res.status, url: healthUrl, body: text });
+      setApiHealthDetail({ status: res.status, body: text });
       notify('API está online!', 'success');
     } catch (err) {
       setApiHealth('fail');
-      setApiHealthDetail({ error: err.message, url: API_BASE });
+      setApiHealthDetail({ error: err.message });
       notify('API não responde', 'error');
     }
   };
@@ -206,7 +204,6 @@ const LoginPage = () => {
               ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
               : 'bg-red-500/5 border-red-500/20 text-red-400'
           }`}>
-            <p><span className="text-slate-500">URL:</span> {apiHealthDetail.url}</p>
             {apiHealthDetail.status && <p><span className="text-slate-500">Status:</span> {apiHealthDetail.status}</p>}
             {apiHealthDetail.body && <p><span className="text-slate-500">Resposta:</span> {apiHealthDetail.body.substring(0, 200)}{apiHealthDetail.body.length > 200 ? '...' : ''}</p>}
             {apiHealthDetail.error && <p><span className="text-slate-500">Erro:</span> {apiHealthDetail.error}</p>}
@@ -219,36 +216,28 @@ const LoginPage = () => {
               <AlertTriangle className="w-4 h-4" />
               Diagnóstico do Erro
             </div>
-
             <div className="space-y-1.5 text-xs font-mono">
               <p><span className="text-slate-500">Mensagem:</span> <span className="text-red-300">{diag.message}</span></p>
               <p><span className="text-slate-500">Status HTTP:</span> <span className={typeof diag.status === 'number' && diag.status >= 400 ? 'text-red-400' : 'text-emerald-400'}>{diag.status} {diag.statusText}</span></p>
               <p><span className="text-slate-500">Método:</span> <span className="text-cyan-400">{diag.method}</span></p>
               <p><span className="text-slate-500">URL:</span> <span className="text-cyan-400 break-all">{diag.fullUrl}</span></p>
-
               {diag.isNetworkError && (
                 <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300">
                   <p className="font-bold">Erro de Rede / CORS</p>
                   <p className="text-[0.65rem]">O browser bloqueou a requisição antes de chegar à API.</p>
                 </div>
               )}
-
               {diag.requestData && (
                 <div>
                   <p className="text-slate-500 mb-0.5">Request Body:</p>
                   <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-emerald-400 overflow-x-auto">{JSON.stringify(diag.requestData, null, 2)}</pre>
                 </div>
               )}
-
               {diag.responseData && (
                 <div>
-                  <p className="text-slate-500 mb-0.5">Response Body (o que a API devolveu):</p>
+                  <p className="text-slate-500 mb-0.5">Response Body:</p>
                   <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-amber-400 overflow-x-auto">{typeof diag.responseData === 'string' ? diag.responseData : JSON.stringify(diag.responseData, null, 2)}</pre>
                 </div>
-              )}
-
-              {!diag.responseData && !diag.isNetworkError && (
-                <p className="text-amber-400 text-[0.65rem]">A API não devolveu body na resposta.</p>
               )}
             </div>
           </div>
@@ -265,4 +254,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-
