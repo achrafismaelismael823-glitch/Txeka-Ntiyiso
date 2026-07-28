@@ -46,35 +46,35 @@ jobs:
               }
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
-                repo: context.repo,
+                repo: context.repo.repo,
                 issue_number: pr.number,
                 body: msg
               });
               return;
             }
 
-            // --- TRATAMENTO SEGURO DE STRINGS ---
+            // --- TRATAMENTO SEGURO ---
             let body = "";
             let userLogin = "";
 
             if (context.payload.comment) {
               body = context.payload.comment.body || "";
-              userLogin = context.payload.comment.user? context.payload.comment.user.login : "";
+              userLogin = context.payload.comment.user?.login || "";
             } else if (context.payload.issue) {
               body = context.payload.issue.body || "";
-              userLogin = context.payload.issue.user? context.payload.issue.user.login : "";
+              userLogin = context.payload.issue.user?.login || "";
             }
 
-            const issueNumber = context.payload.issue.number;
+            const issueNumber = context.payload.issue?.number;
             let finalMsg = `🦀 **Txeka Claw Bot v4.5** | @${userLogin}\n\n`;
             let executouComando = false;
 
             function rodarComando(cmd) {
               try { return execSync(cmd, { encoding: 'utf8' }).trim(); }
-              catch (e) { return `❌ Erro na execução interna: ${e.message}`; }
+              catch (e) { return `❌ Erro: ${e.message}`; }
             }
 
-            // 0. @claw estrutura
+            // 1. @claw estrutura
             if (body.includes('@claw estrutura')) {
               executouComando = true;
               const targetPath = body.replace('@claw estrutura', '').trim() || '.';
@@ -88,153 +88,159 @@ jobs:
               } catch (e) { finalMsg += `❌ Erro: Pasta não encontrada \`${targetPath}\``; }
             }
 
-            // 1. @claw ver
+            // 2. @claw ver
             if (body.includes('@claw ver ')) {
               executouComando = true;
               const target = body.replace('@claw ver ', '').trim();
               try {
                 if (target && fs.existsSync(target) && fs.statSync(target).isFile()) {
                   const content = fs.readFileSync(target, 'utf8');
-                  finalMsg += `**Conteúdo de \`${target}\`:**\n\`\n${content.slice(0, 4000)}\n\`\`\``;
-                } else { finalMsg += `❌ Arquivo inválido ou não encontrado: \`${target}\``; }
+                  finalMsg += `**Conteúdo de \`${target}\`:**\n\`\n${content.slice(0, 4000)}\n\`\``;
+                } else { finalMsg += `❌ Arquivo inválido: \`${target}\``; }
               } catch(e) { finalMsg += `❌ Erro: ${e.message}`; }
             }
 
-            // 2. @claw busca
+            // 3. @claw busca
             if (body.includes('@claw busca ')) {
               executouComando = true;
               const termo = body.replace('@claw busca ', '').trim().replace(/['"]/g, '');
               if (termo) {
-                finalMsg += `🔍 **Resultado da busca por: "${termo}"**\n\n`;
-                const res = rodarComando(`git grep -n "${termo}" || echo "Nenhuma ocorrência encontrada."`);
+                finalMsg += `🔍 **Busca por: "${termo}"**\n\n`;
+                const res = rodarComando(`git grep -n "${termo}" || echo "Nenhuma ocorrência."`);
                 finalMsg += `\`\`\`\n${res.slice(0, 3000)}\n\`\`\``;
               }
             }
 
-            // 3. @claw diff
+            // 4. @claw diff
             if (body.includes('@claw diff')) {
               executouComando = true;
-              finalMsg += `📉 **Diff comparado com a branch padrão:**\n\n`;
+              finalMsg += `📉 **Diff vs branch padrão:**\n\n`;
               const res = rodarComando(`git diff origin/${context.payload.repository.default_branch} --stat || echo "Sem diferenças."`);
-              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+              finalMsg += `\`\n${res}\n\`\``;
             }
 
-            // 4. @claw tamanho
+            // 5. @claw tamanho
             if (body.includes('@claw tamanho ')) {
               executouComando = true;
               const target = body.replace('@claw tamanho ', '').trim();
-              finalMsg += `⚖️ **Análise de tamanho de: \`${target}\`**\n\n`;
+              finalMsg += `⚖️ **Tamanho de: \`${target}\`**\n\n`;
               if (target && fs.existsSync(target)) {
                 const linhas = rodarComando(`find ${target} -type f -exec wc -l {} + | tail -n 1`);
                 const espaco = rodarComando(`du -sh ${target}`);
-                finalMsg += `* **Espaço em disco:** \`${espaco}\`\n* **Contagem de linhas:** \`${linhas}\``;
-              } else { finalMsg += `❌ Caminho inválido ou não encontrado.`; }
+                finalMsg += `* **Espaço:** \`${espaco}\`\n* **Linhas:** \`${linhas}\``;
+              } else { finalMsg += `❌ Caminho inválido.`; }
             }
 
-            // 5. @claw status ci
+            // 6. @claw status ci
             if (body.includes('@claw status ci')) {
               executouComando = true;
               try {
-                const runs = await github.rest.actions.listWorkflowRunsForRepo({ owner: context.repo.owner, repo: context.repo, per_page: 10 });
-                const ciRun = runs.data.workflow_runs.find(r => r.name.includes('Txeka Ntiyiso'));
+                const runs = await github.rest.actions.listWorkflowRunsForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: 30
+                });
+                const ciRun = runs.data.workflow_runs.find(r => r.name.toLowerCase().includes('txeka'));
                 if (ciRun) {
-                  finalMsg += `📊 **Status do Pipeline (${ciRun.name}):** ${ciRun.conclusion === 'success'? '✅ SUCESSO' : '❌ FALHA'}\n`;
-                  finalMsg += `* **Logs:** [Link para a execução](${ciRun.html_url})`;
-                } else { finalMsg += `⚠️ Pipeline "Txeka Ntiyiso" não localizado no histórico recente.`; }
-              } catch(e) { finalMsg += `❌ Erro ao ler Actions: ${e.message}`; }
+                  finalMsg += `📊 **Pipeline (${ciRun.name}):** ${ciRun.conclusion === 'success'? '✅ SUCESSO' : '❌ FALHA'}\n`;
+                  finalMsg += `* **Logs:** [Ver execução](${ciRun.html_url})`;
+                } else { finalMsg += `⚠️ Nenhum histórico do pipeline localizado.`; }
+              } catch(e) { finalMsg += `❌ Erro: ${e.message}`; }
             }
 
-            // 6. @claw logs
+            // 7. @claw logs
             if (body.includes('@claw logs')) {
               executouComando = true;
-              finalMsg += `📋 **Status Git de Telemetria:**\n\n`;
+              finalMsg += `📋 **Últimos 3 commits:**\n\n`;
               const res = rodarComando(`git log -n 3 --oneline`);
-              finalMsg += `\`\n${res}\n\`\`\``;
+              finalMsg += `\`\`\`\n${res}\n\`\`\``;
             }
 
-            // 7. @claw historico
+            // 8. @claw historico
             if (body.includes('@claw historico')) {
               executouComando = true;
-              finalMsg += `⏳ **Histórico Recente de Execuções:**\n\n`;
+              finalMsg += `⏳ **Últimas 5 execuções:**\n\n`;
               try {
                 const runs = await github.rest.actions.listWorkflowRunsForRepo({ owner: context.repo.owner, repo: context.repo.repo, per_page: 5 });
                 runs.data.workflow_runs.forEach(r => {
-                  finalMsg += `* [${r.conclusion === 'success'? '✅' : '❌'}] **${r.name}** - #${r.run_number} ([Logs](${r.html_url}))\n`;
+                  finalMsg += `* [${r.conclusion === 'success'? '✅' : '❌'}] **${r.name}** - #${r.run_number}\n`;
                 });
               } catch(e) { finalMsg += `❌ Erro: ${e.message}`; }
             }
 
-            // 8. @claw ambiente
+            // 9. @claw ambiente
             if (body.includes('@claw ambiente')) {
               executouComando = true;
-              finalMsg += `💻 **Especificações do Ambiente do Runner:**\n\n`;
+              finalMsg += `💻 **Ambiente Runner:**\n\n`;
               const pyVer = rodarComando(`python3 --version || echo "Não instalado"`);
               const nodeVer = process.version;
               const dockerVer = rodarComando(`docker --version || echo "Não instalado"`);
               finalMsg += `* **Python:** \`${pyVer}\`\n* **Node.js:** \`${nodeVer}\`\n* **Docker:** \`${dockerVer}\``;
             }
 
-            // 9. @claw commits
+            // 10. @claw commits
             if (body.includes('@claw commits')) {
               executouComando = true;
               const valorTxt = body.replace('@claw commits', '').trim();
               const qtd = parseInt(valorTxt) || 5;
-              finalMsg += `📜 **Últimos ${qtd} Commits na Branch:**\n\n`;
+              finalMsg += `📜 **Últimos ${qtd} commits:**\n\n`;
               const res = rodarComando(`git log -n ${qtd} --pretty=format:"* %h - %an: %s (%cr)"`);
-              finalMsg += res;
-            }
-
-            // 10. @claw autores
-            if (body.includes('@claw autores')) {
-              executouComando = true;
-              finalMsg += `👥 **Contribuintes do Repositório (Ranking):**\n\n`;
-              const res = rodarComando(`git shortlog -sn --all`);
               finalMsg += `\`\`\`\n${res}\n\`\`\``;
             }
 
-            // 11. @claw branches
-            if (body.includes('@claw branches')) {
+            // 11. @claw autores
+            if (body.includes('@claw autores')) {
               executouComando = true;
-              finalMsg += `🌿 **Branches Ativas Rastreadas:**\n\n`;
-              const res = rodarComando(`git branch -r | grep -v HEAD`);
+              finalMsg += `👥 **Ranking de contribuintes:**\n\n`;
+              const res = rodarComando(`git shortlog -sn --all`);
               finalMsg += `\`\n${res}\n\`\``;
             }
 
-            // 12. @claw tags
+            // 12. @claw branches
+            if (body.includes('@claw branches')) {
+              executouComando = true;
+              finalMsg += `🌿 **Branches remotas:**\n\n`;
+              const res = rodarComando(`git branch -r | grep -v HEAD`);
+              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+            }
+
+            // 13. @claw tags
             if (body.includes('@claw tags')) {
               executouComando = true;
-              finalMsg += `🏷️ **Últimas Tags do Git:**\n\n`;
-              const res = rodarComando(`git tag -l | tail -n 5 || echo "Nenhuma tag criada."`);
-              finalMsg += `\`\`\n${res}\n\`\`\``;
+              finalMsg += `🏷️ **Últimas tags:**\n\n`;
+              const res = rodarComando(`git tag -l | tail -n 5 || echo "Nenhuma tag."`);
+              finalMsg += `\`\n${res}\n\`\`\``;
             }
 
-            // 13. @claw dependencias
+            // 14. @claw dependencias - CORRIGIDO
             if (body.includes('@claw dependencias')) {
               executouComando = true;
-              finalMsg += `📦 **Arquivos de Dependências Localizados:**\n\n`;
+              finalMsg += `📦 **Dependências:**\n\n`;
               const reqExist = fs.existsSync('api-gateway/requirements.txt') || fs.existsSync('requirements.txt');
-              finalMsg += `* **Python (requirements.txt):** ${reqExist? '✅ Localizado' : '❌ Não encontrado'}\n`;
+              finalMsg += `* **Python requirements.txt:** ${reqExist? '✅' : '❌'}\n`;
             }
 
-            // 14. @claw todo - CORRIGIDO
+            // 15. @claw todo - FALTAVA ESSE
             if (body.includes('@claw todo')) {
               executouComando = true;
-              finalMsg += `📝 **TODOs encontrados no código:**\n\n`;
+              finalMsg += `📝 **TODOs no código:**\n\n`;
               const res = rodarComando(`git grep -i "TODO" || echo "Nenhum TODO encontrado."`);
-              finalMsg += `\`\`\`\n${res.slice(0, 3000)}\n\`\``;
+              finalMsg += `\`\n${res.slice(0, 3000)}\n\`\``;
             }
 
-            // MENSAGEM PADRÃO
+            // AJUDA
             if (!executouComando) {
-              finalMsg += `**Comandos disponíveis:**\n`;
-              finalMsg += `* \`@claw estrutura [pasta]\`\n* \`@claw ver [arquivo]\`\n* \`@claw busca [termo]\`\n* \`@claw diff\`\n* \`@claw logs\`\n* \`@claw historico\`\n* \`@claw todo\``;
+              finalMsg += `**15 Comandos disponíveis:**\n`;
+              finalMsg += `1. estrutura 2. ver 3. busca 4. diff 5. tamanho 6. status ci\n`;
+              finalMsg += `7. logs 8. historico 9. ambiente 10. commits 11. autores\n`;
+              finalMsg += `12. branches 13. tags 14. dependencias 15. todo`;
             }
 
-            // ENVIAR RESPOSTA
+            // ENVIAR RESPOSTA - FALTAVA ESSE
             if (issueNumber) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
-                repo: context.repo.repo,
+                repo: context.repo,
                 issue_number: issueNumber,
                 body: finalMsg
               });
