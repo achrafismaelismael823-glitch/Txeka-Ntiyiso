@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { endpoints } from '../services/api';
 import { QRCodeSVG } from 'qrcode.react';
@@ -58,7 +58,6 @@ const VerifyPage = () => {
       };
       verifyOnLoad();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlHash]);
 
   const d = result?.dados_publicos || result;
@@ -204,3 +203,4 @@ const VerifyPage = () => {
 };
 
 export default VerifyPage;
+
