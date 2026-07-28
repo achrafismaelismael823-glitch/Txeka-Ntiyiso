@@ -32,25 +32,39 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, [decodeAndSetUser]);
 
+  const extractToken = (data) => {
+    // Suporta múltiplos formatos de resposta da API
+    if (data?.access_token) return data.access_token;
+    if (data?.token) return data.token;
+    if (data?.data?.access_token) return data.data.access_token;
+    if (data?.data?.token) return data.data.token;
+    if (typeof data === 'string' && data.startsWith('eyJ')) return data;
+    return null;
+  };
+
   const login = useCallback(async (institutionId, password) => {
-    const { data } = await endpoints.auth.login({
+    const response = await endpoints.auth.login({
       institution_id: institutionId,
       password,
     });
-    if (data.access_token) {
-      authService.setToken(data.access_token);
+    const token = extractToken(response.data);
+    if (token) {
+      authService.setToken(token);
       decodeAndSetUser();
+      return { success: true, token };
     }
-    return data;
+    return { success: false, data: response.data };
   }, [decodeAndSetUser]);
 
   const adminLogin = useCallback(async (email, password) => {
-    const { data } = await endpoints.auth.adminLogin(email, password);
-    if (data.access_token) {
-      authService.setToken(data.access_token);
+    const response = await endpoints.auth.adminLogin(email, password);
+    const token = extractToken(response.data);
+    if (token) {
+      authService.setToken(token);
       decodeAndSetUser();
+      return { success: true, token };
     }
-    return data;
+    return { success: false, data: response.data };
   }, [decodeAndSetUser]);
 
   const logout = useCallback(() => {
@@ -65,4 +79,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
