@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
   Activity, Loader2, AlertTriangle, Search, X, FileText,
-  Calendar, Hash, Building2, Clock, Filter
+  Building2, Clock, Filter
 } from 'lucide-react';
 
 const AuditPage = () => {
@@ -16,40 +16,44 @@ const AuditPage = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL'); // ALL, EMIT, VERIFY, REVOKE, LOGIN
 
-  useEffect(() => {
-    fetchLogs();
-  }, [isAdmin, isInstitution, institutionId]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = { limit: 200 };
       if (filter !== 'ALL') params.action = filter;
       // Instituição só vê os seus logs
       if (isInstitution && institutionId) {
         params.institution_id = institutionId;
       }
-      const { data } = await api.get('/api/v1/audit/logs', { params });
-      let items = Array.isArray(data) ? data : (data.items || data.logs || []);
+      // CORREÇÃO: path sem /api/v1 (já está na baseURL)
+      const { data } = await api.get('/audit/logs', { params });
+      let items = Array.isArray(data) ? data : (data.items || data.logs || data.results || []);
       setLogs(items);
     } catch (err) {
-      setError('Erro ao carregar logs de auditoria');
+      const msg = err.normalizedMessage || err.message || 'Erro ao carregar logs';
+      setError(msg);
+      notify(msg, 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, isInstitution, institutionId, notify]);
 
   useEffect(() => {
     fetchLogs();
-  }, [filter]);
+  }, [fetchLogs]);
 
   const filtered = logs.filter((log) => {
     const term = search.toLowerCase();
-    return !term ||
+    if (!term) return true;
+    const desc = (log.description || log.details || log.message || log.detail || '').toLowerCase();
+    const hash = (log.doc_hash || log.document_hash || log.hash || log.doc_id || '').toLowerCase();
+    return (
       (log.action || '').toLowerCase().includes(term) ||
       (log.institution_id || '').toLowerCase().includes(term) ||
-      (log.doc_hash || '').toLowerCase().includes(term) ||
-      (log.description || '').toLowerCase().includes(term);
+      hash.includes(term) ||
+      desc.includes(term)
+    );
   });
 
   const actionColors = {
@@ -58,6 +62,25 @@ const AuditPage = () => {
     REVOKE: 'bg-red-500/10 text-red-400',
     LOGIN: 'bg-purple-500/10 text-purple-400',
     BULK_EMIT: 'bg-amber-500/10 text-amber-400',
+  };
+
+  // Helpers para mostrar dados mesmo com nomes de campo diferentes
+  const getDescription = (log) => {
+    return log.description || log.details || log.message || log.detail || '-';
+  };
+
+  const getHash = (log) => {
+    return log.doc_hash || log.document_hash || log.hash || log.doc_id || null;
+  };
+
+  const getDate = (log) => {
+    const raw = log.timestamp || log.created_at || log.date || log.time;
+    if (!raw) return '—';
+    try {
+      return new Date(raw).toLocaleString('pt-MZ');
+    } catch {
+      return String(raw);
+    }
   };
 
   if (loading) {
@@ -129,43 +152,45 @@ const AuditPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.03]">
-                {filtered.map((log, idx) => (
-                  <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[0.65rem] font-bold uppercase ${actionColors[log.action] || 'bg-white/[0.03] text-slate-400'}`}>
-                        <Activity className="w-3 h-3" />
-                        {log.action}
-                      </span>
-                    </td>
-                    {isAdmin && (
+                {filtered.map((log, idx) => {
+                  const hash = getHash(log);
+                  return (
+                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <Building2 className="w-3 h-3 text-slate-500" />
-                          <span className="text-xs font-mono text-slate-400 uppercase">{log.institution_id || '-'}</span>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[0.65rem] font-bold uppercase ${actionColors[log.action] || 'bg-white/[0.03] text-slate-400'}`}>
+                          <Activity className="w-3 h-3" />
+                          {log.action}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3 h-3 text-slate-500" />
+                            <span className="text-xs font-mono text-slate-400 uppercase">{log.institution_id || '-'}</span>
+                          </div>
+                        </td>
+                      )}
+                      <td className="px-5 py-3.5">
+                        <p className="text-sm text-slate-100">{getDescription(log)}</p>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {hash ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-mono text-cyan-400">{hash.substring(0, 12)}...</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <Clock className="w-3 h-3" />
+                          {getDate(log)}
                         </div>
                       </td>
-                    )}
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm text-slate-100">{log.description || '-'}</p>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {log.doc_hash ? (
-                        <div className="flex items-center gap-1.5">
-                          <Hash className="w-3 h-3 text-slate-500" />
-                          <span className="text-xs font-mono text-cyan-400">{(log.doc_hash).substring(0, 12)}...</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-600">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                        <Clock className="w-3 h-3" />
-                        {new Date(log.timestamp || log.created_at).toLocaleString('pt-MZ')}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -181,4 +206,3 @@ const AuditPage = () => {
 };
 
 export default AuditPage;
-
