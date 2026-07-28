@@ -1,92 +1,73 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { isAuthenticated } from './services/auth';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import { ShieldAlert } from 'lucide-react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { useAuth } from './hooks/useAuth';
+import DashboardLayout from './layouts/DashboardLayout';
 
-// Valida acesso a rotas protegidas
-function ProtectedRoute({ children }) {
-  const [isAuth, setIsAuth] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const DocumentsPage = React.lazy(() => import('./pages/DocumentsPage'));
+const EmitPage = React.lazy(() => import('./pages/EmitPage'));
+const BulkEmitPage = React.lazy(() => import('./pages/BulkEmitPage'));
+const VerifyPage = React.lazy(() => import('./pages/VerifyPage'));
+const AuditPage = React.lazy(() => import('./pages/AuditPage'));
+const CreditsPage = React.lazy(() => import('./pages/CreditsPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const InstitutionsPage = React.lazy(() => import('./pages/InstitutionsPage'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 
-  useEffect(() => {
-    setIsAuth(isAuthenticated());
-    setIsLoading(false);
-  }, []);
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-slate-950">
+    <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
+  </div>
+);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-primary flex flex-col items-center justify-center font-sans">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-secondary border-t-transparent mx-auto"></div>
-          <p className="text-xs font-mono tracking-widest text-secondary uppercase">
-            A inicializar canal seguro...
-          </p>
-        </div>
-      </div>
-    );
-  }
+const ProtectedRoute = ({ children, adminOnly, institutionOnly }) => {
+  const { isAuthenticated, isAdmin, isInstitution, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <PageLoader />;
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
+  if (institutionOnly && !isInstitution) return <Navigate to="/" replace />;
+  return children;
+};
 
-  return isAuth ? children : <Navigate to="/login" replace />;
-}
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (isAuthenticated) return <Navigate to="/" replace />;
+  return children;
+};
 
-// Configuração principal de rotas
-export default function App() {
-  return (
-    <Router>
-      <Routes>
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+    <Route path="/verify/:hash?" element={<VerifyPage />} />
+    <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+      <Route path="/" element={<DashboardPage />} />
+      <Route path="/documents" element={<DocumentsPage />} />
+      <Route path="/emit" element={<EmitPage />} />
+      <Route path="/audit" element={<AuditPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/bulk-emit" element={<ProtectedRoute institutionOnly><BulkEmitPage /></ProtectedRoute>} />
+      <Route path="/credits" element={<ProtectedRoute institutionOnly><CreditsPage /></ProtectedRoute>} />
+      <Route path="/institutions" element={<ProtectedRoute adminOnly><InstitutionsPage /></ProtectedRoute>} />
+    </Route>
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
 
-        {/* Rota login */}
-        <Route path="/login" element={<LoginPage />} />
+const App = () => (
+  <BrowserRouter>
+    <AuthProvider>
+      <NotificationProvider>
+        <React.Suspense fallback={<PageLoader />}>
+          <AppRoutes />
+        </React.Suspense>
+      </NotificationProvider>
+    </AuthProvider>
+  </BrowserRouter>
+);
 
-        {/* Rota protegida dashboard */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Redirecionamento inicial */}
-        <Route
-          path="/"
-          element={
-            isAuthenticated() ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-
-        {/* Rota não encontrada */}
-        <Route
-          path="*"
-          element={
-            <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] font-sans p-4">
-              <div className="text-center max-w-sm w-full bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-                <div className="inline-flex p-3 bg-red-50 text-val-error rounded-xl mb-3">
-                  <ShieldAlert className="h-8 w-8" />
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight text-primary">404</h1>
-                <p className="text-sm font-medium text-slate-600 mt-1 mb-5">
-                  O recurso ou ecrã solicitado não existe na rede.
-                </p>
-                <a
-                  href="/"
-                  className="block w-full bg-primary hover:bg-slate-900 text-white font-semibold text-sm py-3 px-4 rounded-xl transition shadow-sm"
-                >
-                  Voltar ao Início Seguro
-                </a>
-              </div>
-            </div>
-          }
-        />
-
-      </Routes>
-    </Router>
-  );
-    }
+export default App;
