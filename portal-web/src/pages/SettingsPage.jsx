@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import { useState, useContext } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
@@ -125,3 +125,4 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
+
