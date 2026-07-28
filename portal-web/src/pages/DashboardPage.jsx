@@ -4,7 +4,7 @@ import { NotificationContext } from '../contexts/NotificationContext';
 import { useAuth } from '../hooks/useAuth';
 import {
   Activity, FileText, ShieldCheck, AlertTriangle, TrendingUp,
-  Users, Clock, CheckCircle2, XCircle, BarChart3
+  Users, CheckCircle2, XCircle, BarChart3, Building2, Lock
 } from 'lucide-react';
 
 const StatCard = ({ icon: Icon, label, value, subtext, color }) => (
@@ -13,9 +13,7 @@ const StatCard = ({ icon: Icon, label, value, subtext, color }) => (
       <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
         <Icon className="w-5 h-5" />
       </div>
-      {subtext && (
-        <span className="text-[0.65rem] text-slate-500">{subtext}</span>
-      )}
+      {subtext && <span className="text-[0.65rem] text-slate-500">{subtext}</span>}
     </div>
     <div>
       <p className="text-2xl font-bold text-slate-100">{value}</p>
@@ -43,9 +41,7 @@ const MiniBarChart = ({ data, label }) => {
                 {d.count}
               </div>
             </div>
-            <span className="text-[0.5rem] text-slate-600 rotate-0">
-              {d.date?.slice(5) || i + 1}
-            </span>
+            <span className="text-[0.5rem] text-slate-600">{d.date?.slice(5) || i + 1}</span>
           </div>
         ))}
       </div>
@@ -65,7 +61,10 @@ const DashboardPage = () => {
       try {
         setLoading(true);
         const params = {};
-        if (!isAdmin && user?.id) params.institution_id = user.id;
+        if (!isAdmin && user?.id) {
+          // Instituição: isolada - stats só da sua instituição
+          params.institution_id = user.id;
+        }
         const { data } = await endpoints.audit.stats(params);
         setStats(data);
       } catch (err) {
@@ -83,11 +82,20 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Dashboard</h1>
-        <p className="text-xs text-slate-500 mt-1">
-          {isAdmin ? 'Visão geral da plataforma' : `Instituição: ${user?.name || user?.id}`}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Dashboard</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            {isAdmin
+              ? 'Visão geral da plataforma Txeka Ntiyiso (Super Admin)'
+              : `Instituição: ${user?.name || user?.id}`}
+          </p>
+        </div>
+        {isAdmin && (
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+            <Lock className="w-3 h-3" /> Super Admin
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -102,27 +110,27 @@ const DashboardPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={FileText}
-              label="Documentos Emitidos"
+              label={isAdmin ? "Documentos Emitidos (Global)" : "Documentos Emitidos"}
               value={s.total_emitted_documents?.toLocaleString('pt-MZ') || 0}
               subtext={`${s.active_documents?.toLocaleString('pt-MZ') || 0} activos`}
               color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
             />
             <StatCard
               icon={ShieldCheck}
-              label="Verificações"
+              label={isAdmin ? "Verificações (Global)" : "Verificações"}
               value={s.total_verifications?.toLocaleString('pt-MZ') || 0}
               subtext={`${v.success_rate_percent || 0}% sucesso`}
               color="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
             />
             <StatCard
               icon={AlertTriangle}
-              label="Documentos Revogados"
+              label={isAdmin ? "Documentos Revogados (Global)" : "Documentos Revogados"}
               value={s.total_revoked_documents?.toLocaleString('pt-MZ') || 0}
               color="bg-red-500/10 text-red-400 border border-red-500/20"
             />
             <StatCard
               icon={Activity}
-              label="Logs Totais"
+              label={isAdmin ? "Logs Totais (Global)" : "Logs da Instituição"}
               value={s.total_logs?.toLocaleString('pt-MZ') || 0}
               subtext={`${s.recent_logs_7d?.toLocaleString('pt-MZ') || 0} últimos 7 dias`}
               color="bg-amber-500/10 text-amber-400 border border-amber-500/20"
@@ -135,7 +143,7 @@ const DashboardPage = () => {
             <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
               <MiniBarChart
                 data={stats?.verifications_by_day || []}
-                label="Verificações por dia (últimos 30 dias)"
+                label={isAdmin ? "Verificações por dia (Global)" : "Verificações por dia (Sua Instituição)"}
               />
             </div>
 
@@ -155,17 +163,10 @@ const DashboardPage = () => {
                         <div className="w-20 h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
                           <div
                             className="h-full bg-cyan-500/40 rounded-full"
-                            style={{
-                              width: `${Math.max(
-                                5,
-                                (count / Math.max(...Object.values(actions))) * 100
-                              )}%`,
-                            }}
+                            style={{ width: `${Math.max(5, (count / Math.max(...Object.values(actions))) * 100)}%` }}
                           />
                         </div>
-                        <span className="text-xs font-mono text-slate-300 w-8 text-right">
-                          {count}
-                        </span>
+                        <span className="text-xs font-mono text-slate-300 w-8 text-right">{count}</span>
                       </div>
                     </div>
                   ))
@@ -174,11 +175,11 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {/* Top instituições (apenas admin) */}
+          {/* Top instituições - SÓ para Admin */}
           {isAdmin && stats?.top_institutions && stats.top_institutions.length > 0 && (
             <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
               <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-                <Users className="w-3.5 h-3.5" /> Top Instituições
+                <Users className="w-3.5 h-3.5" /> Top Instituições (Global)
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {stats.top_institutions.map((inst, i) => (
@@ -203,7 +204,8 @@ const DashboardPage = () => {
           <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Taxa de sucesso nas verificações
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {isAdmin ? "Taxa de sucesso global" : "Taxa de sucesso da sua instituição"}
               </div>
               <span className="text-lg font-bold text-emerald-400">{v.success_rate_percent || 0}%</span>
             </div>
