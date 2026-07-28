@@ -62,14 +62,14 @@ const SettingsPage = () => {
             <p className="text-sm text-slate-200">{user?.name || '—'}</p>
           </div>
           <div className="space-y-1">
-            <label className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Plano</label>
-            <p className="text-sm text-slate-200 capitalize">{user?.subscription_plan || 'Standard'}</p>
+            <label className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Role</label>
+            <p className="text-sm text-slate-200 capitalize">{user?.role || '—'}</p>
           </div>
           <div className="space-y-1">
             <label className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Estado</label>
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${user?.status === 'active' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <p className="text-sm text-slate-200 capitalize">{user?.status || 'active'}</p>
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <p className="text-sm text-slate-200">Activo</p>
             </div>
           </div>
         </div>
@@ -125,4 +125,3 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
-
