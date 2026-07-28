@@ -1,12 +1,9 @@
 import axios from 'axios';
 import { authService } from './auth';
 
-// Lê do .env — o teu .env tem: https://txeka-ntiyiso-api.onrender.com/api/v1
-// Normalizamos para evitar duplicação de /api/v1
+// Lê do .env e normaliza: remove /api/v1 do final se existir
 const rawUrl = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
-const API_BASE_URL = rawUrl.replace(/\/api\/v1\/?$/, '');
-
-console.log('[API] Base URL configurada:', `${API_BASE_URL}/api/v1`);
+const API_BASE_URL = rawUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -14,19 +11,15 @@ export const api = axios.create({
   timeout: 30000,
 });
 
-// Interceptor de requisição
 api.interceptors.request.use(
   (config) => {
     const token = authService.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor de resposta
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,7 +27,6 @@ api.interceptors.response.use(
     const data = error.response?.data;
     const url = error.config?.url || '';
 
-    // NÃO redirecionar em 401 se for login (senão nunca vemos o erro real)
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin/login')) {
       authService.logout();
       window.location.href = '/login?expired=1';
@@ -53,10 +45,8 @@ api.interceptors.response.use(
 
 export const endpoints = {
   auth: {
-    // Admin login — tenta query params (conforme Swagger que mostraste)
     adminLogin: (email, password) =>
       api.post(`/auth/admin/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`),
-    // Institution login — body JSON
     login: (data) => api.post('/auth/login', data),
     refresh: () => api.post('/auth/refresh'),
   },
