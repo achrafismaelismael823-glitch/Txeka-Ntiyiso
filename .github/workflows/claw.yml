@@ -53,11 +53,19 @@ jobs:
               return;
             }
 
-            // --- FLUXO DE COMANDOS NAS ISSUES ---
-            const body = context.payload.comment ? context.payload.comment.body : context.payload.issue.body;
-            const issueNumber = context.payload.issue.number;
-            const userLogin = context.payload.comment ? context.payload.comment.user.login : context.payload.issue.user.login;
+            // --- TRATAMENTO SEGURO DE STRINGS (CORREÇÃO CRÍTICA) ---
+            let body = "";
+            let userLogin = "";
             
+            if (context.payload.comment) {
+              body = context.payload.comment.body || "";
+              userLogin = context.payload.comment.user ? context.payload.comment.user.login : "";
+            } else if (context.payload.issue) {
+              body = context.payload.issue.body || "";
+              userLogin = context.payload.issue.user ? context.payload.issue.user.login : "";
+            }
+
+            const issueNumber = context.payload.issue.number;
             let finalMsg = `🦀 **Txeka Claw Bot v4.5** | @${userLogin}\n\n`;
             let executouComando = false;
 
@@ -66,7 +74,7 @@ jobs:
               catch (e) { return `❌ Erro na execução interna: ${e.message}`; }
             }
 
-            // Comando original estruturado com replace seguro
+            // Comando estrutura
             if (body.includes('@claw estrutura')) {
               executouComando = true;
               const targetPath = body.replace('@claw estrutura', '').trim() || '.';
@@ -210,6 +218,4 @@ jobs:
 
             // 15. @claw todo
             if (body.includes('@claw todo')) {
-              executouComando = true;
-              finalMsg += `📝 **Pendências Técnicas Encontradas (TODO/FIXME):**\n\n`;
 
