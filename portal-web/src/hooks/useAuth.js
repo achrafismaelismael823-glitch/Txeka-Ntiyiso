@@ -1,49 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useCallback, useEffect } from 'react';
+import { endpoints } from '../services/api';
+import { authService } from '../hooks/useAuth';
 
-const TOKEN_KEY = 'txeka_token';
+export const AuthContext = createContext(null);
 
-// Decodifica JWT payload (base64url)
-const decodeJwt = (token) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
-};
-
-export const authService = {
-  getToken: () => localStorage.getItem(TOKEN_KEY),
-  setToken: (token) => localStorage.setItem(TOKEN_KEY, token),
-  removeToken: () => localStorage.removeItem(TOKEN_KEY),
-  logout: () => {
-    localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/login';
-  },
-  decodeToken: () => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    return token ? decodeJwt(token) : null;
-  },
-};
-
-export const useAuth = () => {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
+  const decodeAndSetUser = useCallback(() => {
     const payload = authService.decodeToken();
     if (payload) {
       const role = payload.role || 'citizen';
-      const isAdminRole = role === 'admin';
-      setIsAdmin(isAdminRole);
+      setIsAdmin(role === 'admin');
       setUser({
         id: payload.id || payload.sub || 'unknown',
         email: payload.email || payload.sub || 'unknown',
@@ -55,19 +25,43 @@ export const useAuth = () => {
       setUser(null);
       setIsAdmin(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
-    refresh();
-    const handleStorage = (e) => {
-      if (e.key === TOKEN_KEY) refresh();
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [refresh]);
+    decodeAndSetUser();
+    setLoading(false);
+  }, [decodeAndSetUser]);
 
-  return { user, isAdmin, loading, refresh };
+  const login = useCallback(async (institutionId, password) => {
+    const { data } = await endpoints.auth.login({
+      institution_id: institutionId,
+      password,
+    });
+    if (data.access_token) {
+      authService.setToken(data.access_token);
+      decodeAndSetUser();
+    }
+    return data;
+  }, [decodeAndSetUser]);
+
+  const adminLogin = useCallback(async (email, password) => {
+    const { data } = await endpoints.auth.adminLogin(email, password);
+    if (data.access_token) {
+      authService.setToken(data.access_token);
+      decodeAndSetUser();
+    }
+    return data;
+  }, [decodeAndSetUser]);
+
+  const logout = useCallback(() => {
+    authService.logout();
+    setUser(null);
+    setIsAdmin(false);
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, isAdmin, loading, login, adminLogin, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
-
-export default useAuth;
