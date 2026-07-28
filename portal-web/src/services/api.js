@@ -23,7 +23,7 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Se alguém passar '/api/v1/audit/stats', limpa para '/audit/stats'
-    if (config.url && config.url.startsWith('/api/v1/')) {
+    if (config.url && typeof config.url === 'string' && config.url.startsWith('/api/v1/')) {
       config.url = config.url.replace(/^\/api\/v1/, '');
     }
     const token = authService.getToken();
@@ -102,3 +102,4 @@ export const endpoints = {
     revoke: (docId, data) => api.post(`/emissions/${docId}/revoke`, data),
   },
 };
+
