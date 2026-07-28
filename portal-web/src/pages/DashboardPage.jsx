@@ -4,7 +4,7 @@ import { NotificationContext } from '../contexts/NotificationContext';
 import { useAuth } from '../hooks/useAuth';
 import {
   Activity, FileText, ShieldCheck, AlertTriangle, TrendingUp,
-  Users, CheckCircle2, XCircle, BarChart3, Building2, Lock
+  Users, CheckCircle2, XCircle, BarChart3, Lock
 } from 'lucide-react';
 
 const StatCard = ({ icon: Icon, label, value, subtext, color }) => (
@@ -62,7 +62,6 @@ const DashboardPage = () => {
         setLoading(true);
         const params = {};
         if (!isAdmin && user?.id) {
-          // Instituição: isolada - stats só da sua instituição
           params.institution_id = user.id;
         }
         const { data } = await endpoints.audit.stats(params);
@@ -86,9 +85,7 @@ const DashboardPage = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Dashboard</h1>
           <p className="text-xs text-slate-500 mt-1">
-            {isAdmin
-              ? 'Visão geral da plataforma Txeka Ntiyiso (Super Admin)'
-              : `Instituição: ${user?.name || user?.id}`}
+            {isAdmin ? 'Visão geral da plataforma Txeka Ntiyiso (Super Admin)' : `Instituição: ${user?.name || user?.id}`}
           </p>
         </div>
         {isAdmin && (
@@ -106,7 +103,6 @@ const DashboardPage = () => {
         </div>
       ) : (
         <>
-          {/* Cards principais */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={FileText}
@@ -137,9 +133,7 @@ const DashboardPage = () => {
             />
           </div>
 
-          {/* Secção secundária */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Gráfico de verificações por dia */}
             <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
               <MiniBarChart
                 data={stats?.verifications_by_day || []}
@@ -147,7 +141,6 @@ const DashboardPage = () => {
               />
             </div>
 
-            {/* Acções por tipo */}
             <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
               <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
                 <TrendingUp className="w-3.5 h-3.5" /> Acções por tipo
@@ -175,7 +168,6 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {/* Top instituições - SÓ para Admin */}
           {isAdmin && stats?.top_institutions && stats.top_institutions.length > 0 && (
             <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
               <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
@@ -183,10 +175,7 @@ const DashboardPage = () => {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {stats.top_institutions.map((inst, i) => (
-                  <div
-                    key={inst.institution_id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
-                  >
+                  <div key={inst.institution_id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                     <span className="w-6 h-6 rounded-full bg-cyan-500/10 text-cyan-400 text-[0.6rem] font-bold flex items-center justify-center border border-cyan-500/20">
                       {i + 1}
                     </span>
@@ -200,7 +189,6 @@ const DashboardPage = () => {
             </div>
           )}
 
-          {/* Taxa de sucesso */}
           <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
@@ -210,18 +198,11 @@ const DashboardPage = () => {
               <span className="text-lg font-bold text-emerald-400">{v.success_rate_percent || 0}%</span>
             </div>
             <div className="w-full h-2 bg-white/[0.03] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-emerald-500/40 rounded-full transition-all"
-                style={{ width: `${v.success_rate_percent || 0}%` }}
-              />
+              <div className="h-full bg-emerald-500/40 rounded-full transition-all" style={{ width: `${v.success_rate_percent || 0}%` }} />
             </div>
             <div className="flex justify-between mt-2 text-[0.65rem] text-slate-500">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> {v.success || 0} sucessos
-              </span>
-              <span className="flex items-center gap-1">
-                <XCircle className="w-3 h-3 text-red-400" /> {v.failed || 0} falhas
-              </span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" /> {v.success || 0} sucessos</span>
+              <span className="flex items-center gap-1"><XCircle className="w-3 h-3 text-red-400" /> {v.failed || 0} falhas</span>
             </div>
           </div>
         </>
