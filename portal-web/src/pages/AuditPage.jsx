@@ -7,18 +7,13 @@ import { useAuth } from '../hooks/useAuth';
 import {
   Search, Filter, Calendar, RefreshCw, Eye, X, FileText,
   ShieldCheck, AlertTriangle, LogIn, LogOut, Download, Trash2, Settings,
-  ChevronLeft, ChevronRight, Activity, CheckCircle2, XCircle
+  ChevronLeft, ChevronRight, Activity, CheckCircle2, XCircle, Building2
 } from 'lucide-react';
 
 const ACTION_ICONS = {
-  EMIT: FileText,
-  VERIFY: ShieldCheck,
-  REVOKE: AlertTriangle,
-  LOGIN: LogIn,
-  LOGOUT: LogOut,
-  EXPORT: Download,
-  DELETE: Trash2,
-  SYSTEM: Settings,
+  EMIT: FileText, VERIFY: ShieldCheck, REVOKE: AlertTriangle,
+  LOGIN: LogIn, LOGOUT: LogOut, EXPORT: Download,
+  DELETE: Trash2, SYSTEM: Settings,
 };
 
 const ACTION_COLORS = {
@@ -47,6 +42,7 @@ const AuditPage = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [successFilter, setSuccessFilter] = useState('');
+  const [institutionFilter, setInstitutionFilter] = useState('');
 
   // Paginação
   const [page, setPage] = useState(0);
@@ -56,15 +52,20 @@ const AuditPage = () => {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
-        limit,
-        offset: page * limit,
-      };
+      const params = { limit, offset: page * limit };
       if (actionFilter) params.action = actionFilter;
       if (resourceFilter) params.resource_type = resourceFilter;
       if (dateFrom) params.start_date = dateFrom + 'T00:00:00';
       if (dateTo) params.end_date = dateTo + 'T23:59:59';
-      if (!isAdmin && user?.id) params.institution_id = user.id;
+      if (successFilter) params.success = successFilter === 'true';
+
+      if (isAdmin) {
+        // Super Admin: vê tudo, mas pode filtrar por instituição
+        if (institutionFilter.trim()) params.institution_id = institutionFilter.trim();
+      } else {
+        // Instituição: isolada - só vê os seus próprios logs
+        params.institution_id = user?.id;
+      }
 
       const { data } = await endpoints.audit.logs(params);
       const items = Array.isArray(data) ? data : data.items || [];
@@ -75,7 +76,7 @@ const AuditPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, actionFilter, resourceFilter, dateFrom, dateTo, isAdmin, user, notify]);
+  }, [page, limit, actionFilter, resourceFilter, dateFrom, dateTo, successFilter, institutionFilter, isAdmin, user, notify]);
 
   useEffect(() => {
     fetchLogs();
@@ -88,6 +89,7 @@ const AuditPage = () => {
     setDateFrom('');
     setDateTo('');
     setSuccessFilter('');
+    setInstitutionFilter('');
     setPage(0);
   };
 
@@ -97,14 +99,11 @@ const AuditPage = () => {
     return (
       (log.user_email || '').toLowerCase().includes(term) ||
       (log.resource_id || '').toLowerCase().includes(term) ||
-      (log.institution_id || '').toLowerCase().includes(term)
+      (isAdmin && (log.institution_id || '').toLowerCase().includes(term))
     );
-  }).filter((log) => {
-    if (successFilter === '') return true;
-    return String(log.success) === successFilter;
   });
 
-  const columns = [
+  const baseColumns = [
     {
       key: 'action',
       label: 'Acção',
@@ -142,13 +141,6 @@ const AuditPage = () => {
       label: 'Utilizador',
       render: (row) => (
         <span className="text-xs text-slate-300">{row.user_email}</span>
-      ),
-    },
-    {
-      key: 'institution_id',
-      label: 'Instituição',
-      render: (row) => (
-        <span className="text-xs font-mono text-slate-400">{row.institution_id || '—'}</span>
       ),
     },
     {
@@ -192,12 +184,31 @@ const AuditPage = () => {
     },
   ];
 
+  // Admin vê coluna extra: Instituição
+  const columns = isAdmin
+    ? [
+        ...baseColumns.slice(0, 4),
+        {
+          key: 'institution_id',
+          label: 'Instituição',
+          render: (row) => (
+            <span className="text-xs font-mono text-slate-400">{row.institution_id || '—'}</span>
+          ),
+        },
+        ...baseColumns.slice(4),
+      ]
+    : baseColumns;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Auditoria</h1>
-          <p className="text-xs text-slate-500 mt-1">Registo de todas as acções no sistema</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {isAdmin
+              ? 'Registo de todas as acções no sistema (Super Admin)'
+              : `Registo de acções da instituição ${user?.id || ''}`}
+          </p>
         </div>
         <button
           onClick={fetchLogs}
@@ -214,7 +225,7 @@ const AuditPage = () => {
         <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
           <Filter className="w-3.5 h-3.5" /> Filtros
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
             <input
@@ -260,6 +271,21 @@ const AuditPage = () => {
             <option value="true">Sucesso</option>
             <option value="false">Falha</option>
           </select>
+
+          {/* Filtro de instituição SÓ para Admin */}
+          {isAdmin && (
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
+              <input
+                type="text"
+                value={institutionFilter}
+                onChange={(e) => { setInstitutionFilter(e.target.value); setPage(0); }}
+                placeholder="Filtrar por instituição..."
+                className="w-full pl-9 pr-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-slate-100 placeholder-slate-600 text-xs focus:outline-none focus:border-cyan-500/30"
+              />
+            </div>
+          )}
+
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-600" />
@@ -281,7 +307,7 @@ const AuditPage = () => {
             </div>
           </div>
         </div>
-        {(actionFilter || resourceFilter || dateFrom || dateTo || successFilter || search) && (
+        {(actionFilter || resourceFilter || dateFrom || dateTo || successFilter || institutionFilter || search) && (
           <button
             onClick={handleReset}
             className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
@@ -297,7 +323,9 @@ const AuditPage = () => {
           columns={columns}
           data={filtered}
           loading={loading}
-          emptyText="Nenhum registo de auditoria encontrado"
+          emptyText={isAdmin
+            ? "Nenhum registo de auditoria encontrado"
+            : "Nenhuma acção registada para a sua instituição"}
         />
       </div>
 
@@ -358,7 +386,9 @@ const AuditPage = () => {
                 <p><span className="text-slate-500">Utilizador:</span> <span className="text-slate-200">{selectedLog.user_email}</span></p>
                 <p><span className="text-slate-500">Recurso:</span> <span className="text-slate-200">{selectedLog.resource_type}</span></p>
                 <p><span className="text-slate-500">ID do Recurso:</span> <span className="font-mono text-cyan-400">{selectedLog.resource_id}</span></p>
-                <p><span className="text-slate-500">Instituição:</span> <span className="text-slate-200">{selectedLog.institution_id || '—'}</span></p>
+                {isAdmin && (
+                  <p><span className="text-slate-500">Instituição:</span> <span className="font-mono text-slate-200">{selectedLog.institution_id || '—'}</span></p>
+                )}
                 <p><span className="text-slate-500">Data:</span> <span className="text-slate-200">{new Date(selectedLog.timestamp).toLocaleString('pt-MZ')}</span></p>
                 <p><span className="text-slate-500">IP:</span> <span className="font-mono text-slate-400">{selectedLog.ip_address || '—'}</span></p>
                 <p><span className="text-slate-500">Método:</span> <span className="text-slate-200">{selectedLog.request_method || '—'}</span></p>
