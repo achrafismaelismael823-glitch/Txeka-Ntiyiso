@@ -1,154 +1,231 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { api } from '../services/api';
+import { useState, useEffect, useContext } from 'react';
+import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
+import { useAuth } from '../hooks/useAuth';
 import {
-  FileText, TrendingUp, CreditCard, Activity, ArrowRight,
-  FileCheck, XCircle, Loader2, Clock
+  Activity, FileText, ShieldCheck, AlertTriangle, TrendingUp,
+  Users, Clock, CheckCircle2, XCircle, BarChart3
 } from 'lucide-react';
 
-const DashboardPage = () => {
-  const { user, isAdmin, isInstitution, institutionId } = useAuth();
-  const { notify } = useContext(NotificationContext);
-  const [stats, setStats] = useState(null);
-  const [recent, setRecent] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
-    try {
-      setLoading(true);
-      const [statsRes, logsRes] = await Promise.allSettled([
-        api.get('/api/v1/audit/stats'),
-        api.get('/api/v1/audit/logs', { params: { limit: 5 } }),
-      ]);
-      setStats(statsRes.status === 'fulfilled' ? statsRes.value.data : {});
-      const logs = logsRes.status === 'fulfilled' ? logsRes.value.data : [];
-      let items = Array.isArray(logs) ? logs : (logs.items || logs.logs || []);
-      if (isInstitution && institutionId) {
-        items = items.filter((log) => log.institution_id === institutionId);
-      }
-      setRecent(items);
-    } catch {
-      notify('Erro ao carregar dashboard', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cards = [
-    { label: 'Emissões', value: stats?.total_emissions || 0, icon: FileCheck, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-    { label: 'Verificações', value: stats?.total_verifications || 0, icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-    { label: 'Revogações', value: stats?.total_revocations || 0, icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-    { label: 'Créditos', value: user?.credits ?? (isAdmin ? '∞' : '—'), icon: CreditCard, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+const StatCard = ({ icon: Icon, label, value, subtext, color }) => (
+  <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3 hover:border-white/[0.1] transition-all">
+    <div className="flex items-center justify-between">
+      <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
+        <Icon className="w-5 h-5" />
       </div>
-    );
-  }
+      {subtext && (
+        <span className="text-[0.65rem] text-slate-500">{subtext}</span>
+      )}
+    </div>
+    <div>
+      <p className="text-2xl font-bold text-slate-100">{value}</p>
+      <p className="text-xs text-slate-500 mt-0.5">{label}</p>
+    </div>
+  </div>
+);
 
+const MiniBarChart = ({ data, label }) => {
+  if (!data || data.length === 0) return null;
+  const max = Math.max(...data.map((d) => d.count));
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Dashboard</h1>
-        <p className="text-xs text-slate-500 mt-1">Visão geral da plataforma Txeka Ntiyiso</p>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+        <BarChart3 className="w-3.5 h-3.5" /> {label}
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((card, i) => (
-          <div key={i} className={`bg-slate-900/60 backdrop-blur-xl border ${card.border} rounded-2xl p-5 relative overflow-hidden`}>
-            <div className={`absolute top-0 left-0 w-full h-[2px] ${card.bg.replace('/10', '')}`} />
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wider">{card.label}</span>
-              <card.icon className={`w-5 h-5 ${card.color}`} />
+      <div className="flex items-end gap-1 h-24">
+        {data.map((d, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+            <div
+              className="w-full bg-cyan-500/20 hover:bg-cyan-500/40 rounded-t transition-all relative"
+              style={{ height: `${max > 0 ? (d.count / max) * 100 : 0}%` }}
+            >
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[0.55rem] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                {d.count}
+              </div>
             </div>
-            <p className="text-3xl font-bold text-slate-100">{card.value}</p>
+            <span className="text-[0.5rem] text-slate-600 rotate-0">
+              {d.date?.slice(5) || i + 1}
+            </span>
           </div>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
-              <Activity className="w-4 h-4 text-cyan-400" /> Actividade Recente
-            </h2>
-            <button onClick={() => navigate('/audit')} className="text-xs text-cyan-400 hover:underline flex items-center gap-1">
-              Ver tudo <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          {recent.length > 0 ? (
-            <div className="divide-y divide-white/[0.03]">
-              {recent.map((log, idx) => (
-                <div key={idx} className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    log.action === 'EMIT' ? 'bg-cyan-500/10 text-cyan-400' :
-                    log.action === 'VERIFY' ? 'bg-emerald-500/10 text-emerald-400' :
-                    log.action === 'REVOKE' ? 'bg-red-500/10 text-red-400' :
-                    'bg-white/[0.03] text-slate-500'
-                  }`}>
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-100">{log.description || log.message || log.action}</p>
-                    <p className="text-[0.65rem] text-slate-500">
-                      {log.institution_id && <span className="font-mono uppercase mr-2">{log.institution_id}</span>}
-                      <Clock className="w-3 h-3 inline mr-1" />
-                      {new Date(log.timestamp || log.created_at).toLocaleString('pt-MZ')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="px-5 py-10 text-center text-sm text-slate-600">Nenhuma actividade recente</div>
-          )}
-        </div>
-
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5 space-y-4">
-          <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wider">Acesso Rápido</h2>
-          <div className="space-y-2">
-            <button onClick={() => navigate('/documents')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] transition-all text-left">
-              <FileText className="w-5 h-5 text-cyan-400" />
-              <div>
-                <p className="text-sm font-medium text-slate-100">Documentos</p>
-                <p className="text-[0.65rem] text-slate-500">Gerir emissões</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-600 ml-auto" />
-            </button>
-            {!isAdmin && (
-              <button onClick={() => navigate('/credits')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] transition-all text-left">
-                <CreditCard className="w-5 h-5 text-amber-400" />
-                <div>
-                  <p className="text-sm font-medium text-slate-100">Créditos</p>
-                  <p className="text-[0.65rem] text-slate-500">Saldo e histórico</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 ml-auto" />
-              </button>
-            )}
-            <button onClick={() => navigate('/emit')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] transition-all text-left">
-              <FileCheck className="w-5 h-5 text-emerald-400" />
-              <div>
-                <p className="text-sm font-medium text-slate-100">Emitir Documento</p>
-                <p className="text-[0.65rem] text-slate-500">Com QR Code e hash SHA-256</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-600 ml-auto" />
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
 };
 
-export default DashboardPage;
+const DashboardPage = () => {
+  const { notify } = useContext(NotificationContext);
+  const { user, isAdmin } = useAuth();
 
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const params = {};
+        if (!isAdmin && user?.id) params.institution_id = user.id;
+        const { data } = await endpoints.audit.stats(params);
+        setStats(data);
+      } catch (err) {
+        notify(err.normalizedMessage || 'Erro ao carregar estatísticas', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, [isAdmin, user, notify]);
+
+  const s = stats?.summary || {};
+  const v = stats?.verifications || {};
+  const actions = stats?.actions_by_type || {};
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Dashboard</h1>
+        <p className="text-xs text-slate-500 mt-1">
+          {isAdmin ? 'Visão geral da plataforma' : `Instituição: ${user?.name || user?.id}`}
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 rounded-2xl bg-slate-900/40 border border-white/[0.04] animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Cards principais */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={FileText}
+              label="Documentos Emitidos"
+              value={s.total_emitted_documents?.toLocaleString('pt-MZ') || 0}
+              subtext={`${s.active_documents?.toLocaleString('pt-MZ') || 0} activos`}
+              color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+            />
+            <StatCard
+              icon={ShieldCheck}
+              label="Verificações"
+              value={s.total_verifications?.toLocaleString('pt-MZ') || 0}
+              subtext={`${v.success_rate_percent || 0}% sucesso`}
+              color="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+            />
+            <StatCard
+              icon={AlertTriangle}
+              label="Documentos Revogados"
+              value={s.total_revoked_documents?.toLocaleString('pt-MZ') || 0}
+              color="bg-red-500/10 text-red-400 border border-red-500/20"
+            />
+            <StatCard
+              icon={Activity}
+              label="Logs Totais"
+              value={s.total_logs?.toLocaleString('pt-MZ') || 0}
+              subtext={`${s.recent_logs_7d?.toLocaleString('pt-MZ') || 0} últimos 7 dias`}
+              color="bg-amber-500/10 text-amber-400 border border-amber-500/20"
+            />
+          </div>
+
+          {/* Secção secundária */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Gráfico de verificações por dia */}
+            <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
+              <MiniBarChart
+                data={stats?.verifications_by_day || []}
+                label="Verificações por dia (últimos 30 dias)"
+              />
+            </div>
+
+            {/* Acções por tipo */}
+            <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+                <TrendingUp className="w-3.5 h-3.5" /> Acções por tipo
+              </div>
+              <div className="space-y-2.5">
+                {Object.entries(actions).length === 0 ? (
+                  <p className="text-xs text-slate-600">Sem dados</p>
+                ) : (
+                  Object.entries(actions).map(([action, count]) => (
+                    <div key={action} className="flex items-center justify-between">
+                      <span className="text-xs text-slate-400 uppercase">{action}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-1.5 bg-white/[0.03] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-cyan-500/40 rounded-full"
+                            style={{
+                              width: `${Math.max(
+                                5,
+                                (count / Math.max(...Object.values(actions))) * 100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-slate-300 w-8 text-right">
+                          {count}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Top instituições (apenas admin) */}
+          {isAdmin && stats?.top_institutions && stats.top_institutions.length > 0 && (
+            <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+                <Users className="w-3.5 h-3.5" /> Top Instituições
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {stats.top_institutions.map((inst, i) => (
+                  <div
+                    key={inst.institution_id}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-cyan-500/10 text-cyan-400 text-[0.6rem] font-bold flex items-center justify-center border border-cyan-500/20">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono text-slate-300 truncate">{inst.institution_id}</p>
+                      <p className="text-[0.6rem] text-slate-500">{inst.count} acções</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Taxa de sucesso */}
+          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Taxa de sucesso nas verificações
+              </div>
+              <span className="text-lg font-bold text-emerald-400">{v.success_rate_percent || 0}%</span>
+            </div>
+            <div className="w-full h-2 bg-white/[0.03] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500/40 rounded-full transition-all"
+                style={{ width: `${v.success_rate_percent || 0}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-[0.65rem] text-slate-500">
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> {v.success || 0} sucessos
+              </span>
+              <span className="flex items-center gap-1">
+                <XCircle className="w-3 h-3 text-red-400" /> {v.failed || 0} falhas
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default DashboardPage;
