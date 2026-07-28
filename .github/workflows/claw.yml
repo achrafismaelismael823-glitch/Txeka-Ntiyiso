@@ -43,6 +43,9 @@ jobs:
               if (action === 'opened') {
                 msg += `**PR Aberto:** ${pr.title}\n`;
                 msg += `📊 **Stats:** +${pr.additions} -${pr.deletions} | ${pr.changed_files} arquivos\n`;
+              } else if (action === 'closed') {
+                msg += `**PR Fechado:** ${pr.title}\n`;
+                msg += `Status: ${pr.merged? '✅ MERGED' : '❌ CLOSED'}`;
               }
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -95,7 +98,7 @@ jobs:
               try {
                 if (target && fs.existsSync(target) && fs.statSync(target).isFile()) {
                   const content = fs.readFileSync(target, 'utf8');
-                  finalMsg += `**Conteúdo de \`${target}\`:**\n\`\n${content.slice(0, 4000)}\n\`\``;
+                  finalMsg += `**Conteúdo de \`${target}\`:**\n\`\`\n${content.slice(0, 4000)}\n\`\``;
                 } else { finalMsg += `❌ Arquivo inválido: \`${target}\``; }
               } catch(e) { finalMsg += `❌ Erro: ${e.message}`; }
             }
@@ -107,7 +110,7 @@ jobs:
               if (termo) {
                 finalMsg += `🔍 **Busca por: "${termo}"**\n\n`;
                 const res = rodarComando(`git grep -n "${termo}" || echo "Nenhuma ocorrência."`);
-                finalMsg += `\`\`\`\n${res.slice(0, 3000)}\n\`\`\``;
+                finalMsg += `\`\n${res.slice(0, 3000)}\n\`\``;
               }
             }
 
@@ -153,7 +156,7 @@ jobs:
               executouComando = true;
               finalMsg += `📋 **Últimos 3 commits:**\n\n`;
               const res = rodarComando(`git log -n 3 --oneline`);
-              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+              finalMsg += `\`\n${res}\n\`\``;
             }
 
             // 8. @claw historico
@@ -161,7 +164,7 @@ jobs:
               executouComando = true;
               finalMsg += `⏳ **Últimas 5 execuções:**\n\n`;
               try {
-                const runs = await github.rest.actions.listWorkflowRunsForRepo({ owner: context.repo.owner, repo: context.repo.repo, per_page: 5 });
+                const runs = await github.rest.actions.listWorkflowRunsForRepo({ owner: context.repo.owner, repo: context.repo, per_page: 5 });
                 runs.data.workflow_runs.forEach(r => {
                   finalMsg += `* [${r.conclusion === 'success'? '✅' : '❌'}] **${r.name}** - #${r.run_number}\n`;
                 });
@@ -185,7 +188,7 @@ jobs:
               const qtd = parseInt(valorTxt) || 5;
               finalMsg += `📜 **Últimos ${qtd} commits:**\n\n`;
               const res = rodarComando(`git log -n ${qtd} --pretty=format:"* %h - %an: %s (%cr)"`);
-              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+              finalMsg += `\`\n${res}\n\`\``;
             }
 
             // 11. @claw autores
@@ -201,7 +204,7 @@ jobs:
               executouComando = true;
               finalMsg += `🌿 **Branches remotas:**\n\n`;
               const res = rodarComando(`git branch -r | grep -v HEAD`);
-              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+              finalMsg += `\`\n${res}\n\`\``;
             }
 
             // 13. @claw tags
@@ -209,10 +212,10 @@ jobs:
               executouComando = true;
               finalMsg += `🏷️ **Últimas tags:**\n\n`;
               const res = rodarComando(`git tag -l | tail -n 5 || echo "Nenhuma tag."`);
-              finalMsg += `\`\n${res}\n\`\`\``;
+              finalMsg += `\`\n${res}\n\`\``;
             }
 
-            // 14. @claw dependencias - CORRIGIDO
+            // 14. @claw dependencias
             if (body.includes('@claw dependencias')) {
               executouComando = true;
               finalMsg += `📦 **Dependências:**\n\n`;
@@ -220,7 +223,7 @@ jobs:
               finalMsg += `* **Python requirements.txt:** ${reqExist? '✅' : '❌'}\n`;
             }
 
-            // 15. @claw todo - FALTAVA ESSE
+            // 15. @claw todo
             if (body.includes('@claw todo')) {
               executouComando = true;
               finalMsg += `📝 **TODOs no código:**\n\n`;
@@ -233,10 +236,11 @@ jobs:
               finalMsg += `**15 Comandos disponíveis:**\n`;
               finalMsg += `1. estrutura 2. ver 3. busca 4. diff 5. tamanho 6. status ci\n`;
               finalMsg += `7. logs 8. historico 9. ambiente 10. commits 11. autores\n`;
-              finalMsg += `12. branches 13. tags 14. dependencias 15. todo`;
+              finalMsg += `12. branches 13. tags 14. dependencias 15. todo\n\n`;
+              finalMsg += `Ex: \`@claw busca hash\``;
             }
 
-            // ENVIAR RESPOSTA - FALTAVA ESSE
+            // ENVIAR RESPOSTA
             if (issueNumber) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
