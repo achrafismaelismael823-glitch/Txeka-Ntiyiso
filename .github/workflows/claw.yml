@@ -9,7 +9,6 @@ on:
 
 jobs:
   claw-senior:
-    # Condição sênior para validar tanto a Issue original quanto os comentários
     if: |
       github.event_name == 'pull_request' ||
       (github.event_name == 'issues' && contains(github.event.issue.body, '@claw')) ||
@@ -19,7 +18,7 @@ jobs:
       issues: write        
       pull-requests: write 
       contents: read       
-      actions: read       
+      actions: read        
 
     steps:
       - name: Checkout
@@ -30,16 +29,13 @@ jobs:
       - name: Executar Claw Senior
         uses: actions/github-script@v7
         with:
-          # Utiliza o Token nativo com as permissões elevadas acima
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const path = require('path');
             const { execSync } = require('child_process');
 
-            // ==========================================
-            // BLOCO ORIGINAL MANTIDO PARA PULL REQUESTS
-            // ==========================================
+            // --- FLUXO DE PULL REQUESTS ---
             if (context.payload.pull_request) {
               const pr = context.payload.pull_request;
               const action = context.payload.action;
@@ -57,9 +53,7 @@ jobs:
               return;
             }
 
-            // ==========================================
-            // BLOCO DE COMANDOS DENTRO DE ISSUES
-            // ==========================================
+            // --- FLUXO DE COMANDOS NAS ISSUES ---
             const body = context.payload.comment ? context.payload.comment.body : context.payload.issue.body;
             const issueNumber = context.payload.issue.number;
             const userLogin = context.payload.comment ? context.payload.comment.user.login : context.payload.issue.user.login;
@@ -67,57 +61,46 @@ jobs:
             let finalMsg = `🦀 **Txeka Claw Bot v4.5** | @${userLogin}\n\n`;
             let executouComando = false;
 
-            // Função auxiliar segura para rodar comandos git/bash no terminal do runner
             function rodarComando(cmd) {
               try { return execSync(cmd, { encoding: 'utf8' }).trim(); }
               catch (e) { return `❌ Erro na execução interna: ${e.message}`; }
             }
 
-            // [SEU COMANDO ORIGINAL INTEGRADO CORRIGIDO] @claw estrutura [path]
+            // Comando original estruturado com replace seguro
             if (body.includes('@claw estrutura')) {
               executouComando = true;
-              const partes = body.split('@claw estrutura');
-              const targetPath = partes[1] ? partes[1].trim() : '.';
+              const targetPath = body.replace('@claw estrutura', '').trim() || '.';
               finalMsg += `**Estrutura: ${targetPath}**\n\n`;
-
               try {
                 const files = fs.readdirSync(targetPath);
                 files.forEach(file => {
-                  const filePath = path.join(targetPath, file);
-                  const stats = fs.statSync(filePath);
-                  const icon = stats.isDirectory()? '📁' : '📄';
-                  finalMsg += `${icon} ${file}\n`;
+                  const stats = fs.statSync(path.join(targetPath, file));
+                  finalMsg += `${stats.isDirectory() ? '📁' : '📄'} ${file}\n`;
                 });
-              } catch (e) {
-                finalMsg += `❌ Erro: Pasta não encontrada \`${targetPath}\``;
-              }
-              finalMsg += `\n---\n*Issue #${issueNumber} | sucesso*`;
+              } catch (e) { finalMsg += `❌ Erro: Pasta não encontrada \`${targetPath}\``; }
             }
 
-            // 1. @claw ver [arquivo]
+            // 1. @claw ver
             if (body.includes('@claw ver ')) {
               executouComando = true;
-              const partes = body.split('@claw ver ');
-              const target = partes[1] ? partes[1].trim() : '';
+              const target = body.replace('@claw ver ', '').trim();
               try {
                 if (target && fs.existsSync(target) && fs.statSync(target).isFile()) {
                   const content = fs.readFileSync(target, 'utf8');
                   finalMsg += `**Conteúdo de \`${target}\`:**\n\`\`\`\n${content.slice(0, 4000)}\n\`\`\``;
-                  if (content.length > 4000) finalMsg += `\n*(Conteúdo truncado pelo limite de tamanho)*`;
                 } else { finalMsg += `❌ Arquivo inválido ou não encontrado: \`${target}\``; }
               } catch(e) { finalMsg += `❌ Erro: ${e.message}`; }
             }
 
-            // 2. @claw busca "[termo]"
+            // 2. @claw busca
             if (body.includes('@claw busca ')) {
               executouComando = true;
-              const partes = body.split('@claw busca ');
-              const termo = partes[1] ? partes[1].trim().replace(/['"]/g, '') : '';
+              const termo = body.replace('@claw busca ', '').trim().replace(/['"]/g, '');
               if (termo) {
                 finalMsg += `🔍 **Resultado da busca por: "${termo}"**\n\n`;
                 const res = rodarComando(`git grep -n "${termo}" || echo "Nenhuma ocorrência encontrada."`);
                 finalMsg += `\`\`\`\n${res.slice(0, 3000)}\n\`\`\``;
-              } else { finalMsg += `❌ Forneça um termo válido para busca.`; }
+              }
             }
 
             // 3. @claw diff
@@ -128,11 +111,10 @@ jobs:
               finalMsg += `\`\`\`\n${res}\n\`\`\``;
             }
 
-            // 4. @claw tamanho [caminho]
+            // 4. @claw tamanho
             if (body.includes('@claw tamanho ')) {
               executouComando = true;
-              const partes = body.split('@claw tamanho ');
-              const target = partes[1] ? partes[1].trim() : '';
+              const target = body.replace('@claw tamanho ', '').trim();
               finalMsg += `⚖️ **Análise de tamanho de: \`${target}\`**\n\n`;
               if (target && fs.existsSync(target)) {
                 const linhas = rodarComando(`find ${target} -type f -exec wc -l {} + | tail -n 1`);
@@ -149,7 +131,7 @@ jobs:
                 const ciRun = runs.data.workflow_runs.find(r => r.name.includes('Txeka Ntiyiso'));
                 if (ciRun) {
                   finalMsg += `📊 **Status do Pipeline (${ciRun.name}):** ${ciRun.conclusion === 'success' ? '✅ SUCESSO' : '❌ FALHA'}\n`;
-                  finalMsg += `* **Commit:** \`${ciRun.head_commit.message}\`\n* **Logs:** [Link para a execução](${ciRun.html_url})`;
+                  finalMsg += `* **Logs:** [Link para a execução](${ciRun.html_url})`;
                 } else { finalMsg += `⚠️ Pipeline "Txeka Ntiyiso" não localizado no histórico recente.`; }
               } catch(e) { finalMsg += `❌ Erro ao ler Actions: ${e.message}`; }
             }
@@ -159,7 +141,7 @@ jobs:
               executouComando = true;
               finalMsg += `📋 **Status Git de Telemetria:**\n\n`;
               const res = rodarComando(`git log -n 3 --oneline`);
-              finalMsg += `*Últimos commits no ambiente local:*\n\`\`\`\n${res}\n\`\`\``;
+              finalMsg += `\`\`\`\n${res}\n\`\`\``;
             }
 
             // 7. @claw historico
@@ -181,16 +163,16 @@ jobs:
               const pyVer = rodarComando(`python3 --version || echo "Não instalado"`);
               const nodeVer = process.version;
               const dockerVer = rodarComando(`docker --version || echo "Não instalado"`);
-              finalMsg += `* **Python:** \`${pyVer}\`\n* **Node.js:** \`${nodeVer}\`\n* **Docker:** \`${dockerVer}\`\n* **SO:** Ubuntu Virtual Host`;
+              finalMsg += `* **Python:** \`${pyVer}\`\n* **Node.js:** \`${nodeVer}\`\n* **Docker:** \`${dockerVer}\``;
             }
 
-            // 9. @claw commits [quantidade]
+            // 9. @claw commits
             if (body.includes('@claw commits')) {
               executouComando = true;
-              const partes = body.split('@claw commits');
-              const qtd = partes[1] ? parseInt(partes[1].trim()) : 5;
-              finalMsg += `📜 **Últimos ${isNaN(qtd) ? 5 : qtd} Commits na Branch:**\n\n`;
-              const res = rodarComando(`git log -n ${isNaN(qtd) ? 5 : qtd} --pretty=format:"* %h - %an: %s (%cr)"`);
+              const valorTxt = body.replace('@claw commits', '').trim();
+              const qtd = parseInt(valorTxt) || 5;
+              finalMsg += `📜 **Últimos ${qtd} Commits na Branch:**\n\n`;
+              const res = rodarComando(`git log -n ${qtd} --pretty=format:"* %h - %an: %s (%cr)"`);
               finalMsg += res;
             }
 
@@ -199,4 +181,35 @@ jobs:
               executouComando = true;
               finalMsg += `👥 **Contribuintes do Repositório (Ranking):**\n\n`;
               const res = rodarComando(`git shortlog -sn --all`);
+              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+            }
+
+            // 11. @claw branches
+            if (body.includes('@claw branches')) {
+              executouComando = true;
+              finalMsg += `🌿 **Branches Ativas Rastreadas:**\n\n`;
+              const res = rodarComando(`git branch -r | grep -v HEAD`);
+              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+            }
+
+            // 12. @claw tags
+            if (body.includes('@claw tags')) {
+              executouComando = true;
+              finalMsg += `🏷️ **Últimas Tags do Git:**\n\n`;
+              const res = rodarComando(`git tag -l | tail -n 5 || echo "Nenhuma tag criada."`);
+              finalMsg += `\`\`\`\n${res}\n\`\`\``;
+            }
+
+            // 14. @claw dependencias
+            if (body.includes('@claw dependencias')) {
+              executouComando = true;
+              finalMsg += `📦 **Arquivos de Dependências Localizados:**\n\n`;
+              const reqExist = fs.existsSync('api-gateway/requirements.txt') || fs.existsSync('requirements.txt');
+              finalMsg += `* **Python (requirements.txt):** ${reqExist ? '✅ Localizado' : '❌ Não encontrado'}\n`;
+            }
+
+            // 15. @claw todo
+            if (body.includes('@claw todo')) {
+              executouComando = true;
+              finalMsg += `📝 **Pendências Técnicas Encontradas (TODO/FIXME):**\n\n`;
 
