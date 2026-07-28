@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import { DataTable } from '../components/ui/DataTable';
 import { Modal } from '../components/ui/Modal';
 import {
-  Plus, Loader2, Search, X, CheckCircle2,
-  RefreshCw, Key, Edit3
+  Plus, Search, X, Key, Edit3, RefreshCw
 } from 'lucide-react';
 
 const InstitutionsPage = () => {
@@ -266,7 +265,6 @@ const InstitutionsPage = () => {
           <div className="space-y-1">
             <label className="text-xs text-slate-500 uppercase tracking-wider">Email de Contacto</label>
             <input
-              type="email"
               value={formEmail}
               onChange={(e) => setFormEmail(e.target.value)}
               placeholder="email@instituicao.co.mz"
@@ -279,11 +277,11 @@ const InstitutionsPage = () => {
               <select
                 value={formPlan}
                 onChange={(e) => setFormPlan(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/30 text-sm appearance-none"
+                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500/30"
               >
-                <option value="standard" className="bg-slate-900">Standard</option>
-                <option value="premium" className="bg-slate-900">Premium</option>
-                <option value="enterprise" className="bg-slate-900">Enterprise</option>
+                <option value="standard">Standard</option>
+                <option value="premium">Premium</option>
+                <option value="enterprise">Enterprise</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -291,11 +289,11 @@ const InstitutionsPage = () => {
               <select
                 value={formStatus}
                 onChange={(e) => setFormStatus(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/30 text-sm appearance-none"
+                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500/30"
               >
-                <option value="active" className="bg-slate-900">Activo</option>
-                <option value="pending" className="bg-slate-900">Pendente</option>
-                <option value="suspended" className="bg-slate-900">Suspenso</option>
+                <option value="active">Activo</option>
+                <option value="suspended">Suspenso</option>
+                <option value="inactive">Inactivo</option>
               </select>
             </div>
           </div>
@@ -304,30 +302,28 @@ const InstitutionsPage = () => {
               <label className="text-xs text-slate-500 uppercase tracking-wider">Créditos Iniciais (opcional)</label>
               <input
                 type="number"
-                min="0"
                 value={formCredits}
                 onChange={(e) => setFormCredits(e.target.value)}
                 placeholder="0"
+                min="0"
                 className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
               />
             </div>
           )}
-
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="flex-1 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-slate-400 hover:bg-white/[0.06] transition-colors"
+              className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all text-sm font-medium"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all text-sm disabled:opacity-50"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              {editing ? 'Actualizar' : 'Criar'}
+              {saving ? 'A gravar...' : (editing ? 'Actualizar' : 'Criar')}
             </button>
           </div>
         </form>
@@ -337,3 +333,4 @@ const InstitutionsPage = () => {
 };
 
 export default InstitutionsPage;
+
