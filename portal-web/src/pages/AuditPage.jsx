@@ -32,10 +32,10 @@ const AuditPage = () => {
   const { user, isAdmin } = useAuth();
 
   const [logs, setLogs] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState(null);
 
-  // Filtros
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [resourceFilter, setResourceFilter] = useState('');
@@ -44,10 +44,8 @@ const AuditPage = () => {
   const [successFilter, setSuccessFilter] = useState('');
   const [institutionFilter, setInstitutionFilter] = useState('');
 
-  // Paginação
   const [page, setPage] = useState(0);
   const [limit] = useState(25);
-  const [hasMore, setHasMore] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -55,22 +53,20 @@ const AuditPage = () => {
       const params = { limit, offset: page * limit };
       if (actionFilter) params.action = actionFilter;
       if (resourceFilter) params.resource_type = resourceFilter;
-      if (dateFrom) params.start_date = dateFrom + 'T00:00:00';
-      if (dateTo) params.end_date = dateTo + 'T23:59:59';
+      if (dateFrom) params.start_date = dateFrom;
+      if (dateTo) params.end_date = dateTo;
       if (successFilter) params.success = successFilter === 'true';
 
       if (isAdmin) {
-        // Super Admin: vê tudo, mas pode filtrar por instituição
         if (institutionFilter.trim()) params.institution_id = institutionFilter.trim();
       } else {
-        // Instituição: isolada - só vê os seus próprios logs
         params.institution_id = user?.id;
       }
 
       const { data } = await endpoints.audit.logs(params);
-      const items = Array.isArray(data) ? data : data.items || [];
+      const items = data?.logs || [];
       setLogs(items);
-      setHasMore(items.length === limit);
+      setTotalCount(data?.count || items.length);
     } catch (err) {
       notify(err.normalizedMessage || 'Erro ao carregar logs de auditoria', 'error');
     } finally {
@@ -123,25 +119,19 @@ const AuditPage = () => {
     {
       key: 'resource_type',
       label: 'Recurso',
-      render: (row) => (
-        <span className="text-xs text-slate-400 uppercase">{row.resource_type}</span>
-      ),
+      render: (row) => <span className="text-xs text-slate-400 uppercase">{row.resource_type}</span>,
     },
     {
       key: 'resource_id',
       label: 'ID',
       render: (row) => (
-        <span className="text-xs font-mono text-slate-300 truncate max-w-[120px] block">
-          {row.resource_id}
-        </span>
+        <span className="text-xs font-mono text-slate-300 truncate max-w-[120px] block">{row.resource_id}</span>
       ),
     },
     {
       key: 'user_email',
       label: 'Utilizador',
-      render: (row) => (
-        <span className="text-xs text-slate-300">{row.user_email}</span>
-      ),
+      render: (row) => <span className="text-xs text-slate-300">{row.user_email}</span>,
     },
     {
       key: 'success',
@@ -184,7 +174,6 @@ const AuditPage = () => {
     },
   ];
 
-  // Admin vê coluna extra: Instituição
   const columns = isAdmin
     ? [
         ...baseColumns.slice(0, 4),
@@ -220,7 +209,6 @@ const AuditPage = () => {
         </button>
       </div>
 
-      {/* Filtros */}
       <div className="bg-slate-900/40 border border-white/[0.04] rounded-2xl p-4 space-y-4">
         <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
           <Filter className="w-3.5 h-3.5" /> Filtros
@@ -272,7 +260,6 @@ const AuditPage = () => {
             <option value="false">Falha</option>
           </select>
 
-          {/* Filtro de instituição SÓ para Admin */}
           {isAdmin && (
             <div className="relative">
               <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
@@ -308,31 +295,24 @@ const AuditPage = () => {
           </div>
         </div>
         {(actionFilter || resourceFilter || dateFrom || dateTo || successFilter || institutionFilter || search) && (
-          <button
-            onClick={handleReset}
-            className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
-          >
+          <button onClick={handleReset} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
             <X className="w-3 h-3" /> Limpar filtros
           </button>
         )}
       </div>
 
-      {/* Tabela */}
       <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
         <DataTable
           columns={columns}
           data={filtered}
           loading={loading}
-          emptyText={isAdmin
-            ? "Nenhum registo de auditoria encontrado"
-            : "Nenhuma acção registada para a sua instituição"}
+          emptyText={isAdmin ? "Nenhum registo de auditoria encontrado" : "Nenhuma acção registada para a sua instituição"}
         />
       </div>
 
-      {/* Paginação */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-slate-500">
-          Página {page + 1} • {filtered.length} registos
+          Página {page + 1} • {filtered.length} de {totalCount} registos
         </span>
         <div className="flex gap-2">
           <button
@@ -344,7 +324,7 @@ const AuditPage = () => {
           </button>
           <button
             onClick={() => setPage((p) => p + 1)}
-            disabled={!hasMore}
+            disabled={(page + 1) * limit >= totalCount}
             className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-all"
           >
             <ChevronRight className="w-4 h-4" />
@@ -352,13 +332,7 @@ const AuditPage = () => {
         </div>
       </div>
 
-      {/* Modal de detalhes */}
-      <Modal
-        isOpen={!!selectedLog}
-        onClose={() => setSelectedLog(null)}
-        title="Detalhes do Registo"
-        maxWidth="max-w-lg"
-      >
+      <Modal isOpen={!!selectedLog} onClose={() => setSelectedLog(null)} title="Detalhes do Registo" maxWidth="max-w-lg">
         {selectedLog && (
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-3">
@@ -414,3 +388,4 @@ const AuditPage = () => {
 };
 
 export default AuditPage;
+
