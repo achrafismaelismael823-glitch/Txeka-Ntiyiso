@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { authService } from './auth';
 
-// Lê do .env e normaliza: remove /api/v1 do final se existir
+// ── Normalização da URL base ──
+// Aceita tanto 'https://dominio.com' quanto 'https://dominio.com/api/v1'
+// e sempre resulta em 'https://dominio.com/api/v1'
 const rawUrl = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
 const API_BASE_URL = rawUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
 
@@ -11,6 +13,7 @@ export const api = axios.create({
   timeout: 30000,
 });
 
+// ── Request Interceptor ──
 api.interceptors.request.use(
   (config) => {
     const token = authService.getToken();
@@ -20,14 +23,17 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ── Response Interceptor ──
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
     const data = error.response?.data;
     const url = error.config?.url || '';
+    const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
 
-    if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin/login')) {
+    // NÃO redirecionar em 401 se for login (para mostrar erro na tela)
+    if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
       window.location.href = '/login?expired=1';
     }
@@ -39,10 +45,12 @@ api.interceptors.response.use(
     else if (error.message) message = error.message;
 
     error.normalizedMessage = message;
+    error.debug = { status, statusText: error.response?.statusText, url, method, data };
     return Promise.reject(error);
   }
 );
 
+// ── Endpoints ──
 export const endpoints = {
   auth: {
     adminLogin: (email, password) =>
@@ -69,9 +77,8 @@ export const endpoints = {
     addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
   },
   certify: {
-    single: (formData) => api.post('/certify', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    single: (formData) =>
+      api.post('/certify', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
     bulk: (data) => api.post('/certify/bulk', data),
   },
   verify: {
