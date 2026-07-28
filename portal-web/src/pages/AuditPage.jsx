@@ -1,206 +1,384 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { api } from '../services/api';
+import { useState, useEffect, useContext, useCallback } from 'react';
+import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
+import { DataTable } from '../components/ui/DataTable';
+import { Modal } from '../components/ui/Modal';
+import { useAuth } from '../hooks/useAuth';
 import {
-  Activity, Loader2, AlertTriangle, Search, X, FileText,
-  Building2, Clock, Filter
+  Search, Filter, Calendar, RefreshCw, Eye, X, FileText,
+  ShieldCheck, AlertTriangle, LogIn, LogOut, Download, Trash2, Settings,
+  ChevronLeft, ChevronRight, Activity, CheckCircle2, XCircle
 } from 'lucide-react';
 
+const ACTION_ICONS = {
+  EMIT: FileText,
+  VERIFY: ShieldCheck,
+  REVOKE: AlertTriangle,
+  LOGIN: LogIn,
+  LOGOUT: LogOut,
+  EXPORT: Download,
+  DELETE: Trash2,
+  SYSTEM: Settings,
+};
+
+const ACTION_COLORS = {
+  EMIT: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  VERIFY: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+  REVOKE: 'text-red-400 bg-red-500/10 border-red-500/20',
+  LOGIN: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  LOGOUT: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+  EXPORT: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+  DELETE: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+  SYSTEM: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+};
+
 const AuditPage = () => {
-  const { isAdmin, isInstitution, institutionId } = useAuth();
   const { notify } = useContext(NotificationContext);
+  const { user, isAdmin } = useAuth();
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [selectedLog, setSelectedLog] = useState(null);
+
+  // Filtros
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('ALL'); // ALL, EMIT, VERIFY, REVOKE, LOGIN
+  const [actionFilter, setActionFilter] = useState('');
+  const [resourceFilter, setResourceFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [successFilter, setSuccessFilter] = useState('');
+
+  // Paginação
+  const [page, setPage] = useState(0);
+  const [limit] = useState(25);
+  const [hasMore, setHasMore] = useState(false);
 
   const fetchLogs = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-      const params = { limit: 200 };
-      if (filter !== 'ALL') params.action = filter;
-      // Instituição só vê os seus logs
-      if (isInstitution && institutionId) {
-        params.institution_id = institutionId;
-      }
-      // CORREÇÃO: path sem /api/v1 (já está na baseURL)
-      const { data } = await api.get('/audit/logs', { params });
-      let items = Array.isArray(data) ? data : (data.items || data.logs || data.results || []);
+      const params = {
+        limit,
+        offset: page * limit,
+      };
+      if (actionFilter) params.action = actionFilter;
+      if (resourceFilter) params.resource_type = resourceFilter;
+      if (dateFrom) params.start_date = dateFrom + 'T00:00:00';
+      if (dateTo) params.end_date = dateTo + 'T23:59:59';
+      if (!isAdmin && user?.id) params.institution_id = user.id;
+
+      const { data } = await endpoints.audit.logs(params);
+      const items = Array.isArray(data) ? data : data.items || [];
       setLogs(items);
+      setHasMore(items.length === limit);
     } catch (err) {
-      const msg = err.normalizedMessage || err.message || 'Erro ao carregar logs';
-      setError(msg);
-      notify(msg, 'error');
+      notify(err.normalizedMessage || 'Erro ao carregar logs de auditoria', 'error');
     } finally {
       setLoading(false);
     }
-  }, [filter, isInstitution, institutionId, notify]);
+  }, [page, limit, actionFilter, resourceFilter, dateFrom, dateTo, isAdmin, user, notify]);
 
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
 
+  const handleReset = () => {
+    setSearch('');
+    setActionFilter('');
+    setResourceFilter('');
+    setDateFrom('');
+    setDateTo('');
+    setSuccessFilter('');
+    setPage(0);
+  };
+
   const filtered = logs.filter((log) => {
+    if (!search) return true;
     const term = search.toLowerCase();
-    if (!term) return true;
-    const desc = (log.description || log.details || log.message || log.detail || '').toLowerCase();
-    const hash = (log.doc_hash || log.document_hash || log.hash || log.doc_id || '').toLowerCase();
     return (
-      (log.action || '').toLowerCase().includes(term) ||
-      (log.institution_id || '').toLowerCase().includes(term) ||
-      hash.includes(term) ||
-      desc.includes(term)
+      (log.user_email || '').toLowerCase().includes(term) ||
+      (log.resource_id || '').toLowerCase().includes(term) ||
+      (log.institution_id || '').toLowerCase().includes(term)
     );
+  }).filter((log) => {
+    if (successFilter === '') return true;
+    return String(log.success) === successFilter;
   });
 
-  const actionColors = {
-    EMIT: 'bg-cyan-500/10 text-cyan-400',
-    VERIFY: 'bg-emerald-500/10 text-emerald-400',
-    REVOKE: 'bg-red-500/10 text-red-400',
-    LOGIN: 'bg-purple-500/10 text-purple-400',
-    BULK_EMIT: 'bg-amber-500/10 text-amber-400',
-  };
-
-  // Helpers para mostrar dados mesmo com nomes de campo diferentes
-  const getDescription = (log) => {
-    return log.description || log.details || log.message || log.detail || '-';
-  };
-
-  const getHash = (log) => {
-    return log.doc_hash || log.document_hash || log.hash || log.doc_id || null;
-  };
-
-  const getDate = (log) => {
-    const raw = log.timestamp || log.created_at || log.date || log.time;
-    if (!raw) return '—';
-    try {
-      return new Date(raw).toLocaleString('pt-MZ');
-    } catch {
-      return String(raw);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-      </div>
-    );
-  }
+  const columns = [
+    {
+      key: 'action',
+      label: 'Acção',
+      render: (row) => {
+        const Icon = ACTION_ICONS[row.action] || Activity;
+        const colorClass = ACTION_COLORS[row.action] || ACTION_COLORS.SYSTEM;
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`p-1.5 rounded-lg border ${colorClass}`}>
+              <Icon className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">{row.action}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'resource_type',
+      label: 'Recurso',
+      render: (row) => (
+        <span className="text-xs text-slate-400 uppercase">{row.resource_type}</span>
+      ),
+    },
+    {
+      key: 'resource_id',
+      label: 'ID',
+      render: (row) => (
+        <span className="text-xs font-mono text-slate-300 truncate max-w-[120px] block">
+          {row.resource_id}
+        </span>
+      ),
+    },
+    {
+      key: 'user_email',
+      label: 'Utilizador',
+      render: (row) => (
+        <span className="text-xs text-slate-300">{row.user_email}</span>
+      ),
+    },
+    {
+      key: 'institution_id',
+      label: 'Instituição',
+      render: (row) => (
+        <span className="text-xs font-mono text-slate-400">{row.institution_id || '—'}</span>
+      ),
+    },
+    {
+      key: 'success',
+      label: 'Estado',
+      render: (row) => (
+        <div className="flex items-center gap-1.5">
+          {row.success ? (
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          ) : (
+            <XCircle className="w-3.5 h-3.5 text-red-400" />
+          )}
+          <span className={`text-xs ${row.success ? 'text-emerald-400' : 'text-red-400'}`}>
+            {row.success ? 'Sucesso' : 'Falha'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'timestamp',
+      label: 'Data/Hora',
+      render: (row) => (
+        <span className="text-xs text-slate-500">
+          {row.timestamp ? new Date(row.timestamp).toLocaleString('pt-MZ') : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      style: { textAlign: 'right' },
+      render: (row) => (
+        <button
+          onClick={() => setSelectedLog(row)}
+          className="p-2 rounded-lg hover:bg-white/5 text-slate-500 hover:text-cyan-400 transition-colors"
+          title="Ver detalhes"
+        >
+          <Eye className="w-3.5 h-3.5" />
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Auditoria</h1>
-        <p className="text-xs text-slate-500 mt-1">Registo completo de actividades da plataforma</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Auditoria</h1>
+          <p className="text-xs text-slate-500 mt-1">Registo de todas as acções no sistema</p>
+        </div>
+        <button
+          onClick={fetchLogs}
+          disabled={loading}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/[0.03] border border-white/[0.06] hover:border-cyan-500/20 text-slate-300 hover:text-cyan-400 rounded-xl transition-all text-sm"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </button>
       </div>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-500/[0.08] border border-red-500/20 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-400/90">{error}</p>
+      {/* Filtros */}
+      <div className="bg-slate-900/40 border border-white/[0.04] rounded-2xl p-4 space-y-4">
+        <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+          <Filter className="w-3.5 h-3.5" /> Filtros
         </div>
-      )}
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar logs..."
-            className="w-full pl-10 pr-10 py-2.5 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-500" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pesquisar..."
+              className="w-full pl-9 pr-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-slate-100 placeholder-slate-600 text-xs focus:outline-none focus:border-cyan-500/30"
+            />
+          </div>
           <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-4 py-2.5 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/30 text-sm"
+            value={actionFilter}
+            onChange={(e) => { setActionFilter(e.target.value); setPage(0); }}
+            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-cyan-500/30"
           >
-            <option value="ALL">Todas</option>
+            <option value="">Todas as acções</option>
             <option value="EMIT">Emissão</option>
             <option value="VERIFY">Verificação</option>
             <option value="REVOKE">Revogação</option>
             <option value="LOGIN">Login</option>
-            <option value="BULK_EMIT">Emissão Massiva</option>
+            <option value="LOGOUT">Logout</option>
+            <option value="EXPORT">Exportação</option>
+            <option value="DELETE">Eliminação</option>
+            <option value="SYSTEM">Sistema</option>
           </select>
+          <select
+            value={resourceFilter}
+            onChange={(e) => { setResourceFilter(e.target.value); setPage(0); }}
+            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-cyan-500/30"
+          >
+            <option value="">Todos os recursos</option>
+            <option value="DOCUMENT">Documento</option>
+            <option value="INSTITUTION">Instituição</option>
+            <option value="USER">Utilizador</option>
+            <option value="SYSTEM">Sistema</option>
+          </select>
+          <select
+            value={successFilter}
+            onChange={(e) => setSuccessFilter(e.target.value)}
+            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-cyan-500/30"
+          >
+            <option value="">Todos os estados</option>
+            <option value="true">Sucesso</option>
+            <option value="false">Falha</option>
+          </select>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-600" />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+                className="w-full pl-7 pr-2 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-cyan-500/30"
+              />
+            </div>
+            <div className="relative flex-1">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-600" />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+                className="w-full pl-7 pr-2 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-cyan-500/30"
+              />
+            </div>
+          </div>
+        </div>
+        {(actionFilter || resourceFilter || dateFrom || dateTo || successFilter || search) && (
+          <button
+            onClick={handleReset}
+            className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
+          >
+            <X className="w-3 h-3" /> Limpar filtros
+          </button>
+        )}
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={filtered}
+          loading={loading}
+          emptyText="Nenhum registo de auditoria encontrado"
+        />
+      </div>
+
+      {/* Paginação */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-slate-500">
+          Página {page + 1} • {filtered.length} registos
+        </span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-all"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!hasMore}
+            className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-all"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
-        {filtered.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/[0.05] text-[0.65rem] uppercase tracking-wider text-slate-500">
-                  <th className="px-5 py-3 font-semibold">Acção</th>
-                  {isAdmin && <th className="px-5 py-3 font-semibold">Instituição</th>}
-                  <th className="px-5 py-3 font-semibold">Descrição</th>
-                  <th className="px-5 py-3 font-semibold">Hash</th>
-                  <th className="px-5 py-3 font-semibold">Data</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.03]">
-                {filtered.map((log, idx) => {
-                  const hash = getHash(log);
-                  return (
-                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[0.65rem] font-bold uppercase ${actionColors[log.action] || 'bg-white/[0.03] text-slate-400'}`}>
-                          <Activity className="w-3 h-3" />
-                          {log.action}
-                        </span>
-                      </td>
-                      {isAdmin && (
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="w-3 h-3 text-slate-500" />
-                            <span className="text-xs font-mono text-slate-400 uppercase">{log.institution_id || '-'}</span>
-                          </div>
-                        </td>
-                      )}
-                      <td className="px-5 py-3.5">
-                        <p className="text-sm text-slate-100">{getDescription(log)}</p>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {hash ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-mono text-cyan-400">{hash.substring(0, 12)}...</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-600">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                          <Clock className="w-3 h-3" />
-                          {getDate(log)}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="px-5 py-12 text-center">
-            <FileText className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">Nenhum registo encontrado</p>
+      {/* Modal de detalhes */}
+      <Modal
+        isOpen={!!selectedLog}
+        onClose={() => setSelectedLog(null)}
+        title="Detalhes do Registo"
+        maxWidth="max-w-lg"
+      >
+        {selectedLog && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                <p className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Acção</p>
+                <p className="font-bold text-slate-100">{selectedLog.action}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                <p className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Estado</p>
+                <div className="flex items-center gap-1.5">
+                  {selectedLog.success ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                  )}
+                  <span className={selectedLog.success ? 'text-emerald-400' : 'text-red-400'}>
+                    {selectedLog.success ? 'Sucesso' : 'Falha'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-2">
+              <p className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Informações</p>
+              <div className="grid grid-cols-1 gap-1.5 text-xs">
+                <p><span className="text-slate-500">Utilizador:</span> <span className="text-slate-200">{selectedLog.user_email}</span></p>
+                <p><span className="text-slate-500">Recurso:</span> <span className="text-slate-200">{selectedLog.resource_type}</span></p>
+                <p><span className="text-slate-500">ID do Recurso:</span> <span className="font-mono text-cyan-400">{selectedLog.resource_id}</span></p>
+                <p><span className="text-slate-500">Instituição:</span> <span className="text-slate-200">{selectedLog.institution_id || '—'}</span></p>
+                <p><span className="text-slate-500">Data:</span> <span className="text-slate-200">{new Date(selectedLog.timestamp).toLocaleString('pt-MZ')}</span></p>
+                <p><span className="text-slate-500">IP:</span> <span className="font-mono text-slate-400">{selectedLog.ip_address || '—'}</span></p>
+                <p><span className="text-slate-500">Método:</span> <span className="text-slate-200">{selectedLog.request_method || '—'}</span></p>
+                <p><span className="text-slate-500">Path:</span> <span className="font-mono text-slate-400 text-[0.65rem]">{selectedLog.request_path || '—'}</span></p>
+                <p><span className="text-slate-500">Status HTTP:</span> <span className="text-slate-200">{selectedLog.status_code || '—'}</span></p>
+              </div>
+            </div>
+            {selectedLog.details && (
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <p className="text-[0.6rem] text-slate-500 uppercase tracking-wider mb-2">Detalhes</p>
+                <pre className="text-[0.65rem] font-mono text-amber-400 overflow-x-auto bg-black/20 rounded-lg p-2">
+                  {typeof selectedLog.details === 'string'
+                    ? selectedLog.details
+                    : JSON.stringify(selectedLog.details, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         )}
-      </div>
+      </Modal>
     </div>
   );
 };
