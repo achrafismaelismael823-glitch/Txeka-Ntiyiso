@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { NotificationContext } from '../contexts/NotificationContext';
@@ -222,7 +222,7 @@ const LoginPage = () => {
 
             <div className="space-y-1.5 text-xs font-mono">
               <p><span className="text-slate-500">Mensagem:</span> <span className="text-red-300">{diag.message}</span></p>
-              <p><span className="text-slate-500">Status HTTP:</span> <span className={diag.status >= 400 ? 'text-red-400' : 'text-emerald-400'}>{diag.status} {diag.statusText}</span></p>
+              <p><span className="text-slate-500">Status HTTP:</span> <span className={typeof diag.status === 'number' && diag.status >= 400 ? 'text-red-400' : 'text-emerald-400'}>{diag.status} {diag.statusText}</span></p>
               <p><span className="text-slate-500">Método:</span> <span className="text-cyan-400">{diag.method}</span></p>
               <p><span className="text-slate-500">URL:</span> <span className="text-cyan-400 break-all">{diag.fullUrl}</span></p>
 
@@ -265,3 +265,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
