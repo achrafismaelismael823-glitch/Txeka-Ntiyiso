@@ -4,41 +4,46 @@ import { authService } from '../hooks/useAuth';
 
 export const AuthContext = createContext(null);
 
+const decodeUserFromToken = () => {
+  const payload = authService.decodeToken();
+  if (!payload) return { user: null, isAdmin: false };
+  const role = payload.role || 'citizen';
+  return {
+    user: {
+      id: payload.id || payload.sub || 'unknown',
+      email: payload.email || payload.sub || 'unknown',
+      name: payload.sub || payload.email || 'Utilizador',
+      role: role,
+      institution: payload.institution || null,
+    },
+    isAdmin: role === 'admin',
+  };
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [{ user, isAdmin }, setAuth] = useState(decodeUserFromToken);
   const [loading, setLoading] = useState(true);
 
-  const decodeAndSetUser = useCallback(() => {
-    const payload = authService.decodeToken();
-    if (payload) {
-      const role = payload.role || 'citizen';
-      setIsAdmin(role === 'admin');
-      setUser({
-        id: payload.id || payload.sub || 'unknown',
-        email: payload.email || payload.sub || 'unknown',
-        name: payload.sub || payload.email || 'Utilizador',
-        role: role,
-        institution: payload.institution || null,
-      });
-    } else {
-      setUser(null);
-      setIsAdmin(false);
-    }
+  const refresh = useCallback(() => {
+    setAuth(decodeUserFromToken());
   }, []);
 
   useEffect(() => {
-    decodeAndSetUser();
+    refresh();
     setLoading(false);
-  }, [decodeAndSetUser]);
+
+    const handleStorage = (e) => {
+      if (e.key === 'txeka_token') refresh();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [refresh]);
 
   const extractToken = (data) => {
-    // Suporta múltiplos formatos de resposta da API
     if (data?.access_token) return data.access_token;
     if (data?.token) return data.token;
     if (data?.data?.access_token) return data.data.access_token;
     if (data?.data?.token) return data.data.token;
-    if (typeof data === 'string' && data.startsWith('eyJ')) return data;
     return null;
   };
 
@@ -50,31 +55,30 @@ export const AuthProvider = ({ children }) => {
     const token = extractToken(response.data);
     if (token) {
       authService.setToken(token);
-      decodeAndSetUser();
-      return { success: true, token };
+      setAuth(decodeUserFromToken());
+      return { success: true };
     }
-    return { success: false, data: response.data };
-  }, [decodeAndSetUser]);
+    return { success: false, error: 'Token não encontrado na resposta' };
+  }, []);
 
   const adminLogin = useCallback(async (email, password) => {
     const response = await endpoints.auth.adminLogin(email, password);
     const token = extractToken(response.data);
     if (token) {
       authService.setToken(token);
-      decodeAndSetUser();
-      return { success: true, token };
+      setAuth(decodeUserFromToken());
+      return { success: true };
     }
-    return { success: false, data: response.data };
-  }, [decodeAndSetUser]);
+    return { success: false, error: 'Token não encontrado na resposta' };
+  }, []);
 
   const logout = useCallback(() => {
-    authService.logout();
-    setUser(null);
-    setIsAdmin(false);
+    authService.removeToken();
+    setAuth({ user: null, isAdmin: false });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, loading, login, adminLogin, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, loading, login, adminLogin, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );
