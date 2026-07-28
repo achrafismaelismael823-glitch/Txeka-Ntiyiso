@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useContext } from 'react';
+import { AuthContext } from '../contexts/AuthContext';
 
 const TOKEN_KEY = 'txeka_token';
 
@@ -33,41 +34,13 @@ export const authService = {
   },
 };
 
+// Hook unificado — consome AuthContext para estado partilhado
 export function useAuth() {
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = useCallback(() => {
-    const payload = authService.decodeToken();
-    if (payload) {
-      const role = payload.role || 'citizen';
-      const isAdminRole = role === 'admin';
-      setIsAdmin(isAdminRole);
-      setUser({
-        id: payload.id || payload.sub || 'unknown',
-        email: payload.email || payload.sub || 'unknown',
-        name: payload.sub || payload.email || 'Utilizador',
-        role: role,
-        institution: payload.institution || null,
-      });
-    } else {
-      setUser(null);
-      setIsAdmin(false);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const handleStorage = (e) => {
-      if (e.key === TOKEN_KEY) refresh();
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [refresh]);
-
-  return { user, isAdmin, loading, refresh };
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de AuthProvider');
+  }
+  return context;
 }
 
 export default useAuth;
