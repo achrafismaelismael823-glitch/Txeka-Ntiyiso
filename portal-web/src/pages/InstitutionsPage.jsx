@@ -1,14 +1,27 @@
 import { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
+import { useAuth } from '../hooks/useAuth';
 import { DataTable } from '../components/ui/DataTable';
 import { Modal } from '../components/ui/Modal';
 import {
-  Plus, Search, X, Key, Edit3, RefreshCw
+  Plus, Search, X, Key, Edit3, RefreshCw, ShieldAlert
 } from 'lucide-react';
 
 const InstitutionsPage = () => {
+  const navigate = useNavigate();
   const { notify } = useContext(NotificationContext);
+  const { isAdmin } = useAuth();
+
+  // Proteção: só Admin acede a esta página
+  useEffect(() => {
+    if (!isAdmin) {
+      notify('Acesso restrito a administradores', 'error');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAdmin, navigate, notify]);
+
   const [institutions, setInstitutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -24,6 +37,7 @@ const InstitutionsPage = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!isAdmin) return;
     let mounted = true;
     const fetchInstitutions = async () => {
       try {
@@ -38,7 +52,7 @@ const InstitutionsPage = () => {
     };
     fetchInstitutions();
     return () => { mounted = false; };
-  }, [notify]);
+  }, [notify, isAdmin]);
 
   const openCreate = () => {
     setEditing(null);
@@ -68,34 +82,27 @@ const InstitutionsPage = () => {
       notify('ID e Nome são obrigatórios', 'error');
       return;
     }
-
     const payload = {
       name: formName.trim(),
       contact_email: formEmail.trim() || undefined,
       subscription_plan: formPlan,
       status: formStatus,
     };
-
     try {
       setSaving(true);
       if (editing) {
         await endpoints.institutions.update(formId.trim(), payload);
         notify('Instituição actualizada', 'success');
       } else {
-        await endpoints.institutions.create({
-          id: formId.trim(),
-          ...payload,
-        });
+        await endpoints.institutions.create({ id: formId.trim(), ...payload });
         notify('Instituição criada', 'success');
       }
-
       if (formCredits && Number(formCredits) > 0) {
         await endpoints.institutions.addCredits(formId.trim(), {
           amount: Number(formCredits),
           description: 'Créditos iniciais atribuídos pelo administrador',
         });
       }
-
       setModalOpen(false);
       const { data } = await endpoints.institutions.list({ limit: 200 });
       setInstitutions(Array.isArray(data) ? data : data.items || []);
@@ -203,6 +210,21 @@ const InstitutionsPage = () => {
       ),
     },
   ];
+
+  // Se não for admin, mostra tela de acesso negado enquanto redireciona
+  if (!isAdmin) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 animate-fade-in">
+        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+          <ShieldAlert className="w-8 h-8 text-red-400" />
+        </div>
+        <div className="text-center">
+          <h2 className="text-lg font-bold text-slate-100">Acesso Restrito</h2>
+          <p className="text-xs text-slate-500 mt-1">Esta área é exclusiva para administradores.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -333,4 +355,3 @@ const InstitutionsPage = () => {
 };
 
 export default InstitutionsPage;
-
