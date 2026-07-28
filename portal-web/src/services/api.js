@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { authService } from './auth';
+import { authService } from '../hooks/useAuth';
 
 // ═══════════════════════════════════════════════════
-// NORMALIZAÇÃO ROBUSTA DA URL BASE
+// URL BASE
 // ═══════════════════════════════════════════════════
 const rawUrl = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
 
@@ -21,6 +21,7 @@ export const api = axios.create({
 // ═══════════════════════════════════════════════════
 api.interceptors.request.use(
   (config) => {
+    // Limpa paths duplicados
     if (config.url && typeof config.url === 'string' && config.url.startsWith('/api/v1/')) {
       config.url = config.url.replace(/^\/api\/v1/, '');
     }
@@ -42,15 +43,18 @@ api.interceptors.response.use(
     const url = error.config?.url || '';
     const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
 
+    // Auto-logout em 401 (exceto login)
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
       window.location.href = '/login?expired=1';
     }
 
+    // Normalização de mensagens de erro
     let message = 'Erro de comunicação com o servidor';
     if (typeof data?.detail === 'string') message = data.detail;
     else if (Array.isArray(data?.detail) && data.detail[0]?.msg) message = data.detail[0].msg;
     else if (data?.message) message = data.message;
+    else if (data?.error) message = data.error;
     else if (error.message) message = error.message;
 
     error.normalizedMessage = message;
