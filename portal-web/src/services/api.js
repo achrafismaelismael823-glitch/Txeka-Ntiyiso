@@ -1,11 +1,15 @@
 import axios from 'axios';
 import { authService } from './auth';
 
-// ── Normalização da URL base ──
-// Aceita tanto 'https://dominio.com' quanto 'https://dominio.com/api/v1'
-// e sempre resulta em 'https://dominio.com/api/v1'
+// ═══════════════════════════════════════════════════
+// NORMALIZAÇÃO ROBUSTA DA URL BASE
+// ═══════════════════════════════════════════════════
 const rawUrl = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
-const API_BASE_URL = rawUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+
+// Remove /api/v1 no final (com ou sem barra) e barra final solta
+const API_BASE_URL = rawUrl
+  .replace(/\/api\/v1\/?$/i, '')
+  .replace(/\/$/, '');
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -13,9 +17,15 @@ export const api = axios.create({
   timeout: 30000,
 });
 
-// ── Request Interceptor ──
+// ═══════════════════════════════════════════════════
+// REQUEST INTERCEPTOR — limpa paths duplicados
+// ═══════════════════════════════════════════════════
 api.interceptors.request.use(
   (config) => {
+    // Se alguém passar '/api/v1/audit/stats', limpa para '/audit/stats'
+    if (config.url && config.url.startsWith('/api/v1/')) {
+      config.url = config.url.replace(/^\/api\/v1/, '');
+    }
     const token = authService.getToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
@@ -23,7 +33,9 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ── Response Interceptor ──
+// ═══════════════════════════════════════════════════
+// RESPONSE INTERCEPTOR
+// ═══════════════════════════════════════════════════
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,7 +44,6 @@ api.interceptors.response.use(
     const url = error.config?.url || '';
     const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
 
-    // NÃO redirecionar em 401 se for login (para mostrar erro na tela)
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
       window.location.href = '/login?expired=1';
@@ -50,7 +61,9 @@ api.interceptors.response.use(
   }
 );
 
-// ── Endpoints ──
+// ═══════════════════════════════════════════════════
+// ENDPOINTS
+// ═══════════════════════════════════════════════════
 export const endpoints = {
   auth: {
     adminLogin: (email, password) =>
