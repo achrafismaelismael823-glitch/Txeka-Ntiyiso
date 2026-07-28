@@ -2,24 +2,30 @@ name: Txeka Claw Bot v4.5 - Ultra Senior
 on:
   issues:
     types: [opened, reopened]
+  issue_comment:
+    types: [created] # ⚡ ATIVAÇÃO CRÍTICA: Faz o bot ler novos comentários nas Issues
   pull_request:
     types: [opened, closed, merged]
 
 jobs:
   claw-senior:
-    if: contains(github.event.issue.body, '@claw') || github.event_name == 'pull_request'
+    # Ajuste sênior no IF para validar o texto tanto na Issue original quanto nos Comentários
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claw')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claw'))
     runs-on: ubuntu-latest
     permissions:
       issues: write
+      pull-requests: write
       contents: read
-      pull-requests: read
       actions: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Necessário para os novos comandos que leem o histórico do Git
+          fetch-depth: 0 
 
       - name: Executar Claw Senior
         uses: actions/github-script@v7
@@ -30,9 +36,7 @@ jobs:
             const path = require('path');
             const { execSync } = require('child_process');
 
-            // ==========================================
-            // BLOCO ORIGINAL MANTIDO PARÁ PULL REQUESTS
-            // ==========================================
+            // --- FLUXO DE PULL REQUEST ---
             if (context.payload.pull_request) {
               const pr = context.payload.pull_request;
               const action = context.payload.action;
@@ -50,24 +54,23 @@ jobs:
               return;
             }
 
-            // ==========================================
-            // BLOCO DE COMANDOS DENTRO DE ISSUES
-            // ==========================================
-            const body = context.payload.issue.body;
+            // --- FLUXO DE COMANDOS (Pega o texto da Issue ou do Comentário) ---
+            const body = context.payload.comment ? context.payload.comment.body : context.payload.issue.body;
             const issueNumber = context.payload.issue.number;
-            let finalMsg = `🦀 **Txeka Claw Bot v4.5** | @${context.payload.issue.user.login}\n\n`;
+            const userLogin = context.payload.comment ? context.payload.comment.user.login : context.payload.issue.user.login;
+            
+            let finalMsg = `🦀 **Txeka Claw Bot v4.5** | @${userLogin}\n\n`;
             let executouComando = false;
 
-            // Função auxiliar segura para rodar comandos git/bash no terminal do runner
             function rodarComando(cmd) {
               try { return execSync(cmd, { encoding: 'utf8' }).trim(); }
               catch (e) { return `❌ Erro na execução interna: ${e.message}`; }
             }
 
-            // [ COMANDO ORIGINAL INTEGRADO] @claw estrutura [path]
+            // [SEU COMANDO ORIGINAL INTEGRADO] @claw estrutura
             if (body.includes('@claw estrutura')) {
               executouComando = true;
-              const args = body.split('@claw estrutura')[1].trim();
+              const args = body.split('@claw estrutura')[1]?.trim();
               const targetPath = args || '.';
               finalMsg += `**Estrutura: ${targetPath}**\n\n`;
 
@@ -85,10 +88,10 @@ jobs:
               finalMsg += `\n---\n*Issue #${issueNumber} | sucesso*`;
             }
 
-            // 1. @claw ver [arquivo]
+            // 1. @claw ver
             if (body.includes('@claw ver ')) {
               executouComando = true;
-              const target = body.split('@claw ver ')[1].trim();
+              const target = body.split('@claw ver ')[1]?.trim();
               try {
                 if (fs.existsSync(target) && fs.statSync(target).isFile()) {
                   const content = fs.readFileSync(target, 'utf8');
@@ -98,10 +101,10 @@ jobs:
               } catch(e) { finalMsg += `❌ Erro: ${e.message}`; }
             }
 
-            // 2. @claw busca "[termo]"
+            // 2. @claw busca
             if (body.includes('@claw busca ')) {
               executouComando = true;
-              const termo = body.split('@claw busca ')[1].trim().replace(/['"]/g, '');
+              const termo = body.split('@claw busca ')[1]?.trim().replace(/['"]/g, '');
               finalMsg += `🔍 **Resultado da busca por: "${termo}"**\n\n`;
               const res = rodarComando(`git grep -n "${termo}" || echo "Nenhuma ocorrência encontrada."`);
               finalMsg += `\`\`\`\n${res.slice(0, 3000)}\n\`\`\``;
@@ -115,10 +118,10 @@ jobs:
               finalMsg += `\`\`\`\n${res}\n\`\`\``;
             }
 
-            // 4. @claw tamanho [caminho]
+            // 4. @claw tamanho
             if (body.includes('@claw tamanho ')) {
               executouComando = true;
-              const target = body.split('@claw tamanho ')[1].trim();
+              const target = body.split('@claw tamanho ')[1]?.trim();
               finalMsg += `⚖️ **Análise de tamanho de: \`${target}\`**\n\n`;
               if (fs.existsSync(target)) {
                 const linhas = rodarComando(`find ${target} -type f -exec wc -l {} + | tail -n 1`);
@@ -170,10 +173,10 @@ jobs:
               finalMsg += `* **Python:** \`${pyVer}\`\n* **Node.js:** \`${nodeVer}\`\n* **Docker:** \`${dockerVer}\`\n* **SO:** Ubuntu Virtual Host`;
             }
 
-            // 9. @claw commits [qtd]
+            // 9. @claw commits
             if (body.includes('@claw commits')) {
               executouComando = true;
-              const partes = body.split('@claw commits')[1].trim();
+              const partes = body.split('@claw commits')[1]?.trim();
               const qtd = parseInt(partes) || 5;
               finalMsg += `📜 **Últimos ${qtd} Commits na Branch:**\n\n`;
               const res = rodarComando(`git log -n ${qtd} --pretty=format:"* %h - %an: %s (%cr)"`);
@@ -207,4 +210,4 @@ jobs:
             // 14. @claw dependencias
             if (body.includes('@claw dependencias')) {
               executouComando = true;
-              finalMsg += `📦 **Arquivos de Dependências Localizados:**\n\n`;
+
