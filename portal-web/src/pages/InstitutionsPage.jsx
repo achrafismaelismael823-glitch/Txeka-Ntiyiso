@@ -307,4 +307,3 @@ const InstitutionsPage = () => {
 };
 
 export default InstitutionsPage;
-
