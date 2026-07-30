@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { authService } from '../hooks/useAuth';
+import { authService } from './authService';
 
 // ═══════════════════════════════════════════════════
 // URL BASE
@@ -44,7 +44,6 @@ api.interceptors.response.use(
 
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
-      window.location.href = '/login?expired=1';
     }
 
     let message = 'Erro de comunicação com o servidor';
@@ -103,4 +102,3 @@ export const endpoints = {
     revoke: (docId, data) => api.post(`/emissions/${docId}/revoke`, data),
   },
 };
-
