@@ -1,23 +1,43 @@
+// Serviço de autenticação puro — sem dependências de React
 const TOKEN_KEY = 'txeka_token';
-const USER_KEY = 'txeka_user';
+
+const decodeJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+};
 
 export const authService = {
-  setToken: (token) => localStorage.setItem(TOKEN_KEY, token),
   getToken: () => localStorage.getItem(TOKEN_KEY),
-  setUser: (user) => localStorage.setItem(USER_KEY, JSON.stringify(user)),
-  getUser: () => {
-    try {
-      return JSON.parse(localStorage.getItem(USER_KEY));
-    } catch {
-      return null;
-    }
-  },
-  isAuthenticated: () => !!authService.getToken(),
-  isAdmin: () => authService.getUser()?.role === 'admin',
-  isInstitution: () => authService.getUser()?.role === 'institution',
-  getInstitutionId: () => authService.getUser()?.id || null,
+  setToken: (token) => localStorage.setItem(TOKEN_KEY, token),
+  removeToken: () => localStorage.removeItem(TOKEN_KEY),
+
   logout: () => {
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    window.location.href = '/login';
+  },
+
+  decodeToken: () => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    return token ? decodeJwt(token) : null;
+  },
+
+  isAuthenticated: () => {
+    const payload = authService.decodeToken();
+    if (!payload) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp && payload.exp > now;
   },
 };
+
+export default authService;
