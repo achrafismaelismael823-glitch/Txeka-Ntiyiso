@@ -1,11 +1,12 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { NotificationContext } from '../contexts/NotificationContext';
 import { endpoints } from '../services/api';
+import { authService } from '../services/authService';
 import {
   ShieldCheck, Building2, User, Eye, EyeOff, Loader2,
-  WifiOff, Server, CheckCircle2
+  WifiOff, Server, CheckCircle2, Lock, Timer
 } from 'lucide-react';
 
 const LoginPage = () => {
@@ -13,7 +14,11 @@ const LoginPage = () => {
   const { notify } = useContext(NotificationContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/dashboard';
+
+  // Garante que nunca redireciona para /login
+  const from = location.state?.from?.pathname === '/login'
+    ? '/dashboard'
+    : (location.state?.from?.pathname || '/dashboard');
 
   const [mode, setMode] = useState('institution');
   const [institutionId, setInstitutionId] = useState('');
@@ -22,7 +27,40 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // ── Proteções de segurança ──
+  const [failedAttempts, setFailedAttempts] = useState(authService.getFailedAttempts());
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
   const [apiHealth, setApiHealth] = useState(null);
+
+  // Honeypot — campo invisível para bots
+  const [honeypot, setHoneypot] = useState('');
+
+  // Ref para auto-hide de password
+  const passwordTimerRef = useRef(null);
+
+  // Atualiza contador de lockout a cada segundo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const remaining = authService.getRemainingLockoutSeconds();
+      setLockoutRemaining(remaining);
+      if (remaining === 0 && failedAttempts > 0) {
+        setFailedAttempts(authService.getFailedAttempts());
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [failedAttempts]);
+
+  // Auto-hide password após 3 segundos se visível
+  useEffect(() => {
+    if (showPassword) {
+      passwordTimerRef.current = setTimeout(() => {
+        setShowPassword(false);
+      }, 3000);
+    }
+    return () => {
+      if (passwordTimerRef.current) clearTimeout(passwordTimerRef.current);
+    };
+  }, [showPassword, password]);
 
   const testApiConnection = async () => {
     setApiHealth('checking');
@@ -38,8 +76,31 @@ const LoginPage = () => {
     }
   };
 
+  const getCooldownSeconds = (attempts) => {
+    if (attempts >= 9) return 300;   // 5 minutos
+    if (attempts >= 6) return 120;   // 2 minutos
+    if (attempts >= 3) return 30;    // 30 segundos
+    return 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // ── Honeypot: se bot preencheu, recusa silenciosamente ──
+    if (honeypot) {
+      // Simula delay para não revelar que é honeypot
+      await new Promise(r => setTimeout(r, 1500));
+      notify('Credenciais inválidas', 'error');
+      return;
+    }
+
+    // ── Verifica lockout ──
+    const locked = authService.isLockedOut();
+    if (locked) {
+      notify(`Muitas tentativas falhadas. Aguarde ${locked} segundos.`, 'error');
+      return;
+    }
+
     if (!password) return;
     setLoading(true);
 
@@ -49,20 +110,67 @@ const LoginPage = () => {
         : await adminLogin(email.trim(), password);
 
       if (result.success) {
+        // Limpa tentativas falhadas no sucesso
+        authService.resetFailedAttempts();
+        setFailedAttempts(0);
+
+        // Verifica se o token foi realmente guardado
+        const token = authService.getToken();
+        if (!token) {
+          notify('Erro interno: sessão não iniciada', 'error');
+          setLoading(false);
+          return;
+        }
+
         notify(
           mode === 'institution' ? 'Sessão iniciada com sucesso' : 'Sessão de administrador iniciada',
           'success'
         );
-        navigate(from, { replace: true });
+
+        // Redirecionamento com fallback duplo
+        setTimeout(() => {
+          navigate(from, { replace: true });
+          setTimeout(() => {
+            if (window.location.pathname === '/login') {
+              window.location.href = from;
+            }
+          }, 400);
+        }, 150);
       } else {
-        notify(result.error || 'Falha na autenticação', 'error');
+        // ── Regista tentativa falhada ──
+        const attempts = authService.incrementFailedAttempts();
+        setFailedAttempts(attempts);
+
+        const cooldown = getCooldownSeconds(attempts);
+        if (cooldown > 0) {
+          authService.setLockout(cooldown);
+          setLockoutRemaining(cooldown);
+          notify(`Credenciais inválidas. Conta temporariamente bloqueada por ${cooldown} segundos.`, 'error');
+        } else {
+          // Mensagem GENÉRICA — nunca revela se ID/email existe
+          notify('Credenciais inválidas. Verifique os dados e tente novamente.', 'error');
+        }
       }
     } catch (err) {
-      notify(err.normalizedMessage || 'Erro ao iniciar sessão', 'error');
+      // ── Também conta como tentativa falhada ──
+      const attempts = authService.incrementFailedAttempts();
+      setFailedAttempts(attempts);
+
+      const cooldown = getCooldownSeconds(attempts);
+      if (cooldown > 0) {
+        authService.setLockout(cooldown);
+        setLockoutRemaining(cooldown);
+        notify(`Credenciais inválidas. Conta temporariamente bloqueada por ${cooldown} segundos.`, 'error');
+      } else {
+        notify('Credenciais inválidas. Verifique os dados e tente novamente.', 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const isLocked = lockoutRemaining > 0;
+  const attemptsBeforeLockout = Math.max(0, 3 - (failedAttempts % 3));
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -82,30 +190,58 @@ const LoginPage = () => {
         <div className="flex p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl">
           <button
             type="button"
-            onClick={() => setMode('institution')}
+            onClick={() => { if (!isLocked) setMode('institution'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
               mode === 'institution'
                 ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                 : 'text-slate-500 hover:text-slate-300'
-            }`}
+            } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Building2 className="w-4 h-4" /> Instituição
           </button>
           <button
             type="button"
-            onClick={() => setMode('admin')}
+            onClick={() => { if (!isLocked) setMode('admin'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
               mode === 'admin'
                 ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                 : 'text-slate-500 hover:text-slate-300'
-            }`}
+            } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <User className="w-4 h-4" /> Administrador
           </button>
         </div>
 
+        {/* Alerta de tentativas / lockout */}
+        {failedAttempts > 0 && !isLocked && (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15 text-amber-400 text-xs">
+            <Lock className="w-3.5 h-3.5" />
+            <span>Tentativa {failedAttempts} falhada{failedAttempts > 1 ? 's' : ''}. {attemptsBeforeLockout} tentativa{attemptsBeforeLockout > 1 ? 's' : ''} antes do bloqueio temporário.</span>
+          </div>
+        )}
+
+        {isLocked && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/15 text-red-400 text-xs">
+            <Timer className="w-3.5 h-3.5 animate-pulse" />
+            <span className="font-bold">Conta temporariamente bloqueada.</span>
+            <span className="ml-auto font-mono">{lockoutRemaining}s</span>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Honeypot — invisível para humanos, visível para bots */}
+          <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}>
+            <input
+              type="text"
+              name="website"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               {mode === 'institution' ? 'ID da Instituição' : 'Email'}
@@ -127,6 +263,8 @@ const LoginPage = () => {
                 placeholder={mode === 'institution' ? 'Ex: CFN, ISTN' : 'admin@txeka.co.mz'}
                 className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
                 required
+                disabled={isLocked}
+                autoComplete={mode === 'institution' ? 'off' : 'username'}
               />
             </div>
           </div>
@@ -143,23 +281,30 @@ const LoginPage = () => {
                 placeholder="••••••••"
                 className="w-full pl-4 pr-10 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
                 required
+                disabled={isLocked}
+                autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                disabled={isLocked}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 disabled:opacity-30"
+                title={showPassword ? 'Ocultar (auto-oculta em 3s)' : 'Mostrar'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {showPassword && (
+              <p className="text-[0.6rem] text-amber-400/70">Password visível — auto-oculta em 3 segundos</p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={loading || !password}
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 text-slate-950 font-bold rounded-xl transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+            disabled={loading || !password || isLocked}
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Entrar'}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isLocked ? `Bloqueado (${lockoutRemaining}s)` : 'Entrar')}
           </button>
         </form>
 
@@ -203,3 +348,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
