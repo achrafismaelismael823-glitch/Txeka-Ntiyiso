@@ -102,3 +102,4 @@ export const endpoints = {
     revoke: (docId, data) => api.post(`/emissions/${docId}/revoke`, data),
   },
 };
+
