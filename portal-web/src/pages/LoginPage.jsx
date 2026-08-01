@@ -130,8 +130,13 @@ const LoginPage = () => {
             <ShieldCheck className="w-8 h-8 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Txeka Ntiyiso</h1>
-            <p className="text-sm text-slate-500">Plataforma de Certificação Blockchain</p>
+            <h1 className="text-2xl font-bold tracking-wide">
+              <span className="text-white">Txeka</span>
+              <span className="text-cyan-400"> Ntiyiso</span>
+            </h1>
+            <p className="text-sm text-slate-500 max-w-[280px] mx-auto leading-relaxed mt-2">
+              Infraestrutura Tecnológica de Verificação da Integridade e Autenticidade Documental
+            </p>
           </div>
         </div>
 
