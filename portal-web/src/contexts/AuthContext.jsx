@@ -31,10 +31,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     refresh();
     setLoading(false);
-
-    const handleStorage = (e) => {
-      if (e.key === 'txeka_token') refresh();
-    };
+    const handleStorage = (e) => { if (e.key === 'txeka_token') refresh(); };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, [refresh]);
@@ -48,27 +45,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = useCallback(async (institutionId, password) => {
-    const response = await endpoints.auth.login({
-      institution_id: institutionId,
-      password,
-    });
+    const response = await endpoints.auth.login({ institution_id: institutionId, password });
     const token = extractToken(response.data);
-    if (token) {
-      authService.setToken(token);
-      setAuth(decodeUserFromToken());
-      return { success: true };
-    }
+    if (token) { authService.setToken(token); setAuth(decodeUserFromToken()); return { success: true }; }
     return { success: false, error: 'Token não encontrado na resposta' };
   }, []);
 
   const adminLogin = useCallback(async (email, password) => {
     const response = await endpoints.auth.adminLogin(email, password);
     const token = extractToken(response.data);
-    if (token) {
-      authService.setToken(token);
-      setAuth(decodeUserFromToken());
-      return { success: true };
-    }
+    if (token) { authService.setToken(token); setAuth(decodeUserFromToken()); return { success: true }; }
     return { success: false, error: 'Token não encontrado na resposta' };
   }, []);
 

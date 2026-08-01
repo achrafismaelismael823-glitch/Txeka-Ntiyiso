@@ -1,14 +1,8 @@
 import axios from 'axios';
 import { authService } from './authService';
 
-// ═══════════════════════════════════════════════════
-// URL BASE
-// ═══════════════════════════════════════════════════
 const rawUrl = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
-
-const API_BASE_URL = rawUrl
-  .replace(/\/api\/v1\/?$/i, '')
-  .replace(/\/$/, '');
+const API_BASE_URL = rawUrl.replace(/\/api\/v1\/?$/i, '').replace(/\/$/, '');
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -16,9 +10,6 @@ export const api = axios.create({
   timeout: 30000,
 });
 
-// ═══════════════════════════════════════════════════
-// REQUEST INTERCEPTOR
-// ═══════════════════════════════════════════════════
 api.interceptors.request.use(
   (config) => {
     if (config.url && typeof config.url === 'string' && config.url.startsWith('/api/v1/')) {
@@ -31,37 +22,26 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ═══════════════════════════════════════════════════
-// RESPONSE INTERCEPTOR
-// ═══════════════════════════════════════════════════
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
     const data = error.response?.data;
     const url = error.config?.url || '';
-    const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
-
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
     }
-
     let message = 'Erro de comunicação com o servidor';
     if (typeof data?.detail === 'string') message = data.detail;
     else if (Array.isArray(data?.detail) && data.detail[0]?.msg) message = data.detail[0].msg;
     else if (data?.message) message = data.message;
     else if (data?.error) message = data.error;
     else if (error.message) message = error.message;
-
     error.normalizedMessage = message;
-    error.debug = { status, statusText: error.response?.statusText, url, method, data };
     return Promise.reject(error);
   }
 );
 
-// ═══════════════════════════════════════════════════
-// ENDPOINTS
-// ═══════════════════════════════════════════════════
 export const endpoints = {
   health: {
     check: () => fetch(`${API_BASE_URL}/health`, { method: 'GET', mode: 'cors' }),
@@ -90,8 +70,7 @@ export const endpoints = {
     addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
   },
   certify: {
-    single: (formData) =>
-      api.post('/certify', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    single: (formData) => api.post('/certify', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
     bulk: (data) => api.post('/certify/bulk', data),
   },
   verify: {
@@ -102,4 +81,3 @@ export const endpoints = {
     revoke: (docId, data) => api.post(`/emissions/${docId}/revoke`, data),
   },
 };
-

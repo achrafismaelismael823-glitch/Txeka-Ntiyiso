@@ -2,9 +2,7 @@ import { useState, useContext } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
-import {
-  Key, RefreshCw, Loader2, Eye, EyeOff, ShieldCheck
-} from 'lucide-react';
+import { Key, RefreshCw, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 const SettingsPage = () => {
   const { user, isAdmin } = useAuth();
@@ -23,9 +21,7 @@ const SettingsPage = () => {
       notify('API Key regenerada com sucesso', 'success');
     } catch (err) {
       notify(err.normalizedMessage || 'Erro ao regenerar chave', 'error');
-    } finally {
-      setLoadingKey(false);
-    }
+    } finally { setLoadingKey(false); }
   };
 
   const handleCopy = (text) => {
@@ -94,25 +90,16 @@ const SettingsPage = () => {
                 <span className="text-xs font-bold uppercase tracking-wider">Guarde esta chave — só é mostrada uma vez</span>
               </div>
               <div className="flex items-center gap-2">
-                <code className={`flex-1 text-xs font-mono text-slate-300 break-all ${!showKey ? 'blur-sm select-none' : ''}`}>
-                  {apiKey}
-                </code>
-                <button onClick={() => setShowKey(!showKey)} className="p-2 text-slate-500 hover:text-slate-300">
-                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-                <button onClick={() => handleCopy(apiKey)} className="p-2 text-slate-500 hover:text-slate-300">
-                  {copied ? <ShieldCheck className="w-4 h-4 text-emerald-400" /> : <Key className="w-4 h-4" />}
-                </button>
+                <code className={`flex-1 text-xs font-mono text-slate-300 break-all ${!showKey ? 'blur-sm select-none' : ''}`}>{apiKey}</code>
+                <button onClick={() => setShowKey(!showKey)} className="p-2 text-slate-500 hover:text-slate-300">{showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                <button onClick={() => handleCopy(apiKey)} className="p-2 text-slate-500 hover:text-slate-300">{copied ? <ShieldCheck className="w-4 h-4 text-emerald-400" /> : <Key className="w-4 h-4" />}</button>
               </div>
             </div>
           ) : (
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
               <p className="text-sm text-slate-500 mb-3">A chave só é revelada após regeneração por segurança.</p>
-              <button
-                onClick={handleRegenerateKey}
-                disabled={loadingKey}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl transition-all text-sm font-medium"
-              >
+              <button onClick={handleRegenerateKey} disabled={loadingKey}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl transition-all text-sm font-medium">
                 {loadingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 Regenerar API Key
               </button>
@@ -125,4 +112,3 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
-

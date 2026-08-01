@@ -5,9 +5,7 @@ import { NotificationContext } from '../contexts/NotificationContext';
 import { useAuth } from '../hooks/useAuth';
 import { DataTable } from '../components/ui/DataTable';
 import { Modal } from '../components/ui/Modal';
-import {
-  Plus, Search, X, Key, Edit3, RefreshCw, ShieldAlert
-} from 'lucide-react';
+import { Plus, Search, X, Key, Edit3, RefreshCw, ShieldAlert } from 'lucide-react';
 
 const InstitutionsPage = () => {
   const navigate = useNavigate();
@@ -184,13 +182,25 @@ const InstitutionsPage = () => {
       style: { textAlign: 'right' },
       render: (row) => (
         <div className="flex items-center justify-end gap-1">
-          <button onClick={() => openEdit(row)} className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-cyan-400 transition-colors" title="Editar">
+          <button
+            onClick={() => openEdit(row)}
+            className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-cyan-400 transition-colors"
+            title="Editar"
+          >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => handleResetPassword(row.id)} className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-amber-400 transition-colors" title="Reset Password">
+          <button
+            onClick={() => handleResetPassword(row.id)}
+            className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-amber-400 transition-colors"
+            title="Reset Password"
+          >
             <Key className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => handleRegenerateKey(row.id)} className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-purple-400 transition-colors" title="Regenerar API Key">
+          <button
+            onClick={() => handleRegenerateKey(row.id)}
+            className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-purple-400 transition-colors"
+            title="Regenerar API Key"
+          >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -219,7 +229,10 @@ const InstitutionsPage = () => {
           <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Instituições</h1>
           <p className="text-xs text-slate-500 mt-1">Gestão de entidades certificadoras</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl transition-all text-sm">
+        <button
+          onClick={openCreate}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl transition-all text-sm"
+        >
           <Plus className="w-4 h-4" /> Nova Instituição
         </button>
       </div>
@@ -227,7 +240,9 @@ const InstitutionsPage = () => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
         <input
-          type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Pesquisar por ID, nome ou email..."
           className="w-full pl-10 pr-10 py-2.5 bg-black/15 border border-white/[0.05] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
         />
@@ -246,27 +261,42 @@ const InstitutionsPage = () => {
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs text-slate-500 uppercase tracking-wider">ID da Instituição</label>
-            <input value={formId} onChange={(e) => setFormId(e.target.value)} disabled={!!editing}
-              placeholder="Ex: CFN" required
-              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm font-mono uppercase disabled:opacity-50" />
+            <input
+              value={formId}
+              onChange={(e) => setFormId(e.target.value)}
+              disabled={!!editing}
+              placeholder="Ex: CFN"
+              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm font-mono uppercase disabled:opacity-50"
+              required
+            />
           </div>
           <div className="space-y-1">
             <label className="text-xs text-slate-500 uppercase tracking-wider">Nome</label>
-            <input value={formName} onChange={(e) => setFormName(e.target.value)}
-              placeholder="Nome da instituição" required
-              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm" />
+            <input
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="Nome da instituição"
+              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
+              required
+            />
           </div>
           <div className="space-y-1">
             <label className="text-xs text-slate-500 uppercase tracking-wider">Email de Contacto</label>
-            <input value={formEmail} onChange={(e) => setFormEmail(e.target.value)}
+            <input
+              value={formEmail}
+              onChange={(e) => setFormEmail(e.target.value)}
               placeholder="email@instituicao.co.mz"
-              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm" />
+              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs text-slate-500 uppercase tracking-wider">Plano</label>
-              <select value={formPlan} onChange={(e) => setFormPlan(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500/30">
+              <select
+                value={formPlan}
+                onChange={(e) => setFormPlan(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500/30"
+              >
                 <option value="standard">Standard</option>
                 <option value="premium">Premium</option>
                 <option value="enterprise">Enterprise</option>
@@ -274,8 +304,11 @@ const InstitutionsPage = () => {
             </div>
             <div className="space-y-1">
               <label className="text-xs text-slate-500 uppercase tracking-wider">Estado</label>
-              <select value={formStatus} onChange={(e) => setFormStatus(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500/30">
+              <select
+                value={formStatus}
+                onChange={(e) => setFormStatus(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500/30"
+              >
                 <option value="active">Activo</option>
                 <option value="suspended">Suspenso</option>
                 <option value="inactive">Inactivo</option>
@@ -285,18 +318,29 @@ const InstitutionsPage = () => {
           {!editing && (
             <div className="space-y-1">
               <label className="text-xs text-slate-500 uppercase tracking-wider">Créditos Iniciais (opcional)</label>
-              <input type="number" value={formCredits} onChange={(e) => setFormCredits(e.target.value)}
-                placeholder="0" min="0"
-                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm" />
+              <input
+                type="number"
+                value={formCredits}
+                onChange={(e) => setFormCredits(e.target.value)}
+                placeholder="0"
+                min="0"
+                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
+              />
             </div>
           )}
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setModalOpen(false)}
-              className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all text-sm font-medium"
+            >
               Cancelar
             </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all text-sm disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all text-sm disabled:opacity-50"
+            >
               {saving ? 'A gravar...' : (editing ? 'Actualizar' : 'Criar')}
             </button>
           </div>
@@ -307,4 +351,3 @@ const InstitutionsPage = () => {
 };
 
 export default InstitutionsPage;
-
