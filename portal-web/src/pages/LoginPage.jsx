@@ -15,9 +15,10 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname === '/login'
-    ? '/dashboard'
-    : (location.state?.from?.pathname || '/dashboard');
+  // Normalize the destination after login. Default to root ("/") which
+  // matches App.js where the dashboard is mounted at path="/".
+  const rawFrom = location.state?.from?.pathname;
+  const from = rawFrom && rawFrom !== '/login' ? rawFrom : '/';
 
   const [mode, setMode] = useState('institution');
   const [institutionId, setInstitutionId] = useState('');
@@ -136,11 +137,11 @@ const LoginPage = () => {
 
         <div className="flex p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl">
           <button type="button" onClick={() => { if (!isLocked) setMode('institution'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'institution' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-500 hover:text-slate-300'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'institution' ? 'bg-cyan-500/10 text-cyan-400 border border-c[...]
             <Building2 className="w-4 h-4" /> Instituição
           </button>
           <button type="button" onClick={() => { if (!isLocked) setMode('admin'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'admin' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-500 hover:text-slate-300'} ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'admin' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-50[...]
             <User className="w-4 h-4" /> Administrador
           </button>
         </div>
@@ -211,7 +212,8 @@ const LoginPage = () => {
           </div>
 
           <button type="submit" disabled={loading || !password || isLocked}
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl transition-all text[...]"
+            >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isLocked ? `Bloqueado (${lockoutRemaining}s)` : 'Entrar')}
           </button>
         </form>
@@ -227,7 +229,8 @@ const LoginPage = () => {
             </div>
           ) : (
             <button type="button" onClick={testApiConnection} disabled={apiHealth === 'checking'}
-              className="w-full py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-slate-500 hover:text-slate-300 hover:border-white/[0.1] transition-all flex items-center justify-center gap-2">
+              className="w-full py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-slate-500 hover:text-slate-300 hover:border-white/[0.1] transition-all flex items-center [...]"
+              >
               {apiHealth === 'checking' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
               {apiHealth === 'checking' ? 'A verificar...' : 'Verificar disponibilidade'}
             </button>
