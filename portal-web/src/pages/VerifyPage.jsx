@@ -16,10 +16,24 @@ const VerifyPage = () => {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  // Guarda o hash que foi efetivamente verificado com sucesso pela API
+  const [verifiedHash, setVerifiedHash] = useState(null);
+
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Sempre que o utilizador edita o hash, invalida o resultado anterior imediatamente
+  const handleHashChange = (value) => {
+    setHash(value);
+    // Se o hash mudou em relação ao verificado, limpa tudo
+    if (verifiedHash && value.trim() !== verifiedHash) {
+      setResult(null);
+      setError(null);
+      setVerifiedHash(null);
+    }
   };
 
   const handleVerify = async (e) => {
@@ -28,13 +42,27 @@ const VerifyPage = () => {
     setLoading(true);
     setError(null);
     setResult(null);
+    setVerifiedHash(null);
+
     try {
       const cleanHash = hash.trim();
       const { data } = await endpoints.verify.public(cleanHash);
-      setResult(data);
-      if (!urlHash) navigate(`/verify/${cleanHash}`, { replace: true });
+
+      // A API retorna { status: "VALID" | "INVALID", dados_publicos: object | null }
+      if (data.status === 'INVALID') {
+        setVerifiedHash(null);
+        setError('Documento não encontrado ou inválido');
+      } else if (data.status === 'VALID' && data.dados_publicos) {
+        setResult(data);
+        setVerifiedHash(cleanHash);
+        if (!urlHash) navigate(`/verify/${cleanHash}`, { replace: true });
+      } else {
+        setVerifiedHash(null);
+        setError('Resposta inesperada do servidor');
+      }
     } catch (err) {
-      setError(err.normalizedMessage || 'Documento não encontrado ou inválido');
+      setVerifiedHash(null);
+      setError(err.normalizedMessage || 'Erro de comunicação com o servidor');
     } finally {
       setLoading(false);
     }
@@ -46,12 +74,21 @@ const VerifyPage = () => {
         setLoading(true);
         setError(null);
         setResult(null);
+        setVerifiedHash(null);
         try {
           const cleanHash = urlHash.trim();
           const { data } = await endpoints.verify.public(cleanHash);
-          setResult(data);
+
+          if (data.status === 'INVALID') {
+            setError('Documento não encontrado ou inválido');
+          } else if (data.status === 'VALID' && data.dados_publicos) {
+            setResult(data);
+            setVerifiedHash(cleanHash);
+          } else {
+            setError('Resposta inesperada do servidor');
+          }
         } catch (err) {
-          setError(err.normalizedMessage || 'Documento não encontrado ou inválido');
+          setError(err.normalizedMessage || 'Erro de comunicação com o servidor');
         } finally {
           setLoading(false);
         }
@@ -60,7 +97,8 @@ const VerifyPage = () => {
     }
   }, [urlHash]);
 
-  const d = result?.dados_publicos || result;
+  const d = result?.dados_publicos;
+  const isStale = verifiedHash && hash.trim() !== verifiedHash;
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
@@ -83,7 +121,7 @@ const VerifyPage = () => {
           <input
             type="text"
             value={hash}
-            onChange={(e) => setHash(e.target.value)}
+            onChange={(e) => handleHashChange(e.target.value)}
             placeholder="Insira o hash SHA-256 do documento..."
             className="w-full pl-12 pr-32 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm font-mono"
           />
@@ -96,6 +134,15 @@ const VerifyPage = () => {
           </button>
         </form>
 
+        {/* Aviso quando o hash foi alterado após verificação */}
+        {isStale && (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15 text-amber-400 text-xs">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>O hash foi alterado. Clique em <strong>Verificar</strong> para validar o novo documento.</span>
+          </div>
+        )}
+
+        {/* Estado de erro: INVALID da API ou erro de rede */}
         {error && (
           <div className="bg-slate-900/80 border border-red-500/20 rounded-2xl p-6 text-center space-y-3 animate-fade-in">
             <XCircle className="w-12 h-12 text-red-400 mx-auto" />
@@ -104,7 +151,8 @@ const VerifyPage = () => {
           </div>
         )}
 
-        {result && d && (
+        {/* Estado de sucesso: apenas quando status === "VALID" e hash não foi alterado */}
+        {result && d && !isStale && (
           <div className="bg-slate-900/80 border border-emerald-500/20 rounded-2xl p-6 space-y-5 animate-fade-in">
             <div className="flex items-center gap-3 justify-center">
               <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
