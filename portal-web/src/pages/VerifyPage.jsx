@@ -70,7 +70,12 @@ const VerifyPage = () => {
             <ShieldCheck className="w-8 h-8 text-cyan-400" />
           </div>
           <h1 className="text-3xl font-bold text-slate-100">Verificação de Documento</h1>
-          <p className="text-sm text-slate-500">Valide a autenticidade na blockchain Txeka Ntiyiso</p>
+          <p className="text-sm text-slate-500">
+            Infraestrutura Tecnológica de Verificação da Integridade e Autenticidade Documental
+          </p>
+          <p className="text-[0.65rem] text-slate-600 max-w-md mx-auto leading-relaxed">
+            Nenhum documento é armazenado. A validação é realizada exclusivamente através do hash criptográfico (SHA-256), preservando a confidencialidade das informações.
+          </p>
         </div>
 
         <form onSubmit={handleVerify} className="relative">
@@ -203,4 +208,3 @@ const VerifyPage = () => {
 };
 
 export default VerifyPage;
-
