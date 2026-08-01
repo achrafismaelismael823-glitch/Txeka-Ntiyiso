@@ -200,12 +200,10 @@ async def get_my_credits(
 async def get_my_credit_history(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(verify_role("institution")),
     db: AsyncSession = Depends(get_db)
 ):
-    if current_user["role"] not in ["institution", "admin"]:
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
+    # Esta rota é exclusiva para instituições. Administradores usam /{institution_id}/credit-history.
     institution_id = current_user.get("institution")
     if not institution_id:
         raise HTTPException(status_code=400, detail="Sem instituição associada")
