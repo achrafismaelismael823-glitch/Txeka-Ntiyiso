@@ -20,6 +20,7 @@ const VerifyPage = () => {
   const [verifiedHash, setVerifiedHash] = useState(null);
 
   const handleCopy = (text) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -198,11 +199,12 @@ const VerifyPage = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-xs font-mono text-cyan-400 truncate">
-                      {(d.hash_sha256 || d.hash || '').substring(0, 24)}...
+                      {verifiedHash ? verifiedHash.substring(0, 24) + '...' : '—'}
                     </p>
                     <button
-                      onClick={() => handleCopy(d.hash_sha256 || d.hash)}
-                      className="text-slate-500 hover:text-slate-300"
+                      onClick={() => handleCopy(verifiedHash)}
+                      className="text-slate-500 hover:text-slate-300 shrink-0"
+                      title="Copiar hash"
                     >
                       {copied ? (
                         <Check className="w-3 h-3 text-emerald-400" />
