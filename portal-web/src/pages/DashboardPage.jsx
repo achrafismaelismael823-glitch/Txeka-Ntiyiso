@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
@@ -6,7 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import {
   Activity, FileText, ShieldCheck, AlertTriangle, TrendingUp,
   Users, CheckCircle2, XCircle, BarChart3, Lock, ArrowRight,
-  FileCheck, Search, Zap, RefreshCw, Inbox, Clock, Eye
+  FileCheck, Search, Zap, RefreshCw, Inbox, Clock, Eye,
+  CreditCard, Building2
 } from 'lucide-react';
 
 // ── SKELETON CARD ──
@@ -160,53 +161,92 @@ const EmptyState = ({ onAction }) => (
 // ── MAIN COMPONENT ──
 const DashboardPage = () => {
   const { notify } = useContext(NotificationContext);
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isInstitution } = useAuth();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetchedRef = useRef(false);
 
   const fetchDashboardData = async () => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     try {
       setLoading(true);
       setError(null);
 
-      const params = {};
-      if (!isAdmin && user?.id) params.institution_id = user.id;
+      if (isAdmin) {
+        // ── ADMIN: usa rotas de audit ──
+        const [statsRes, logsRes] = await Promise.all([
+          endpoints.audit.stats({}),
+          endpoints.audit.logs({ limit: 5 }),
+        ]);
+        setStats(statsRes.data);
+        const logs = logsRes.data?.items || logsRes.data?.logs || logsRes.data || [];
+        setRecentActivity(Array.isArray(logs) ? logs.slice(0, 5) : []);
 
-      // Buscar estatísticas
-      const statsRes = await endpoints.audit.stats(params);
-      setStats(statsRes.data);
+      } else if (isInstitution) {
+        // ── INSTITUTION: usa rotas próprias ──
+        const [dashRes, credRes] = await Promise.allSettled([
+          endpoints.institutions.dashboard(),
+          endpoints.institutions.credits(),
+        ]);
 
-      // Buscar actividade recente (últimos 5 logs)
-      const logsParams = { ...params, limit: 5 };
-      const logsRes = await endpoints.audit.logs(logsParams);
-      const logs = logsRes.data?.items || logsRes.data?.logs || logsRes.data || [];
-      setRecentActivity(Array.isArray(logs) ? logs.slice(0, 5) : []);
+        if (dashRes.status === 'fulfilled') {
+          setStats(dashRes.value.data);
+        } else {
+          console.warn('[Dashboard] institutions/dashboard falhou:', dashRes.reason?.normalizedMessage);
+        }
+
+        if (credRes.status === 'fulfilled') {
+          setCredits(credRes.value.data);
+        }
+
+        // Tentar buscar logs da instituição (pode dar 403 se não permitido)
+        try {
+          const logsRes = await endpoints.audit.logs({
+            limit: 5,
+            institution_id: user?.id || user?.institution,
+          });
+          const logs = logsRes.data?.items || logsRes.data?.logs || logsRes.data || [];
+          setRecentActivity(Array.isArray(logs) ? logs.slice(0, 5) : []);
+        } catch (logErr) {
+          // Silencioso — institution pode não ter acesso a audit/logs
+          console.log('[Dashboard] audit/logs não disponível para institution');
+          setRecentActivity([]);
+        }
+      }
 
     } catch (err) {
       console.error('[Dashboard] Erro:', err);
-      setError(err.normalizedMessage || 'Erro ao carregar dados do dashboard');
-      notify(err.normalizedMessage || 'Erro ao carregar estatísticas', 'error');
+      // Não mostra toast para 403 — é esperado para institutions
+      if (err.response?.status !== 403) {
+        setError(err.normalizedMessage || 'Erro ao carregar dados do dashboard');
+        notify(err.normalizedMessage || 'Erro ao carregar estatísticas', 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    fetchedRef.current = false;
     fetchDashboardData();
-  }, [isAdmin, user, notify]);
+    return () => { fetchedRef.current = false; };
+  }, [isAdmin, isInstitution, user?.id]);
 
-  const s = stats?.summary || {};
+  const s = stats?.summary || stats || {};
   const v = stats?.verifications || {};
   const actions = stats?.actions_by_type || {};
 
   const hasAnyData =
-    (s.total_emitted_documents || 0) > 0 ||
-    (s.total_verifications || 0) > 0 ||
-    (s.total_logs || 0) > 0 ||
+    (s.total_emitted_documents || s.emitted_documents || s.documents_count || 0) > 0 ||
+    (s.total_verifications || s.verifications_count || 0) > 0 ||
+    (s.total_logs || s.logs_count || 0) > 0 ||
     recentActivity.length > 0;
 
   return (
@@ -218,7 +258,7 @@ const DashboardPage = () => {
           <p className="text-xs text-slate-500 mt-1">
             {isAdmin
               ? 'Visão geral da plataforma Txeka Ntiyiso'
-              : `Instituição: ${user?.name || user?.id || '—'}`}
+              : `Instituição: ${user?.name || user?.id || user?.institution || '—'}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -228,7 +268,7 @@ const DashboardPage = () => {
             </div>
           )}
           <button
-            onClick={fetchDashboardData}
+            onClick={() => { fetchedRef.current = false; fetchDashboardData(); }}
             disabled={loading}
             className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-500 hover:text-slate-300 hover:border-white/[0.1] transition-all disabled:opacity-30"
             title="Actualizar"
@@ -238,13 +278,13 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Error State */}
+      {/* Error State (não-403) */}
       {error && !loading && (
         <div className="p-5 rounded-2xl bg-red-500/5 border border-red-500/15 text-center space-y-3">
           <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" />
           <p className="text-sm text-red-400">{error}</p>
           <button
-            onClick={fetchDashboardData}
+            onClick={() => { fetchedRef.current = false; fetchDashboardData(); }}
             className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-all"
           >
             Tentar novamente
@@ -276,10 +316,10 @@ const DashboardPage = () => {
           color="bg-blue-500/10 text-blue-400 border border-blue-500/20"
         />
         <QuickAction
-          icon={Activity}
-          label="Auditoria"
-          description="Registo completo de acções"
-          to="/audit"
+          icon={isAdmin ? Activity : CreditCard}
+          label={isAdmin ? 'Auditoria' : 'Créditos'}
+          description={isAdmin ? 'Registo completo de acções' : 'Consulte o saldo de créditos'}
+          to={isAdmin ? '/audit' : '/credits'}
           color="bg-amber-500/10 text-amber-400 border border-amber-500/20"
         />
       </div>
@@ -294,38 +334,44 @@ const DashboardPage = () => {
           <StatCard
             icon={FileText}
             label={isAdmin ? 'Documentos Emitidos (Global)' : 'Documentos Emitidos'}
-            value={(s.total_emitted_documents || 0).toLocaleString('pt-MZ')}
-            subtext={`${(s.active_documents || 0).toLocaleString('pt-MZ')} activos`}
+            value={((s.total_emitted_documents || s.emitted_documents || s.documents_count || 0)).toLocaleString('pt-MZ')}
+            subtext={`${(s.active_documents || s.active_count || 0).toLocaleString('pt-MZ')} activos`}
             color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
             onClick={() => navigate('/documents')}
           />
           <StatCard
             icon={ShieldCheck}
             label={isAdmin ? 'Verificações (Global)' : 'Verificações'}
-            value={(s.total_verifications || 0).toLocaleString('pt-MZ')}
-            subtext={`${v.success_rate_percent || 0}% sucesso`}
+            value={((s.total_verifications || s.verifications_count || 0)).toLocaleString('pt-MZ')}
+            subtext={`${v.success_rate_percent || s.success_rate || 0}% sucesso`}
             color="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
             onClick={() => navigate('/verify')}
           />
           <StatCard
             icon={AlertTriangle}
             label={isAdmin ? 'Documentos Revogados (Global)' : 'Documentos Revogados'}
-            value={(s.total_revoked_documents || 0).toLocaleString('pt-MZ')}
+            value={((s.total_revoked_documents || s.revoked_count || 0)).toLocaleString('pt-MZ')}
             color="bg-red-500/10 text-red-400 border border-red-500/20"
             onClick={() => navigate('/documents')}
           />
           <StatCard
-            icon={Activity}
-            label={isAdmin ? 'Logs Totais (Global)' : 'Logs da Instituição'}
-            value={(s.total_logs || 0).toLocaleString('pt-MZ')}
-            subtext={`${(s.recent_logs_7d || 0).toLocaleString('pt-MZ')} últimos 7 dias`}
+            icon={isAdmin ? Activity : CreditCard}
+            label={isAdmin ? 'Logs Totais (Global)' : 'Créditos Disponíveis'}
+            value={isAdmin
+              ? ((s.total_logs || s.logs_count || 0)).toLocaleString('pt-MZ')
+              : ((credits?.balance || credits?.available || credits?.credits || 0)).toLocaleString('pt-MZ')
+            }
+            subtext={isAdmin
+              ? `${(s.recent_logs_7d || s.recent_logs || 0).toLocaleString('pt-MZ')} últimos 7 dias`
+              : `${(credits?.used || credits?.consumed || 0).toLocaleString('pt-MZ')} consumidos`
+            }
             color="bg-amber-500/10 text-amber-400 border border-amber-500/20"
-            onClick={() => navigate('/audit')}
+            onClick={() => navigate(isAdmin ? '/audit' : '/credits')}
           />
         </div>
       )}
 
-      {/* Empty State (when no data at all) */}
+      {/* Empty State */}
       {!loading && !error && !hasAnyData && <EmptyState onAction={(to) => navigate(to)} />}
 
       {/* Charts + Activity */}
@@ -344,7 +390,7 @@ const DashboardPage = () => {
               </div>
             ) : (
               <MiniBarChart
-                data={stats?.verifications_by_day || []}
+                data={stats?.verifications_by_day || s.verifications_by_day || []}
                 label={isAdmin ? 'Verificações por dia (Global)' : 'Verificações por dia (Sua Instituição)'}
               />
             )}
@@ -353,7 +399,7 @@ const DashboardPage = () => {
           {/* Actions by Type */}
           <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-              <TrendingUp className="w-3.5 h-3.5" /> Acções por tipo
+              <TrendingUp className="w-3.5 h-3.5" /> {isAdmin ? 'Acções por tipo' : 'Resumo da Instituição'}
             </div>
             {loading ? (
               <div className="space-y-3 animate-pulse">
@@ -363,6 +409,25 @@ const DashboardPage = () => {
                     <div className="w-20 h-2 rounded bg-white/[0.05]" />
                   </div>
                 ))}
+              </div>
+            ) : isInstitution ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Documentos Emitidos</span>
+                  <span className="text-xs font-mono text-slate-300">{(s.emitted_documents || s.documents_count || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Documentos Activos</span>
+                  <span className="text-xs font-mono text-emerald-400">{(s.active_documents || s.active_count || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Documentos Revogados</span>
+                  <span className="text-xs font-mono text-red-400">{(s.revoked_documents || s.revoked_count || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Créditos Disponíveis</span>
+                  <span className="text-xs font-mono text-amber-400">{(credits?.balance || credits?.available || 0)}</span>
+                </div>
               </div>
             ) : Object.entries(actions).length === 0 ? (
               <div className="text-center py-4">
@@ -401,12 +466,14 @@ const DashboardPage = () => {
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
               <Clock className="w-3.5 h-3.5" /> Actividade Recente
             </div>
-            <button
-              onClick={() => navigate('/audit')}
-              className="text-[0.65rem] text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
-            >
-              Ver tudo <ArrowRight className="w-3 h-3" />
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/audit')}
+                className="text-[0.65rem] text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
+              >
+                Ver tudo <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
           {loading ? (
@@ -421,6 +488,11 @@ const DashboardPage = () => {
                 </div>
               ))}
             </div>
+          ) : recentActivity.length === 0 ? (
+            <div className="text-center py-4">
+              <Activity className="w-6 h-6 text-slate-700 mx-auto mb-2" />
+              <p className="text-xs text-slate-600">Sem actividade recente para mostrar</p>
+            </div>
           ) : (
             <div className="space-y-2">
               {recentActivity.map((log, i) => (
@@ -434,7 +506,7 @@ const DashboardPage = () => {
                   date={log.created_at
                     ? new Date(log.created_at).toLocaleString('pt-MZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
                     : '—'}
-                  onClick={() => navigate('/audit')}
+                  onClick={() => isAdmin && navigate('/audit')}
                 />
               ))}
             </div>
@@ -450,7 +522,7 @@ const DashboardPage = () => {
               <CheckCircle2 className="w-3.5 h-3.5" />
               {isAdmin ? 'Taxa de sucesso global' : 'Taxa de sucesso da sua instituição'}
             </div>
-            <span className="text-lg font-bold text-emerald-400">{v.success_rate_percent || 0}%</span>
+            <span className="text-lg font-bold text-emerald-400">{v.success_rate_percent || s.success_rate || 0}%</span>
           </div>
           {loading ? (
             <div className="space-y-3 animate-pulse">
@@ -465,15 +537,15 @@ const DashboardPage = () => {
               <div className="w-full h-2 bg-white/[0.03] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-emerald-500/40 rounded-full transition-all"
-                  style={{ width: `${v.success_rate_percent || 0}%` }}
+                  style={{ width: `${v.success_rate_percent || s.success_rate || 0}%` }}
                 />
               </div>
               <div className="flex justify-between mt-2 text-[0.65rem] text-slate-500">
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> {v.success || 0} sucessos
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> {v.success || s.success_count || 0} sucessos
                 </span>
                 <span className="flex items-center gap-1">
-                  <XCircle className="w-3 h-3 text-red-400" /> {v.failed || 0} falhas
+                  <XCircle className="w-3 h-3 text-red-400" /> {v.failed || s.failed_count || 0} falhas
                 </span>
               </div>
             </>
