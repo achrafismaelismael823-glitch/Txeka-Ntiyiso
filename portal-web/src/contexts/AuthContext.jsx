@@ -1,4 +1,4 @@
-import { createContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { endpoints } from '../services/api';
 import { authService } from '../services/authService';
 
@@ -6,7 +6,7 @@ export const AuthContext = createContext(null);
 
 const decodeUserFromToken = () => {
   const payload = authService.decodeToken();
-  if (!payload) return { user: null, isAdmin: false };
+  if (!payload) return { user: null, isAdmin: false, isInstitution: false };
   const role = payload.role || 'citizen';
   return {
     user: {
@@ -17,15 +17,16 @@ const decodeUserFromToken = () => {
       institution: payload.institution || null,
     },
     isAdmin: role === 'admin',
+    isInstitution: role === 'institution',
   };
 };
 
 export const AuthProvider = ({ children }) => {
-  const [{ user, isAdmin }, setAuth] = useState(decodeUserFromToken);
+  const [authState, setAuthState] = useState(() => decodeUserFromToken());
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(() => {
-    setAuth(decodeUserFromToken());
+    setAuthState(decodeUserFromToken());
   }, []);
 
   useEffect(() => {
@@ -36,6 +37,10 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('storage', handleStorage);
   }, [refresh]);
 
+  const isAuthenticated = useMemo(() => {
+    return authService.isAuthenticated();
+  }, [authState]);
+
   const extractToken = (data) => {
     if (data?.access_token) return data.access_token;
     if (data?.token) return data.token;
@@ -45,26 +50,53 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = useCallback(async (institutionId, password) => {
-    const response = await endpoints.auth.login({ institution_id: institutionId, password });
-    const token = extractToken(response.data);
-    if (token) { authService.setToken(token); setAuth(decodeUserFromToken()); return { success: true }; }
-    return { success: false, error: 'Token não encontrado na resposta' };
+    try {
+      const response = await endpoints.auth.login({ institution_id: institutionId, password });
+      const token = extractToken(response.data);
+      if (token) {
+        authService.setToken(token);
+        setAuthState(decodeUserFromToken());
+        return { success: true };
+      }
+      return { success: false, error: 'Token não encontrado na resposta' };
+    } catch (err) {
+      return { success: false, error: err.normalizedMessage || 'Erro no login' };
+    }
   }, []);
 
   const adminLogin = useCallback(async (email, password) => {
-    const response = await endpoints.auth.adminLogin(email, password);
-    const token = extractToken(response.data);
-    if (token) { authService.setToken(token); setAuth(decodeUserFromToken()); return { success: true }; }
-    return { success: false, error: 'Token não encontrado na resposta' };
+    try {
+      const response = await endpoints.auth.adminLogin(email, password);
+      const token = extractToken(response.data);
+      if (token) {
+        authService.setToken(token);
+        setAuthState(decodeUserFromToken());
+        return { success: true };
+      }
+      return { success: false, error: 'Token não encontrado na resposta' };
+    } catch (err) {
+      return { success: false, error: err.normalizedMessage || 'Erro no login' };
+    }
   }, []);
 
   const logout = useCallback(() => {
     authService.removeToken();
-    setAuth({ user: null, isAdmin: false });
+    setAuthState({ user: null, isAdmin: false, isInstitution: false });
   }, []);
 
+  const value = useMemo(() => ({
+    user: authState.user,
+    isAdmin: authState.isAdmin,
+    isInstitution: authState.isInstitution,
+    isAuthenticated,
+    loading,
+    login,
+    adminLogin,
+    logout,
+  }), [authState, isAuthenticated, loading, login, adminLogin, logout]);
+
   return (
-    <AuthContext.Provider value={{ user, isAdmin, loading, login, adminLogin, logout, refresh }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
