@@ -31,7 +31,7 @@ api.interceptors.response.use(
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
     }
-    let message = 'Erro de comunicaÃ§Ã£o com o servidor';
+    let message = 'Erro de comunicação com o servidor';
     if (typeof data?.detail === 'string') message = data.detail;
     else if (Array.isArray(data?.detail) && data.detail[0]?.msg) message = data.detail[0].msg;
     else if (data?.message) message = data.message;
@@ -42,15 +42,30 @@ api.interceptors.response.use(
   }
 );
 
+// ── LOGIN ADAPTATIVO ──
+// A API de institution aceita body JSON, mas a de admin pode exigir query params.
+// Tenta body primeiro; se 422, faz fallback para query params.
+const adaptiveAdminLogin = async (email, password) => {
+  try {
+    // Tentativa 1: body JSON (o ideal, seguro)
+    return await api.post('/auth/admin/login', { email, password });
+  } catch (err) {
+    if (err.response?.status === 422) {
+      // Tentativa 2: query params (compatível com API actual)
+      // ⚠️ AVISO: a password vai na URL — o backend deve ser corrigido para aceitar body
+      console.warn('[api.js] Admin login via body rejeitado (422). Fallback para query params. A password será visível nos logs do servidor.');
+      return api.post(`/auth/admin/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+    }
+    throw err;
+  }
+};
+
 export const endpoints = {
   health: {
     check: () => fetch(`${API_BASE_URL}/health`, { method: 'GET', mode: 'cors' }),
   },
   auth: {
-    // ðŸ”’ CORRIGIDO: password no body (JSON), nunca na URL
-    adminLogin: (email, password) =>
-      api.post('/auth/admin/login', { email, password }),
-
+    adminLogin: adaptiveAdminLogin,
     login: (data) => api.post('/auth/login', data),
   },
   audit: {
