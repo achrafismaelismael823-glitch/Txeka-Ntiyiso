@@ -31,7 +31,7 @@ api.interceptors.response.use(
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
     }
-    let message = 'Erro de comunicação com o servidor';
+    let message = 'Erro de comunicaÃ§Ã£o com o servidor';
     if (typeof data?.detail === 'string') message = data.detail;
     else if (Array.isArray(data?.detail) && data.detail[0]?.msg) message = data.detail[0].msg;
     else if (data?.message) message = data.message;
@@ -47,8 +47,10 @@ export const endpoints = {
     check: () => fetch(`${API_BASE_URL}/health`, { method: 'GET', mode: 'cors' }),
   },
   auth: {
+    // ðŸ”’ CORRIGIDO: password no body (JSON), nunca na URL
     adminLogin: (email, password) =>
-      api.post(`/auth/admin/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`),
+      api.post('/auth/admin/login', { email, password }),
+
     login: (data) => api.post('/auth/login', data),
   },
   audit: {
