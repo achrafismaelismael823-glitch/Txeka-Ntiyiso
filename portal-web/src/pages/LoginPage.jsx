@@ -10,13 +10,12 @@ import {
 } from 'lucide-react';
 
 const LoginPage = () => {
-  const { login, adminLogin } = useContext(AuthContext);
+  const { login, adminLogin, isAuthenticated } = useContext(AuthContext);
   const { notify } = useContext(NotificationContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Normalize the destination after login. Default to root ("/") which
-  // matches App.js where the dashboard is mounted at path="/".
+  // Destino pós-login: página que o utilizador tentou aceder, ou '/' (dashboard)
   const rawFrom = location.state?.from?.pathname;
   const from = rawFrom && rawFrom !== '/login' ? rawFrom : '/';
 
@@ -27,18 +26,28 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [failedAttempts, setFailedAttempts] = useState(authService.getFailedAttempts());
+  const [failedAttempts, setFailedAttempts] = useState(authService.getFailedAttempts() || 0);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
   const [apiHealth, setApiHealth] = useState(null);
   const [honeypot, setHoneypot] = useState('');
   const passwordTimerRef = useRef(null);
+  const hasRedirected = useRef(false);
+
+  // ── AUTO-REDIRECT: se já estiver autenticado, não fica preso no /login ──
+  useEffect(() => {
+    if (isAuthenticated && !hasRedirected.current) {
+      hasRedirected.current = true;
+      console.log('[LoginPage] Já autenticado. Redirecionando para:', from);
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, from, navigate]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const remaining = authService.getRemainingLockoutSeconds();
+      const remaining = authService.getRemainingLockoutSeconds() || 0;
       setLockoutRemaining(remaining);
       if (remaining === 0 && failedAttempts > 0) {
-        setFailedAttempts(authService.getFailedAttempts());
+        setFailedAttempts(authService.getFailedAttempts() || 0);
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -68,49 +77,87 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (honeypot) { await new Promise(r => setTimeout(r, 1500)); notify('Credenciais inválidas', 'error'); return; }
+
+    if (honeypot) {
+      await new Promise(r => setTimeout(r, 1500));
+      notify('Credenciais inválidas', 'error');
+      return;
+    }
+
     const locked = authService.isLockedOut();
-    if (locked) { notify(`Muitas tentativas falhadas. Aguarde ${locked} segundos.`, 'error'); return; }
+    if (locked) {
+      notify(`Muitas tentativas falhadas. Aguarde ${locked} segundos.`, 'error');
+      return;
+    }
     if (!password) return;
+
     setLoading(true);
+    console.log('[LoginPage] Iniciando login... modo:', mode);
 
     try {
       const result = mode === 'institution'
         ? await login(institutionId.trim(), password)
         : await adminLogin(email.trim(), password);
 
-      if (result.success) {
+      console.log('[LoginPage] Resultado do login:', result);
+
+      if (result?.success) {
         authService.resetFailedAttempts();
         setFailedAttempts(0);
+
+        // Verifica token foi guardado
         const token = authService.getToken();
-        if (!token) { notify('Erro interno: sessão não iniciada', 'error'); setLoading(false); return; }
+        console.log('[LoginPage] Token no localStorage?', token ? 'SIM' : 'NÃO');
 
-        notify(mode === 'institution' ? 'Sessão iniciada com sucesso' : 'Sessão de administrador iniciada', 'success');
+        notify(
+          mode === 'institution'
+            ? 'Sessão iniciada com sucesso'
+            : 'Sessão de administrador iniciada',
+          'success'
+        );
 
+        // ── REDIRECIONAMENTO COM 3 CAMADAS DE FALLBACK ──
         setTimeout(() => {
+          console.log('[LoginPage] Camada 1: navigate() →', from);
           navigate(from, { replace: true });
-          setTimeout(() => { if (window.location.pathname === '/login') window.location.href = from; }, 400);
-        }, 150);
+
+          setTimeout(() => {
+            if (window.location.pathname === '/login') {
+              console.warn('[LoginPage] Camada 2: navigate falhou. Forçando location.replace()');
+              window.location.replace(from);
+            }
+          }, 500);
+
+          setTimeout(() => {
+            if (window.location.pathname === '/login') {
+              console.error('[LoginPage] Camada 3: ainda em /login! Forçando reload...');
+              window.location.href = from;
+            }
+          }, 1200);
+        }, 200);
+
       } else {
+        console.log('[LoginPage] Login falhou:', result?.error);
         const attempts = authService.incrementFailedAttempts();
         setFailedAttempts(attempts);
         const cooldown = getCooldownSeconds(attempts);
         if (cooldown > 0) {
           authService.setLockout(cooldown);
           setLockoutRemaining(cooldown);
-          notify(`Credenciais inválidas. Conta temporariamente bloqueada por ${cooldown} segundos.`, 'error');
+          notify(`Credenciais inválidas. Conta bloqueada por ${cooldown}s.`, 'error');
         } else {
           notify('Credenciais inválidas. Verifique os dados e tente novamente.', 'error');
         }
       }
     } catch (err) {
+      console.error('[LoginPage] Erro no login:', err);
       const attempts = authService.incrementFailedAttempts();
       setFailedAttempts(attempts);
       const cooldown = getCooldownSeconds(attempts);
       if (cooldown > 0) {
         authService.setLockout(cooldown);
         setLockoutRemaining(cooldown);
-        notify(`Credenciais inválidas. Conta temporariamente bloqueada por ${cooldown} segundos.`, 'error');
+        notify(`Credenciais inválidas. Conta bloqueada por ${cooldown}s.`, 'error');
       } else {
         notify('Credenciais inválidas. Verifique os dados e tente novamente.', 'error');
       }
@@ -125,6 +172,7 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6 animate-fade-in">
+        {/* Header */}
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto">
             <ShieldCheck className="w-8 h-8 text-cyan-400" />
@@ -140,6 +188,7 @@ const LoginPage = () => {
           </div>
         </div>
 
+        {/* Mode Toggle */}
         <div className="flex p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl">
           <button type="button" onClick={() => { if (!isLocked) setMode('institution'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'institution' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-300'}`}>
@@ -151,6 +200,7 @@ const LoginPage = () => {
           </button>
         </div>
 
+        {/* Failed Attempts Warning */}
         {failedAttempts > 0 && !isLocked && (
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15 text-amber-400 text-xs">
             <Lock className="w-3.5 h-3.5" />
@@ -158,6 +208,7 @@ const LoginPage = () => {
           </div>
         )}
 
+        {/* Lockout Banner */}
         {isLocked && (
           <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/15 text-red-400 text-xs">
             <Timer className="w-3.5 h-3.5 animate-pulse" />
@@ -166,11 +217,14 @@ const LoginPage = () => {
           </div>
         )}
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Honeypot */}
           <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}>
             <input type="text" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} tabIndex={-1} autoComplete="off" />
           </div>
 
+          {/* ID / Email */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               {mode === 'institution' ? 'ID da Instituição' : 'Email'}
@@ -194,6 +248,7 @@ const LoginPage = () => {
             </div>
           </div>
 
+          {/* Password */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Palavra-passe</label>
             <div className="relative">
@@ -216,12 +271,14 @@ const LoginPage = () => {
             {showPassword && <p className="text-[0.6rem] text-amber-400/70">Password visível — auto-oculta em 3 segundos</p>}
           </div>
 
+          {/* Submit */}
           <button type="submit" disabled={loading || !password || isLocked}
             className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl transition-all text-sm">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isLocked ? `Bloqueado (${lockoutRemaining}s)` : 'Entrar')}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : (isLocked ? `Bloqueado (${lockoutRemaining}s)` : 'Entrar')}
           </button>
         </form>
 
+        {/* API Health */}
         <div className="space-y-2">
           {apiHealth === 'ok' ? (
             <div className="flex items-center justify-center gap-2 py-2 text-xs text-emerald-400">
