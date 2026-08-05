@@ -17,8 +17,8 @@ const DashboardLayout = () => {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'institution'] },
     { path: '/emit', label: 'Emitir Documento', icon: FileCheck, roles: ['admin', 'institution'] },
     { path: '/documents', label: 'Documentos', icon: FileText, roles: ['admin', 'institution'] },
-    { path: '/bulk-emit', label: 'Emissão Massiva', icon: FileStack, roles: ['institution'] },
-    { path: '/verify', label: 'Verificar', icon: ShieldCheck, roles: ['admin', 'institution'], external: true },
+    { path: '/bulk-emit', label: 'Emisão Massiva', icon: FileStack, roles: ['institution'] },
+    { path: '/verify', label: 'Verificars', icon: ShieldCheck, roles: ['admin', 'institution'], external: true },
     { path: '/audit', label: 'Auditoria', icon: Activity, roles: ['admin', 'institution'] },
     { path: '/credits', label: 'Créditos', icon: CreditCard, roles: ['institution'] },
     { path: '/institutions', label: 'Instituições', icon: Building2, roles: ['admin'] },
@@ -51,7 +51,7 @@ const DashboardLayout = () => {
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-tight">Txeka Ntiyiso</h1>
-            <p className="text-[0.65rem] text-slate-500 uppercase tracking-wider">Certificação Blockchain</p>
+            <p className="text-[0.65rem] text-slate-500 uppercase tracking-wider">Infraestrutura Tecnológica de Verificação da Integridade e Autenticidade Documental</p>
           </div>
         </div>
 
