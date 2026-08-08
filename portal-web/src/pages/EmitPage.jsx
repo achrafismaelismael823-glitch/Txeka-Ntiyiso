@@ -54,17 +54,17 @@ const EmitPage = () => {
       document_type: docType.trim(),
     };
 
-    // ── CORREÇÃO CRÍTICA ──
-    // Instituição NUNCA envia institution_id — backend infere do JWT
-    // Só admin pode enviar se estiver a emitir por outra instituição
-    if (isAdmin && institutionId && institutionId !== user?.institution) {
-      queryParams.institution_id = institutionId;
-    }
-    // Se for instituição, NÃO enviar institution_id — backend usa JWT
+    // NINGUÉM envia institution_id — backend infere do JWT para todos
+
+
+
+
+
+
 
     try {
       setLoading(true);
-      const { data } = await endpoints.certify.single(formData, queryParams);
+      const { data } = await endpoints.emissions.certify(formData, new URLSearchParams(queryParams).toString());
       setResult(data);
       notify('Documento certificado com sucesso', 'success');
       setStep(2);
@@ -166,7 +166,7 @@ const EmitPage = () => {
             <span className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Instituição Emissora</span>
             <p className="text-sm font-mono text-cyan-400">
               {isAdmin 
-                ? (queryParams.institution_id || user?.institution || 'Admin — própria') 
+                ? (user?.institution || institutionId || '—') 
                 : (user?.institution || institutionId || '—')}
             </p>
           </div>
