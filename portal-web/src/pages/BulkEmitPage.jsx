@@ -4,14 +4,14 @@ import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
   FileStack, Loader2, AlertTriangle, CheckCircle2, XCircle,
-  FileText, Download, Upload, ShieldCheck, RefreshCw, Lock,
+  FileText, ShieldCheck, RefreshCw, Lock,
   ChevronRight, ChevronLeft, ExternalLink, Copy, Check
 } from 'lucide-react';
 
 const STEP_LABELS = ['Configuração', 'Revisão', 'Resultado'];
 
 const BulkEmitPage = () => {
-  const { user, institutionId } = useAuth();
+  const { user, isAdmin, isInstitution, institutionId } = useAuth();
   const { notify } = useContext(NotificationContext);
 
   const [step, setStep] = useState(0);
@@ -20,8 +20,9 @@ const BulkEmitPage = () => {
   const [results, setResults] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  // ── CORREÇÃO: usar institutionId do useAuth(), não hardcoded ──
   const examplePayload = {
-    institution_id: institutionId || 'SUA_INSTITUICAO',
+    institution_id: institutionId || user?.institution || 'SUA_INSTITUICAO',
     documents: [
       {
         document_type: 'CERTIFICADO',
@@ -35,7 +36,7 @@ const BulkEmitPage = () => {
       }
     ]
   };
-
+y
   const loadExample = () => {
     setJsonInput(JSON.stringify(examplePayload, null, 2));
   };
@@ -66,6 +67,17 @@ const BulkEmitPage = () => {
     if (!payload) {
       notify('JSON inválido. Verifique a sintaxe', 'error');
       return;
+    }
+
+    // ── CORREÇÃO CRÍTICA: validar que institution_id corresponde ao token se for instituição ──
+    if (isInstitution && payload.institution_id !== user?.institution) {
+      notify(`Instituição no JSON (${payload.institution_id}) não corresponde à sua (${user?.institution})`, 'error');
+      return;
+    }
+
+    // Se for instituição, forçar o institution_id do JWT
+    if (isInstitution) {
+      payload.institution_id = user?.institution;
     }
 
     try {
@@ -118,7 +130,16 @@ const BulkEmitPage = () => {
         <textarea
           value={jsonInput}
           onChange={(e) => setJsonInput(e.target.value)}
-          placeholder={`{\n  "institution_id": "${institutionId || 'SUA_INSTITUICAO'}",\n  "documents": [\n    {\n      "document_type": "CERTIFICADO",\n      "file_name": "doc_1.pdf",\n      "content": "Conteúdo textual do documento..."\n    }\n  ]\n}`}
+          placeholder={`{
+  "institution_id": "${institutionId || user?.institution || 'SUA_INSTITUICAO'}",
+  "documents": [
+    {
+      "document_type": "CERTIFICADO",
+      "file_name": "doc_1.pdf",
+      "content": "Conteúdo textual do documento..."
+    }
+  ]
+}`}
           className="w-full h-96 px-4 py-3 bg-black/20 border border-white/[0.06] rounded-2xl text-slate-100 placeholder-slate-700 focus:outline-none focus:border-cyan-500/30 text-xs font-mono resize-none"
           spellCheck={false}
         />
@@ -302,11 +323,9 @@ const BulkEmitPage = () => {
         {STEP_LABELS.map((label, i) => (
           <React.Fragment key={label}>
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
-              i === step
-                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                : i < step
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-white/[0.02] text-slate-600 border border-white/[0.04]'
+              i === step ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
+              i < step ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+              'bg-white/[0.02] text-slate-600 border border-white/[0.04]'
             }`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem] font-bold ${
                 i === step ? 'bg-cyan-500/20 text-cyan-400' : i < step ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/[0.03] text-slate-600'
@@ -330,4 +349,3 @@ const BulkEmitPage = () => {
 };
 
 export default BulkEmitPage;
-
