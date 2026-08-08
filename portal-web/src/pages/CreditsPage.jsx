@@ -5,7 +5,7 @@ import { NotificationContext } from '../contexts/NotificationContext';
 import {
   CreditCard, Wallet, Receipt, TrendingUp, AlertTriangle,
   RefreshCw, Inbox, Plus, Minus, History, BarChart3,
-  CheckCircle2, ChevronLeft, ChevronRight
+  CheckCircle2, ChevronLeft, ChevronRight, FunnelX, Funnel
 } from 'lucide-react';
 
 const CreditsPage = () => {
@@ -21,6 +21,7 @@ const CreditsPage = () => {
   const [skip, setSkip] = useState(0);
   const [limit, setLimit] = useState(50);
   const [total, setTotal] = useState(0);
+  const [filterType, setFilterType] = useState('all');
 
   const fetchedRef = useRef(false);
 
@@ -122,10 +123,18 @@ const CreditsPage = () => {
 
           <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-              <CreditCard className="w-3.5 h-3.5" /> Plano
+              <CreditCard className="w-3.5 h-3.5" /> Estado da Conta
             </div>
-            <p className="text-3xl font-bold text-cyan-400">{credits?.subscription_plan || user?.subscription_plan || 'Standard'}</p>
-            <p className="text-xs text-slate-500">Subscrição activa</p>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${(credits?.status || user?.status) === 'active' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+              <p className="text-lg font-bold text-cyan-400 capitalize">{credits?.status || user?.status || 'active'}</p>
+            </div>
+            <p className="text-xs text-slate-500">
+              Plano: <span className="text-slate-300">{credits?.subscription_plan || user?.subscription_plan || 'Standard'}</span>
+              {credits?.approved !== undefined && (
+                <> • Aprovado: <span className={credits.approved ? 'text-emerald-400' : 'text-amber-400'}>{credits.approved ? 'Sim' : 'Pendente'}</span></>
+              )}
+            </p>
           </div>
         </div>
       )}
@@ -151,11 +160,23 @@ const CreditsPage = () => {
 
       {/* History */}
       <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
             <History className="w-3.5 h-3.5" /> Histórico de Movimentos
           </div>
-          <span className="text-xs text-slate-500">{history.length} registos</span>
+          <div className="flex items-center gap-2">
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-slate-400 focus:outline-none focus:border-cyan-500/30"
+            >
+              <option value="all">Todos</option>
+              <option value="consumption">Consumo</option>
+              <option value="purchase">Compra</option>
+              <option value="refund">Reembolso</option>
+            </select>
+            <span className="text-xs text-slate-500">{history.length} registos</span>
+          </div>
         </div>
 
         {loading ? (
@@ -182,17 +203,31 @@ const CreditsPage = () => {
               {history.map((item, i) => {
                 const isAdd = (item.amount || item.credits || 0) > 0;
                 const amount = Math.abs(item.amount || item.credits || 0);
+                const typeColor = item.type === 'consumption' ? 'text-amber-400' : item.type === 'purchase' ? 'text-emerald-400' : 'text-cyan-400';
+                const typeLabel = item.type === 'consumption' ? 'Consumo' : item.type === 'purchase' ? 'Compra' : item.type === 'refund' ? 'Reembolso' : item.type || 'Movimento';
                 return (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-all">
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-all">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isAdd ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
                       {isAdd ? <Plus className="w-4 h-4 text-emerald-400" /> : <Minus className="w-4 h-4 text-amber-400" />}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-200 font-medium">{item.description || (isAdd ? 'Créditos adicionados' : 'Créditos consumidos')}</p>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-slate-200 font-medium">{item.description || typeLabel}</p>
+                        <span className={`text-[0.55rem] px-1.5 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] ${typeColor}`}>{typeLabel}</span>
+                      </div>
                       <p className="text-[0.6rem] text-slate-500">
                         {item.created_at ? new Date(item.created_at).toLocaleString('pt-MZ') : '—'}
-                        {item.created_by && <> • <span className="text-cyan-400/70">{item.created_by}</span></>}
+                        {item.created_by && <> • Por: <span className="text-cyan-400/70">{item.created_by}</span></>}
                       </p>
+                      {(item.payment_method || item.payment_reference) && (
+                        <p className="text-[0.6rem] text-slate-600">
+                          {item.payment_method && <>Método: <span className="text-slate-500">{item.payment_method}</span></>}
+                          {item.payment_reference && <> • Ref: <span className="text-slate-500">{item.payment_reference}</span></>}
+                        </p>
+                      )}
+                      {item.notes && (
+                        <p className="text-[0.6rem] text-slate-600 italic">Nota: {item.notes}</p>
+                      )}
                     </div>
                     <div className={`text-sm font-bold ${isAdd ? 'text-emerald-400' : 'text-amber-400'}`}>
                       {isAdd ? '+' : '-'}{amount}
