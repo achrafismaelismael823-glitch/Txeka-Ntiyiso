@@ -5,7 +5,7 @@ import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
   FileText, Search, ShieldCheck, XCircle, AlertTriangle, RefreshCw, Ban,
-  Eye, Trash2, Clock, Hash, Building2, ChevronLeft, ChevronRight, Ban,
+  Trash2, Clock, Hash, Building2, ChevronLeft, ChevronRight,
   Lock
 } from 'lucide-react';
 
