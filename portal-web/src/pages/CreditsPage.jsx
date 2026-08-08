@@ -1,133 +1,200 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
-  CreditCard, Loader2, TrendingUp, TrendingDown, Clock,
-  ArrowDownLeft, ArrowUpRight, Package, AlertTriangle
+  CreditCard, Wallet, Receipt, TrendingUp, AlertTriangle,
+  RefreshCw, Inbox, ArrowRight, Clock, CheckCircle2, XCircle,
+  Plus, Minus, History, BarChart3
 } from 'lucide-react';
 
 const CreditsPage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin, isInstitution } = useAuth();
   const { notify } = useContext(NotificationContext);
+
   const [credits, setCredits] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchCredits();
-  }, []);
+  const fetchedRef = useRef(false);
 
-  const fetchCredits = async () => {
+  const fetchCredits = useCallback(async () => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const [creditsRes, historyRes] = await Promise.allSettled([
+      const [credRes, histRes] = await Promise.allSettled([
         endpoints.institutions.credits(),
         endpoints.institutions.creditHistory({ limit: 50 }),
       ]);
-
-      if (creditsRes.status === 'fulfilled') {
-        setCredits(creditsRes.value.data);
+      if (credRes.status === 'fulfilled') setCredits(credRes.value.data);
+      if (histRes.status === 'fulfilled') {
+        const items = histRes.value.data?.items || histRes.value.data?.history || [];
+        setHistory(Array.isArray(items) ? items : []);
       }
-      if (historyRes.status === 'fulfilled') {
-        setHistory(historyRes.value.data || []);
-      }
-    } catch {
-      notify('Erro ao carregar créditos', 'error');
+    } catch (err) {
+      setError(err.normalizedMessage || 'Erro ao carregar créditos');
+      notify(err.normalizedMessage || 'Erro ao carregar créditos', 'error');
     } finally {
       setLoading(false);
+      fetchedRef.current = false;
     }
-  };
+  }, [notify]);
 
-  const formatAmount = (amount) => {
-    const num = Number(amount);
-    const prefix = num >= 0 ? '+' : '';
-    return `${prefix}${num}`;
-  };
+  useEffect(() => {
+    fetchedRef.current = false;
+    fetchCredits();
+  }, [fetchCredits]);
 
-  const typeConfig = {
-    bonus: { icon: Package, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Bónus' },
-    consumption: { icon: ArrowUpRight, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Consumo' },
-    refund: { icon: ArrowDownLeft, color: 'text-cyan-400', bg: 'bg-cyan-500/10', label: 'Reembolso' },
-    purchase: { icon: CreditCard, color: 'text-amber-400', bg: 'bg-amber-500/10', label: 'Compra' },
-  };
+  const balance = credits?.balance || credits?.available || credits?.credits || 0;
+  const used = credits?.used || credits?.consumed || 0;
+  const total = balance + used;
+  const percentage = total > 0 ? Math.round((balance / total) * 100) : 0;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-      </div>
-    );
-  }
+  const SkeletonCard = () => (
+    <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3 animate-pulse">
+      <div className="w-24 h-3 rounded bg-white/[0.05]" />
+      <div className="w-16 h-8 rounded bg-white/[0.05]" />
+      <div className="w-full h-2 rounded-full bg-white/[0.03]" />
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Créditos</h1>
-        <p className="text-xs text-slate-500 mt-1">Saldo e movimentos da instituição</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Créditos</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            {isAdmin ? 'Gestão global de créditos das instituições' : 'Saldo e histórico de consumo'}
+          </p>
+        </div>
+        <button
+          onClick={() => { fetchedRef.current = false; fetchCredits(); }}
+          disabled={loading}
+          className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-500 hover:text-cyan-400 hover:border-cyan-500/20 transition-all"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      {/* Saldo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sm:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-cyan-500" />
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wider">Saldo Disponível</span>
-            <CreditCard className="w-5 h-5 text-cyan-400" />
+      {/* Error */}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/[0.08] border border-red-500/20 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-400/90">{error}</p>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
+            <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+              <Wallet className="w-3.5 h-3.5" /> Disponíveis
+            </div>
+            <p className="text-3xl font-bold text-emerald-400">{balance.toLocaleString('pt-MZ')}</p>
+            <div className="w-full h-2 bg-white/[0.03] rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500/40 rounded-full transition-all" style={{ width: `${percentage}%` }} />
+            </div>
           </div>
-          <p className="text-4xl font-bold text-slate-100">{credits?.credits ?? user?.credits ?? 0}</p>
-          <p className="text-xs text-slate-500 mt-1">créditos</p>
-        </div>
 
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wider">Plano</span>
-            <Package className="w-5 h-5 text-amber-400" />
+          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
+            <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+              <Receipt className="w-3.5 h-3.5" /> Consumidos
+            </div>
+            <p className="text-3xl font-bold text-amber-400">{used.toLocaleString('pt-MZ')}</p>
+            <p className="text-xs text-slate-500">{total > 0 ? Math.round((used / total) * 100) : 0}% do total</p>
           </div>
-          <p className="text-xl font-bold text-slate-100 capitalize">{credits?.subscription_plan || user?.subscription_plan || 'Standard'}</p>
-          <p className="text-xs text-slate-500 mt-1">{credits?.docs_emitted_month || user?.docs_emitted_month || 0} docs este mês</p>
-        </div>
-      </div>
 
-      {/* Histórico */}
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/[0.05]">
-          <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
-            <Clock className="w-4 h-4 text-cyan-400" /> Histórico de Movimentos
-          </h2>
+          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
+            <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+              <CreditCard className="w-3.5 h-3.5" /> Total Atribuído
+            </div>
+            <p className="text-3xl font-bold text-cyan-400">{total.toLocaleString('pt-MZ')}</p>
+            <p className="text-xs text-slate-500">Créditos desde o início</p>
+          </div>
+        </div>
+      )}
+
+      {/* Usage Bar */}
+      {!loading && total > 0 && (
+        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+              <BarChart3 className="w-3.5 h-3.5" /> Utilização
+            </div>
+            <span className="text-xs text-slate-500">{percentage}% disponível</span>
+          </div>
+          <div className="w-full h-3 bg-white/[0.03] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500/40 rounded-full transition-all"
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[0.65rem] text-slate-500">
+            <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" /> {balance} disponíveis</span>
+            <span className="flex items-center gap-1"><Receipt className="w-3 h-3 text-amber-400" /> {used} consumidos</span>
+          </div>
+        </div>
+      )}
+
+      {/* History */}
+      <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+            <History className="w-3.5 h-3.5" /> Histórico de Movimentos
+          </div>
+          <span className="text-xs text-slate-500">{history.length} registos</span>
         </div>
 
-        {history.length > 0 ? (
-          <div className="divide-y divide-white/[0.03] max-h-[32rem] overflow-y-auto">
-            {history.map((item, idx) => {
-              const cfg = typeConfig[item.type?.toLowerCase()] || typeConfig.purchase;
-              const Icon = cfg.icon;
+        {loading ? (
+          <div className="space-y-2 animate-pulse">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02]">
+                <div className="w-8 h-8 rounded-lg bg-white/[0.05]" />
+                <div className="flex-1 space-y-2">
+                  <div className="w-24 h-3 rounded bg-white/[0.05]" />
+                  <div className="w-32 h-2 rounded bg-white/[0.05]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : history.length === 0 ? (
+          <div className="px-5 py-12 text-center space-y-3">
+            <Inbox className="w-8 h-8 text-slate-700 mx-auto" />
+            <p className="text-sm text-slate-500">Sem movimentos registados</p>
+            <p className="text-xs text-slate-600">O histórico aparecerá após a primeira transacção</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {history.map((item, i) => {
+              const isAdd = (item.amount || item.credits || 0) > 0;
+              const amount = Math.abs(item.amount || item.credits || 0);
               return (
-                <div key={idx} className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${cfg.bg}`}>
-                    <Icon className={`w-4 h-4 ${cfg.color}`} />
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-all">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isAdd ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
+                    {isAdd ? <Plus className="w-4 h-4 text-emerald-400" /> : <Minus className="w-4 h-4 text-amber-400" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-100 truncate">{item.description || cfg.label}</p>
-                    <p className="text-[0.65rem] text-slate-500">
-                      {item.payment_method && item.payment_method !== 'none' && (
-                        <span className="mr-2 capitalize">{item.payment_method}</span>
-                      )}
-                      <span className="font-mono text-slate-600">{item.created_by}</span>
-                      {' • '}
-                      {new Date(item.created_at).toLocaleString('pt-MZ')}
+                    <p className="text-xs text-slate-200 font-medium">{item.description || (isAdd ? 'Créditos adicionados' : 'Créditos consumidos')}</p>
+                    <p className="text-[0.6rem] text-slate-500">
+                      {item.created_at ? new Date(item.created_at).toLocaleString('pt-MZ') : '—'}
+                      {item.admin_id && <> • <span className="text-cyan-400/70">Admin: {item.admin_id}</span></>}
                     </p>
                   </div>
-                  <span className={`text-sm font-bold font-mono ${Number(item.amount) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatAmount(item.amount)}
-                  </span>
+                  <div className={`text-sm font-bold ${isAdd ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {isAdd ? '+' : '-'}{amount}
+                  </div>
                 </div>
               );
             })}
-          </div>
-        ) : (
-          <div className="px-5 py-12 text-center text-sm text-slate-600">
-            Nenhuma movimentação registada
           </div>
         )}
       </div>
@@ -136,4 +203,3 @@ const CreditsPage = () => {
 };
 
 export default CreditsPage;
-
