@@ -36,7 +36,7 @@ const BulkEmitPage = () => {
       }
     ]
   };
-y
+
   const loadExample = () => {
     setJsonInput(JSON.stringify(examplePayload, null, 2));
   };
@@ -82,7 +82,7 @@ y
 
     try {
       setLoading(true);
-      const { data } = await endpoints.certify.bulk(payload);
+      const { data } = await endpoints.emissions.bulkCertify(payload);
       setResults(data);
       notify(`${data.documents?.length || 0} documento(s) certificado(s) com sucesso`, 'success');
       setStep(2);
