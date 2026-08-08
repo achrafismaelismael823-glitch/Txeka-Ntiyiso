@@ -12,11 +12,14 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    // ── CORREÇÃO: Evitar duplicação de /api/v1 ──
     if (config.url && typeof config.url === 'string' && config.url.startsWith('/api/v1/')) {
       config.url = config.url.replace(/^\/api\/v1/, '');
     }
     const token = authService.getToken();
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -28,32 +31,32 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const data = error.response?.data;
     const url = error.config?.url || '';
+
+    // Logout em 401 (exceto login)
     if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
       authService.logout();
     }
+
+    // Normalizar mensagem de erro
     let message = 'Erro de comunicação com o servidor';
     if (typeof data?.detail === 'string') message = data.detail;
     else if (Array.isArray(data?.detail) && data.detail[0]?.msg) message = data.detail[0].msg;
     else if (data?.message) message = data.message;
     else if (data?.error) message = data.error;
     else if (error.message) message = error.message;
+
     error.normalizedMessage = message;
     return Promise.reject(error);
   }
 );
 
 // ── LOGIN ADAPTATIVO ──
-// A API de institution aceita body JSON, mas a de admin pode exigir query params.
-// Tenta body primeiro; se 422, faz fallback para query params.
 const adaptiveAdminLogin = async (email, password) => {
   try {
-    // Tentativa 1: body JSON (o ideal, seguro)
     return await api.post('/auth/admin/login', { email, password });
   } catch (err) {
     if (err.response?.status === 422) {
-      // Tentativa 2: query params (compatível com API actual)
-      // ⚠️ AVISO: a password vai na URL — o backend deve ser corrigido para aceitar body
-      console.warn('[api.js] Admin login via body rejeitado (422). Fallback para query params. A password será visível nos logs do servidor.');
+      console.warn('[api.js] Admin login via body rejeitado (422). Fallback para query params.');
       return api.post(`/auth/admin/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
     }
     throw err;
@@ -74,7 +77,15 @@ export const endpoints = {
     documentHistory: (docHash) => api.get(`/audit/document/${docHash}/history`),
   },
   institutions: {
-    list: (params = {}) => api.get('/institutions', { params }),
+    list: (params = {}) => {
+      // ── CORREÇÃO: Converter offset → skip se necessário ──
+      const cleanParams = { ...params };
+      if (cleanParams.offset !== undefined) {
+        cleanParams.skip = cleanParams.offset;
+        delete cleanParams.offset;
+      }
+      return api.get('/institutions', { params: cleanParams });
+    },
     get: (id) => api.get(`/institutions/${id}`),
     create: (data) => api.post('/institutions', data),
     update: (id, data) => api.patch(`/institutions/${id}`, data),
@@ -82,13 +93,28 @@ export const endpoints = {
     regenerateApiKey: (id) => api.post(`/institutions/${id}/regenerate-api-key`),
     dashboard: () => api.get('/institutions/me/dashboard'),
     credits: () => api.get('/institutions/me/credits'),
-    creditHistory: (params = {}) => api.get('/institutions/me/credit-history', { params }),
-    creditHistoryById: (id, params = {}) => api.get(`/institutions/${id}/credit-history`, { params }),
+    // ── CORREÇÃO: Converter offset → skip (Swagger usa skip/limit) ──
+    creditHistory: (params = {}) => {
+      const clean = { ...params };
+      if (clean.offset !== undefined) {
+        clean.skip = clean.offset;
+        delete clean.offset;
+      }
+      return api.get('/institutions/me/credit-history', { params: clean });
+    },
+    creditHistoryById: (id, params = {}) => {
+      const clean = { ...params };
+      if (clean.offset !== undefined) {
+        clean.skip = clean.offset;
+        delete clean.offset;
+      }
+      return api.get(`/institutions/${id}/credit-history`, { params: clean });
+    },
     addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
   },
   certify: {
-    // document_type e institution_id como query params (conforme Swagger API)
-    // file como FormData body (multipart)
+    // single: multipart/form-data com document_type (query) e file (body)
+    // institution_id só enviar se for admin a emitir por outra instituição
     single: (formData, queryParams = {}) => {
       const qs = new URLSearchParams();
       if (queryParams.document_type) qs.append('document_type', queryParams.document_type);
@@ -96,12 +122,11 @@ export const endpoints = {
       const url = qs.toString() ? `/certify?${qs.toString()}` : '/certify';
       return api.post(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
     },
+    // bulk: JSON body com institution_id + documents[]
     bulk: (data) => api.post('/certify/bulk', data),
   },
   verify: {
-    // Verificação pública via URL (QR code, WhWhatsApp, Gmail,etc.)
     public: (hash) => api.get(`/verify/${hash}`),
-    // Verificação B2B/B2G via JSON (bancos, portais gov, APIs)
     b2b: (hash) => api.post('/verify', { hash }),
   },
   emissions: {
