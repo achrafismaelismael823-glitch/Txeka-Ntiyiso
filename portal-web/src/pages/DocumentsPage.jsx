@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { api, endpoints } from '../services/api';
+import { api } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
   FileText, ClipboardList, Loader2, AlertTriangle, Search, X,
   ExternalLink, Calendar, Hash, FileCheck, XCircle, ShieldCheck,
   Download, ChevronLeft, ChevronRight, Filter, Inbox, FileCheck2,
-  RefreshCw, Eye
+  RefreshCw
 } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
-/* ── SKELETON ROW ── */
 const SkeletonRow = ({ isAdmin }) => (
   <tr className="animate-pulse">
     <td className="px-5 py-3.5"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-white/[0.05]" /><div className="space-y-1.5"><div className="w-24 h-3 rounded bg-white/[0.05]" /><div className="w-16 h-2 rounded bg-white/[0.05]" /></div></div></td>
@@ -24,7 +23,6 @@ const SkeletonRow = ({ isAdmin }) => (
   </tr>
 );
 
-/* ── EMPTY STATE ── */
 const EmptyState = ({ isAdmin, onEmit }) => (
   <div className="px-5 py-16 text-center space-y-4">
     <div className="w-14 h-14 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 flex items-center justify-center mx-auto">
@@ -32,24 +30,23 @@ const EmptyState = ({ isAdmin, onEmit }) => (
     </div>
     <div>
       <p className="text-sm font-medium text-slate-400">
-        {isAdmin ? 'Nenhum documento emitido na plataforma' : 'Ainda não emitiu nenhum documento'}
+        {isAdmin ? 'Nenhum documento certificado na plataforma' : 'Ainda não certificou nenhum documento'}
       </p>
       <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
         {isAdmin
-          ? 'Os documentos aparecerão aqui assim que as instituições começarem a emitir.'
-          : 'Certifique o seu primeiro documento digital na blockchain.'}
+          ? 'Os documentos aparecerão aqui assim que as instituições começarem a certificar.'
+          : 'Certifique o seu primeiro documento digital.'}
       </p>
     </div>
     <button
       onClick={onEmit}
       className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-medium hover:bg-cyan-500/20 transition-all flex items-center gap-2 mx-auto"
     >
-      <FileCheck2 className="w-3.5 h-3.5" /> Emitir Documento
+      <FileCheck2 className="w-3.5 h-3.5" /> Certificar Documento
     </button>
   </div>
 );
 
-/* ── REVOKE MODAL ── */
 const RevokeModal = ({ doc, onClose, onConfirm, revoking }) => {
   const [reason, setReason] = useState('');
   const getDocId = (d) => d.doc_id || d.id;
@@ -60,7 +57,7 @@ const RevokeModal = ({ doc, onClose, onConfirm, revoking }) => {
       <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-red-500/20 rounded-2xl p-6 space-y-4 animate-fade-in">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-red-500/10"><ShieldCheck className="w-5 h-5 text-red-400" /></div>
-          <h3 className="text-lg font-bold text-slate-100">Revogar Documento</h3>
+          <h3 className="text-lg font-bold text-slate-100">Revogar Certificação</h3>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-slate-500">Doc ID: <span className="font-mono text-cyan-400">{getDocId(doc) || '—'}</span></p>
@@ -92,7 +89,6 @@ const RevokeModal = ({ doc, onClose, onConfirm, revoking }) => {
   );
 };
 
-/* ── MAIN ── */
 const DocumentsPage = () => {
   const { user, isAdmin, isInstitution, institutionId } = useAuth();
   const { notify } = useContext(NotificationContext);
@@ -103,7 +99,7 @@ const DocumentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // '' | 'active' | 'revoked'
+  const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(0);
 
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -139,12 +135,9 @@ const DocumentsPage = () => {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  // Debounced search (client-side only since API may not support fulltext)
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      // Search is applied locally; if API supports fulltext, add to fetch
-    }, 300);
+    searchTimer.current = setTimeout(() => {}, 300);
     return () => clearTimeout(searchTimer.current);
   }, [search]);
 
@@ -154,7 +147,7 @@ const DocumentsPage = () => {
     try {
       setRevoking(true);
       await api.post(`/api/v1/emissions/${docId}/revoke`, { reason: reason.trim() });
-      notify('Documento revogado com sucesso', 'success');
+      notify('Certificação revogada com sucesso', 'success');
       setSelectedDoc(null);
       fetchDocuments();
     } catch (err) {
@@ -184,7 +177,7 @@ const DocumentsPage = () => {
   });
 
   const exportCSV = () => {
-    const headers = ['Doc ID', 'Hash', 'Tipo', 'Instituição', 'Data', 'Estado'];
+    const headers = ['Doc ID', 'Hash SHA-256', 'Tipo', 'Instituição', 'Data', 'Estado'];
     const rows = filtered.map((d) => [
       getDocId(d),
       getDocHash(d),
@@ -206,11 +199,10 @@ const DocumentsPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Documentos Emitidos</h1>
-          <p className="text-xs text-slate-500 mt-1">{isAdmin ? 'Histórico global de emissões' : 'Meus documentos certificados'}</p>
+          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Documentos Certificados</h1>
+          <p className="text-xs text-slate-500 mt-1">{isAdmin ? 'Histórico global de certificações' : 'Meus documentos certificados'}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -230,7 +222,6 @@ const DocumentsPage = () => {
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="p-4 rounded-xl bg-red-500/[0.08] border border-red-500/20 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -238,7 +229,6 @@ const DocumentsPage = () => {
         </div>
       )}
 
-      {/* Filters */}
       <div className="bg-slate-900/40 border border-white/[0.04] rounded-2xl p-4 space-y-3">
         <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
           <Filter className="w-3.5 h-3.5" /> Filtros
@@ -279,7 +269,6 @@ const DocumentsPage = () => {
         )}
       </div>
 
-      {/* Table */}
       <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -287,7 +276,7 @@ const DocumentsPage = () => {
               <tr className="border-b border-white/[0.05] text-[0.65rem] uppercase tracking-wider text-slate-500">
                 <th className="px-5 py-3 font-semibold">Documento</th>
                 <th className="px-5 py-3 font-semibold">Doc ID</th>
-                <th className="px-5 py-3 font-semibold">Hash</th>
+                <th className="px-5 py-3 font-semibold">Hash SHA-256</th>
                 {isAdmin && <th className="px-5 py-3 font-semibold">Instituição</th>}
                 <th className="px-5 py-3 font-semibold">Data</th>
                 <th className="px-5 py-3 font-semibold text-right">Acções</th>
@@ -312,7 +301,7 @@ const DocumentsPage = () => {
                         </div>
                         <div>
                           <p className="text-sm text-slate-100 font-medium">{doc.document_type || 'Documento'}</p>
-                          <p className="text-[0.65rem] text-slate-500">{doc.description || 'Emissão certificada'}</p>
+                          <p className="text-[0.65rem] text-slate-500">{doc.description || 'Certificação de integridade'}</p>
                           {doc.revoked && <span className="inline-flex items-center gap-1 text-[0.6rem] text-red-400 mt-0.5"><XCircle className="w-3 h-3" /> Revogado</span>}
                         </div>
                       </div>
@@ -358,7 +347,6 @@ const DocumentsPage = () => {
         </div>
       </div>
 
-      {/* Pagination */}
       {!loading && filtered.length > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-500">
@@ -383,7 +371,6 @@ const DocumentsPage = () => {
         </div>
       )}
 
-      {/* Revoke Modal */}
       {selectedDoc && (
         <RevokeModal
           doc={selectedDoc}
