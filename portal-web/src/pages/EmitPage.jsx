@@ -7,7 +7,7 @@ import {
   FileCheck, Upload, Loader2, FileText, QrCode,
   X, Copy, Check, AlertTriangle, ChevronRight,
   ChevronLeft, Eye, ShieldCheck, RefreshCw, Lock,
-  Download, ExternalLink
+  Download
 } from 'lucide-react';
 
 const docTypes = [
@@ -25,13 +25,6 @@ const docTypes = [
 
 const STEP_LABELS = ['Selecção', 'Confirmação', 'Resultado'];
 
-/* ── DOMÍNIOS OFICIAIS (preparar para migração) ── */
-// Hoje:  https://txeka-ntiyiso.onrender.com
-// Futuro: https://www.txekantiyiso.co.mz
-const VERIFY_BASE_URL = window.location.origin; // Fallback para o domínio actual
-// Quando migrar para o domínio oficial, substituir por:
-// const VERIFY_BASE_URL = 'https://www.txekantiyiso.co.mz';
-
 const EmitPage = () => {
   const { user, isInstitution, institutionId } = useAuth();
   const { notify } = useContext(NotificationContext);
@@ -44,8 +37,7 @@ const EmitPage = () => {
   const [docType, setDocType] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [copiedHash, setCopiedHash] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
   const handleFileChange = (selected) => {
@@ -104,16 +96,10 @@ const EmitPage = () => {
     }
   };
 
-  const handleCopyHash = (text) => {
+  const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
-    setCopiedHash(true);
-    setTimeout(() => setCopiedHash(false), 2000);
-  };
-
-  const handleCopyUrl = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleReset = () => {
@@ -121,8 +107,7 @@ const EmitPage = () => {
     setFile(null);
     setDocType('');
     setResult(null);
-    setCopiedHash(false);
-    setCopiedUrl(false);
+    setCopied(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -273,10 +258,8 @@ const EmitPage = () => {
     const docId = result.doc_id || '—';
     const qrCode = result.qr_code || '';
     const certificateUrl = result.certificate_url || '';
-    
-    // URL canónica de verificação — usa certificate_url da API se disponível,
-    // senão constrói a partir do domínio actual + hash
-    const verifyUrl = certificateUrl || `${VERIFY_BASE_URL}/verify/${hash}`;
+    const timestamp = result.timestamp || '';
+    const message = result.message || '';
 
     return (
       <div className="space-y-6 animate-fade-in">
@@ -314,15 +297,15 @@ const EmitPage = () => {
               <span className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Hash SHA-256 Oficial</span>
               <div className="flex items-center gap-2">
                 <p className="text-xs font-mono text-cyan-400 truncate">{hash.substring(0, 24)}...</p>
-                <button onClick={() => handleCopyHash(hash)} className="text-slate-500 hover:text-slate-300">
-                  {copiedHash ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <button onClick={() => handleCopy(hash)} className="text-slate-500 hover:text-slate-300">
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                 </button>
               </div>
             </div>
             <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
               <span className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Data da Certificação</span>
               <p className="text-sm text-slate-100">
-                {result.timestamp ? new Date(result.timestamp).toLocaleString('pt-MZ') : '—'}
+                {timestamp ? new Date(timestamp).toLocaleString('pt-MZ') : '—'}
               </p>
             </div>
             <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
@@ -331,40 +314,21 @@ const EmitPage = () => {
             </div>
           </div>
 
-          {/* URL de Verificação Canónica */}
-          <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-2">
-            <span className="text-[0.6rem] text-slate-500 uppercase tracking-wider">URL de Verificação Oficial</span>
-            <div className="flex items-center gap-2">
-              <p className="flex-1 text-xs font-mono text-cyan-400 truncate">{verifyUrl}</p>
-              <button onClick={() => handleCopyUrl(verifyUrl)} className="text-slate-500 hover:text-slate-300">
-                {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-              </button>
-              <a
-                href={verifyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all"
-              >
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          </div>
-
-          {/* QR Code da API */}
+          {/* QR Code from API */}
           {qrCode && (
             <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-white border border-white/[0.1]">
-              <img src={qrCode} alt="QR Code de verificação oficial" className="w-28 h-28 rounded-lg" />
+              <img src={qrCode} alt="QR Code de verificação" className="w-28 h-28 rounded-lg" />
               <div className="text-center sm:text-left space-y-2">
-                <p className="text-sm font-medium text-slate-800">QR Code de Verificação Oficial</p>
+                <p className="text-sm font-medium text-slate-800">QR Code de Verificação</p>
                 <p className="text-xs text-slate-500">Escaneie para aceder à página oficial de verificação</p>
                 <div className="flex flex-wrap gap-2">
                   <a
-                    href={verifyUrl}
+                    href={certificateUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-600 text-xs font-medium hover:bg-cyan-500/20 transition-all"
                   >
-                    <ExternalLink className="w-3 h-3" /> Abrir verificação
+                    <QrCode className="w-3 h-3" /> Abrir verificação
                   </a>
                   <a
                     href={qrCode}
@@ -378,9 +342,9 @@ const EmitPage = () => {
             </div>
           )}
 
-          {/* Mensagem da API */}
-          {result.message && (
-            <p className="text-xs text-slate-500 text-center">{result.message}</p>
+          {/* Message from API */}
+          {message && (
+            <p className="text-xs text-slate-500 text-center">{message}</p>
           )}
 
           <div className="flex flex-wrap gap-2">
@@ -404,7 +368,6 @@ const EmitPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Certificação Digital</h1>
         <p className="text-xs text-slate-500 mt-1">
@@ -412,7 +375,6 @@ const EmitPage = () => {
         </p>
       </div>
 
-      {/* Stepper */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {STEP_LABELS.map((label, i) => (
           <React.Fragment key={label}>
@@ -437,7 +399,6 @@ const EmitPage = () => {
         ))}
       </div>
 
-      {/* Content */
       {step === 0 && <StepSelect />}
       {step === 1 && <StepConfirm />}
       {step === 2 && <StepResult />}
