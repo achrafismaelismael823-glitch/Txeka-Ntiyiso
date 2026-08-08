@@ -87,11 +87,21 @@ export const endpoints = {
     addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
   },
   certify: {
-    single: (formData) => api.post('/certify', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    // document_type e institution_id como query params (conforme Swagger API)
+    // file como FormData body (multipart)
+    single: (formData, queryParams = {}) => {
+      const qs = new URLSearchParams();
+      if (queryParams.document_type) qs.append('document_type', queryParams.document_type);
+      if (queryParams.institution_id) qs.append('institution_id', queryParams.institution_id);
+      const url = qs.toString() ? `/certify?${qs.toString()}` : '/certify';
+      return api.post(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    },
     bulk: (data) => api.post('/certify/bulk', data),
   },
   verify: {
+    // Verificação pública via URL (QR code, WhWhatsApp, Gmail,etc.)
     public: (hash) => api.get(`/verify/${hash}`),
+    // Verificação B2B/B2G via JSON (bancos, portais gov, APIs)
     b2b: (hash) => api.post('/verify', { hash }),
   },
   emissions: {
