@@ -4,8 +4,8 @@ import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
   CreditCard, Wallet, Receipt, TrendingUp, AlertTriangle,
-  RefreshCw, Inbox, ArrowRight, Clock, CheckCircle2, XCircle,
-  Plus, Minus, History, BarChart3
+  RefreshCw, Inbox, Plus, Minus, History, BarChart3,
+  CheckCircle2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const CreditsPage = () => {
@@ -17,6 +17,11 @@ const CreditsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ── CORREÇÃO: paginação com skip/limit (conforme Swagger) ──
+  const [skip, setSkip] = useState(0);
+  const [limit, setLimit] = useState(50);
+  const [total, setTotal] = useState(0);
+
   const fetchedRef = useRef(false);
 
   const fetchCredits = useCallback(async () => {
@@ -27,12 +32,14 @@ const CreditsPage = () => {
     try {
       const [credRes, histRes] = await Promise.allSettled([
         endpoints.institutions.credits(),
-        endpoints.institutions.creditHistory({ limit: 50 }),
+        endpoints.institutions.creditHistory({ limit, skip }),
       ]);
       if (credRes.status === 'fulfilled') setCredits(credRes.value.data);
       if (histRes.status === 'fulfilled') {
-        const items = histRes.value.data?.items || histRes.value.data?.history || [];
+        const items = histRes.value.data || [];
         setHistory(Array.isArray(items) ? items : []);
+        // Se a API retornar total, usar; senão usar length
+        setTotal(histRes.value.data?.total || items.length);
       }
     } catch (err) {
       setError(err.normalizedMessage || 'Erro ao carregar créditos');
@@ -41,17 +48,17 @@ const CreditsPage = () => {
       setLoading(false);
       fetchedRef.current = false;
     }
-  }, [notify]);
+  }, [limit, skip, notify]);
 
   useEffect(() => {
     fetchedRef.current = false;
     fetchCredits();
   }, [fetchCredits]);
 
-  const balance = credits?.balance || credits?.available || credits?.credits || 0;
-  const used = credits?.used || credits?.consumed || 0;
-  const total = balance + used;
-  const percentage = total > 0 ? Math.round((balance / total) * 100) : 0;
+  const balance = credits?.credits ?? credits?.balance ?? credits?.available ?? 0;
+  const used = credits?.docs_emitted_month ?? credits?.used ?? credits?.consumed ?? 0;
+  const totalCredits = balance + used;
+  const percentage = totalCredits > 0 ? Math.round((balance / totalCredits) * 100) : 0;
 
   const SkeletonCard = () => (
     <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3 animate-pulse">
@@ -107,24 +114,24 @@ const CreditsPage = () => {
 
           <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-              <Receipt className="w-3.5 h-3.5" /> Consumidos
+              <Receipt className="w-3.5 h-3.5" /> Emitidos este mês
             </div>
             <p className="text-3xl font-bold text-amber-400">{used.toLocaleString('pt-MZ')}</p>
-            <p className="text-xs text-slate-500">{total > 0 ? Math.round((used / total) * 100) : 0}% do total</p>
+            <p className="text-xs text-slate-500">Documentos certificados</p>
           </div>
 
           <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-              <CreditCard className="w-3.5 h-3.5" /> Total Atribuído
+              <CreditCard className="w-3.5 h-3.5" /> Plano
             </div>
-            <p className="text-3xl font-bold text-cyan-400">{total.toLocaleString('pt-MZ')}</p>
-            <p className="text-xs text-slate-500">Créditos desde o início</p>
+            <p className="text-3xl font-bold text-cyan-400">{credits?.subscription_plan || user?.subscription_plan || 'Standard'}</p>
+            <p className="text-xs text-slate-500">Subscrição activa</p>
           </div>
         </div>
       )}
 
       {/* Usage Bar */}
-      {!loading && total > 0 && (
+      {!loading && totalCredits > 0 && (
         <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
@@ -133,14 +140,11 @@ const CreditsPage = () => {
             <span className="text-xs text-slate-500">{percentage}% disponível</span>
           </div>
           <div className="w-full h-3 bg-white/[0.03] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-500/40 rounded-full transition-all"
-              style={{ width: `${percentage}%` }}
-            />
+            <div className="h-full bg-emerald-500/40 rounded-full transition-all" style={{ width: `${percentage}%` }} />
           </div>
           <div className="flex justify-between text-[0.65rem] text-slate-500">
             <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" /> {balance} disponíveis</span>
-            <span className="flex items-center gap-1"><Receipt className="w-3 h-3 text-amber-400" /> {used} consumidos</span>
+            <span className="flex items-center gap-1"><Receipt className="w-3 h-3 text-amber-400" /> {used} emitidos</span>
           </div>
         </div>
       )}
@@ -173,29 +177,56 @@ const CreditsPage = () => {
             <p className="text-xs text-slate-600">O histórico aparecerá após a primeira transacção</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {history.map((item, i) => {
-              const isAdd = (item.amount || item.credits || 0) > 0;
-              const amount = Math.abs(item.amount || item.credits || 0);
-              return (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-all">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isAdd ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
-                    {isAdd ? <Plus className="w-4 h-4 text-emerald-400" /> : <Minus className="w-4 h-4 text-amber-400" />}
+          <>
+            <div className="space-y-2">
+              {history.map((item, i) => {
+                const isAdd = (item.amount || item.credits || 0) > 0;
+                const amount = Math.abs(item.amount || item.credits || 0);
+                return (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-all">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isAdd ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
+                      {isAdd ? <Plus className="w-4 h-4 text-emerald-400" /> : <Minus className="w-4 h-4 text-amber-400" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-slate-200 font-medium">{item.description || (isAdd ? 'Créditos adicionados' : 'Créditos consumidos')}</p>
+                      <p className="text-[0.6rem] text-slate-500">
+                        {item.created_at ? new Date(item.created_at).toLocaleString('pt-MZ') : '—'}
+                        {item.created_by && <> • <span className="text-cyan-400/70">{item.created_by}</span></>}
+                      </p>
+                    </div>
+                    <div className={`text-sm font-bold ${isAdd ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {isAdd ? '+' : '-'}{amount}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-200 font-medium">{item.description || (isAdd ? 'Créditos adicionados' : 'Créditos consumidos')}</p>
-                    <p className="text-[0.6rem] text-slate-500">
-                      {item.created_at ? new Date(item.created_at).toLocaleString('pt-MZ') : '—'}
-                      {item.admin_id && <> • <span className="text-cyan-400/70">Admin: {item.admin_id}</span></>}
-                    </p>
-                  </div>
-                  <div className={`text-sm font-bold ${isAdd ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {isAdd ? '+' : '-'}{amount}
-                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── CORREÇÃO: Paginação ── */}
+            {total > limit && (
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-slate-500">
+                  {skip + 1}-{Math.min(skip + limit, total)} de {total}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSkip(s => Math.max(0, s - limit))}
+                    disabled={skip === 0}
+                    className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setSkip(s => s + limit)}
+                    disabled={skip + limit >= total}
+                    className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -203,4 +234,3 @@ const CreditsPage = () => {
 };
 
 export default CreditsPage;
-
