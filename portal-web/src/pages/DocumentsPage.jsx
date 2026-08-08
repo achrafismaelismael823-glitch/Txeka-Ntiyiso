@@ -4,8 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
-  FileText, Search, ShieldCheck, XCircle, AlertTriangle, RefreshCw,
-  Eye, Trash2, Clock, Hash, Building2, ChevronLeft, ChevronRight,
+  FileText, Search, ShieldCheck, XCircle, AlertTriangle, RefreshCw, Ban,
+  Eye, Trash2, Clock, Hash, Building2, ChevronLeft, ChevronRight, Ban,
   Lock
 } from 'lucide-react';
 
@@ -57,7 +57,7 @@ const DocumentsPage = () => {
 
       // ── CORREÇÃO: Normalizar dados dos logs para formato de documento ──
       // Os logs podem ter estrutura diferente, normalizar para formato consistente
-      const normalizedDocs = items.map((item, idx) => ({
+const normalizedDocs = items.map((item, idx) => ({
         id: item.id || idx,
         doc_id: item.doc_id || item.resource_id || '—',
         doc_hash: item.doc_hash || item.hash_sha256 || item.hash || '—',
@@ -65,9 +65,13 @@ const DocumentsPage = () => {
         document_type: item.document_type || '—',
         created_at: item.created_at || item.timestamp,
         user_email: item.user_email || '—',
+        // Dados de revogação
+        status: item.status || 'emitted',
+        revoked: item.revoked || item.status === 'revoked' || false,
+        revoked_at: item.revoked_at || null,
+        revoked_reason: item.revoked_reason || item.reason || null,
         // Dados extras se disponíveis
         certificate_url: item.certificate_url || null,
-        status: item.status || 'emitted',
       }));
 
       setDocuments(Array.isArray(normalizedDocs) ? normalizedDocs : []);
@@ -185,9 +189,11 @@ const DocumentsPage = () => {
                 <tr className="border-b border-white/[0.06]">
                   <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium">Doc ID</th>
                   <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium">Tipo</th>
+                  <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium">Estado</th>
                   <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium">Hash</th>
                   <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium">Instituição</th>
                   <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium">Data</th>
+                  <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium">Revogação</th>
                   <th className="px-4 py-3 text-[0.6rem] text-slate-500 uppercase tracking-wider font-medium text-right">Acções</th>
                 </tr>
               </thead>
@@ -198,7 +204,17 @@ const DocumentsPage = () => {
                       <span className="text-xs font-mono text-cyan-400">{doc.doc_id}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs text-slate-300">{doc.document_type}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {doc.revoked ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-[0.65rem] font-medium text-red-400">
+                          <Ban className="w-3 h-3" /> Revogado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[0.65rem] font-medium text-emerald-400">
+                          <ShieldCheck className="w-3 h-3" /> Válido
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -218,7 +234,25 @@ const DocumentsPage = () => {
                       <div className="flex items-center gap-2">
                         <Clock className="w-3 h-3 text-slate-600" />
                         <span className="text-xs text-slate-400">
-                          {doc.created_at ? new Date(doc.created_at).toLocaleString('pt-MZ') : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {doc.revoked ? (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <Ban className="w-3 h-3 text-red-400" />
+                            <span className="text-[0.65rem] text-red-400 font-medium">
+                              {doc.revoked_at ? new Date(doc.revoked_at).toLocaleString('pt-MZ') : '—'}
+                            </span>
+                          </div>
+                          {doc.revoked_reason && (
+                            <p className="text-[0.6rem] text-slate-500 truncate max-w-[140px]" title={doc.revoked_reason}>
+                              {doc.revoked_reason}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-600">—</span>
+                      )}
                         </span>
                       </div>
                     </td>
@@ -235,7 +269,7 @@ const DocumentsPage = () => {
                           <button
                             onClick={() => openRevokeModal(doc)}
                             className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-500 hover:text-red-400 transition-all"
-                            title="Revogar"
+                            title={doc.revoked ? "Documento já revogado" : "Revogar"}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
