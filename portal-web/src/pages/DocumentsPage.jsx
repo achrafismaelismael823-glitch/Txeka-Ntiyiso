@@ -234,6 +234,8 @@ const normalizedDocs = items.map((item, idx) => ({
                       <div className="flex items-center gap-2">
                         <Clock className="w-3 h-3 text-slate-600" />
                         <span className="text-xs text-slate-400">
+                          {doc.created_at ? new Date(doc.created_at).toLocaleString('pt-MZ') : '—'}
+                        </span>
                     </td>
                     <td className="px-4 py-3">
                       {doc.revoked ? (
@@ -253,7 +255,6 @@ const normalizedDocs = items.map((item, idx) => ({
                       ) : (
                         <span className="text-xs text-slate-600">—</span>
                       )}
-                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
