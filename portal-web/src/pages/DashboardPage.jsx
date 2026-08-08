@@ -6,7 +6,7 @@ import { NotificationContext } from '../contexts/NotificationContext';
 import {
   LayoutDashboard, FileCheck, ShieldCheck, CreditCard, TrendingUp,
   AlertTriangle, RefreshCw, ArrowRight, Activity, BarChart3,
-  Clock, Building2, Hash, FileText, ChevronRight, ChevronLeft
+  Clock, Building2, Hash, FileText, ChevronRight, ChevronLeft, CalendarDays, UserCircle
 } from 'lucide-react';
 
 const DashboardPage = () => {
@@ -45,7 +45,8 @@ const DashboardPage = () => {
 
   // ── CORREÇÃO: Normalizar dados do dashboard ──
   const inst = dashboard?.institution || user;
-  const totalEmitted = dashboard?.total_emitted || inst?.docs_emitted_month || 0;
+  const totalEmitted = dashboard?.total_emitted || 0;
+  const docsEmittedMonth = inst?.docs_emitted_month || 0;
   const totalVerifications = dashboard?.total_verifications || 0;
   const credits = inst?.credits || 0;
   const creditHistory = dashboard?.credits_history || [];
@@ -102,7 +103,9 @@ const DashboardPage = () => {
               <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
             </div>
             <p className="text-3xl font-bold text-emerald-400">{totalEmitted}</p>
-            <p className="text-xs text-slate-500">Documentos certificados</p>
+            <p className="text-xs text-slate-500">
+              Total certificados • <span className="text-emerald-400/70">{docsEmittedMonth} este mês</span>
+            </p>
           </div>
 
           <div 
@@ -131,8 +134,17 @@ const DashboardPage = () => {
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
               <Activity className="w-3.5 h-3.5" /> Estado
             </div>
-            <p className="text-3xl font-bold text-emerald-400">{inst?.status === 'active' ? 'Activa' : inst?.status || '—'}</p>
-            <p className="text-xs text-slate-500">Conta {inst?.approved ? 'aprovada' : 'pendente'}</p>
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${inst?.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+              <p className="text-2xl font-bold text-emerald-400">{inst?.status === 'active' ? 'Activa' : inst?.status || '—'}</p>
+            </div>
+            <p className="text-xs text-slate-500">
+              {inst?.approved ? (
+                <span className="text-emerald-400/70">Conta aprovada</span>
+              ) : (
+                <span className="text-amber-400/70">Aprovação pendente</span>
+              )}
+            </p>
           </div>
         </div>
       )}
@@ -183,15 +195,21 @@ const DashboardPage = () => {
           <div className="space-y-2">
             {creditHistory.slice(0, 5).map((item, i) => {
               const isAdd = (item.amount || 0) > 0;
+              const typeLabel = item.type === 'consumption' ? 'Consumo' : item.type === 'purchase' ? 'Compra' : item.type === 'refund' ? 'Reembolso' : item.type === 'manual_add' ? 'Manual' : item.type || 'Movimento';
               return (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isAdd ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
                     {isAdd ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4 text-amber-400" />}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-200">{item.description || 'Movimento de créditos'}</p>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-slate-200">{item.description || typeLabel}</p>
+                      <span className="text-[0.55rem] px-1.5 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-slate-500">{typeLabel}</span>
+                    </div>
                     <p className="text-[0.6rem] text-slate-500">
                       {item.created_at ? new Date(item.created_at).toLocaleString('pt-MZ') : '—'}
+                      {item.created_by && <> • Por: <span className="text-cyan-400/70">{item.created_by}</span></>}
+                      {item.payment_method && <> • <span className="text-slate-600">{item.payment_method}</span></>}
                     </p>
                   </div>
                   <div className={`text-sm font-bold ${isAdd ? 'text-emerald-400' : 'text-amber-400'}`}>
@@ -210,7 +228,7 @@ const DashboardPage = () => {
           <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
             <Building2 className="w-3.5 h-3.5" /> Dados da Instituição
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
               <span className="text-[0.6rem] text-slate-500 uppercase">ID</span>
               <p className="text-sm font-mono text-cyan-400">{inst.id}</p>
@@ -226,6 +244,14 @@ const DashboardPage = () => {
             <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
               <span className="text-[0.6rem] text-slate-500 uppercase">Plano</span>
               <p className="text-sm text-slate-100 capitalize">{inst.subscription_plan || 'standard'}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+              <span className="text-[0.6rem] text-slate-500 uppercase">Role</span>
+              <p className="text-sm text-slate-100 capitalize">{inst.role || 'institution'}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+              <span className="text-[0.6rem] text-slate-500 uppercase">Criada em</span>
+              <p className="text-sm text-slate-100">{inst.created_at ? new Date(inst.created_at).toLocaleDateString('pt-MZ') : '—'}</p>
             </div>
           </div>
         </div>
