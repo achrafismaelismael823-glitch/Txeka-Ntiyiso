@@ -236,6 +236,7 @@ const normalizedDocs = items.map((item, idx) => ({
                         <span className="text-xs text-slate-400">
                           {doc.created_at ? new Date(doc.created_at).toLocaleString('pt-MZ') : '—'}
                         </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {doc.revoked ? (
