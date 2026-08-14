@@ -39,7 +39,7 @@ async def create_institution(
                 "credits": result["institution"].credits,
                 "status": result["institution"].status,
             },
-            "api_key": result["api_key"],           
+            "api_key": result["api_key"],
             "temp_password": result["temp_password"],
             "message": result["message"]
         }
@@ -62,6 +62,25 @@ async def list_institutions(
     return {"total": total, "institutions": institutions}
 
 
+# ─── ROTA ESTÁTICA — DEVE vir antes de /{institution_id}/credit-history ───
+# Sem isto, o FastAPI interpreta "me" como um institution_id e bloqueia
+# instituições com 403, porque essa rota dinâmica exige role=admin.
+
+@router.get("/me/credit-history", response_model=List[CreditTransactionResponse])
+async def get_my_credit_history(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(verify_role("institution")),
+    db: AsyncSession = Depends(get_db)
+):
+    # Esta rota é exclusiva para instituições. Administradores usam /{institution_id}/credit-history.
+    institution_id = current_user.get("institution")
+    if not institution_id:
+        raise HTTPException(status_code=400, detail="Sem instituição associada")
+
+    return await InstitutionService.get_credit_history(db, institution_id, skip, limit)
+
+
 @router.get("/{institution_id}", response_model=InstitutionResponse, dependencies=[Depends(verify_role("admin"))])
 async def get_institution(institution_id: str, db: AsyncSession = Depends(get_db)):
     institution = await InstitutionService.get_institution(db, institution_id)
@@ -76,7 +95,7 @@ async def update_institution(institution_id: str, data: InstitutionUpdate, db: A
         # Validar status se fornecido
         if data.status and data.status not in ["pending", "active", "suspended", "inactive"]:
             raise HTTPException(status_code=400, detail=f"Status inválido: {data.status}. Valores permitidos: pending, active, suspended, inactive")
-        
+
         institution = await InstitutionService.update_institution(db, institution_id, data)
         return institution
     except ValueError as e:
@@ -120,12 +139,13 @@ async def get_institution_credit_history(
 async def reset_institution_password(institution_id: str, db: AsyncSession = Depends(get_db)):
     try:
         result = await InstitutionService.reset_password(db, institution_id)
-        # LOG SEGURO: senha apenas no servidor, NUNCA na resposta HTTP
-        logger.info(f"PASSWORD_RESET: institution={institution_id} temp_password={result['temp_password']}")
+        # Senha NÃO é logada em texto puro — devolvida apenas uma vez na resposta HTTP ao admin autenticado
+        logger.info(f"PASSWORD_RESET: institution={institution_id} by_admin=true")
         return {
             "success": True,
             "institution_id": result["institution"].id,
-            "message": "Password resetada. Verifique os logs do servidor para a senha temporária."
+            "temp_password": result["temp_password"],
+            "message": "Password resetada. Guarde esta senha temporária — não será mostrada novamente."
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -151,20 +171,20 @@ async def get_my_dashboard(
 ):
     if current_user["role"] not in ["institution", "admin"]:
         raise HTTPException(status_code=403, detail="Acesso negado")
-    
+
     institution_id = current_user.get("institution")
     if not institution_id:
         raise HTTPException(status_code=400, detail="Instituição não associada ao token")
-    
+
     institution = await InstitutionService.get_institution(db, institution_id)
     if not institution:
         raise HTTPException(status_code=404, detail="Instituição não encontrada")
-    
+
     if current_user["role"] == "institution" and current_user.get("institution") != institution.id:
         raise HTTPException(status_code=403, detail="Só pode ver os seus dados")
-    
+
     history = await InstitutionService.get_credit_history(db, institution.id, limit=20)
-    
+
     return {
         "institution": institution,
         "credits_history": history,
@@ -180,33 +200,17 @@ async def get_my_credits(
 ):
     if current_user["role"] not in ["institution", "admin"]:
         raise HTTPException(status_code=403, detail="Acesso negado")
-    
+
     institution_id = current_user.get("institution")
     if not institution_id:
         raise HTTPException(status_code=400, detail="Sem instituição associada")
-    
+
     institution = await InstitutionService.get_institution(db, institution_id)
     if not institution:
         raise HTTPException(status_code=404, detail="Instituição não encontrada")
-    
+
     return {
         "credits": institution.credits,
         "status": institution.status,
         "docs_emitted_month": institution.docs_emitted_month
-    }
-
-
-@router.get("/me/credit-history", response_model=List[CreditTransactionResponse])
-async def get_my_credit_history(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
-    current_user: dict = Depends(verify_role("institution")),
-    db: AsyncSession = Depends(get_db)
-):
-    # Esta rota é exclusiva para instituições. Administradores usam /{institution_id}/credit-history.
-    institution_id = current_user.get("institution")
-    if not institution_id:
-        raise HTTPException(status_code=400, detail="Sem instituição associada")
-    
-    return await InstitutionService.get_credit_history(db, institution_id, skip, limit)
-
+        }
