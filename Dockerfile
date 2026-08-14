@@ -1,7 +1,6 @@
 # ============================================================
 # TXEKA NTIYISO - API Gateway
-# Infraestrutura tecnológica nacional de verificação da
-# integridade e autenticidade documental
+# Infraestrutura tecnológica para verificação da integridade e autenticidade documental
 #
 # Conformidade: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
 # Fuso horário: CAT (UTC+2) - Moçambique
