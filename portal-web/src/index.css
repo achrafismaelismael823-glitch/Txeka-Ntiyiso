@@ -2,47 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   TXEKA NTIYISO — DESIGN SYSTEM
+   ============================================ */
+
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-slate-950 text-slate-100 antialiased;
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    @apply bg-slate-950 text-slate-100;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   ::selection {
     @apply bg-cyan-500/30 text-cyan-100;
   }
 
+  /* Scrollbar estilizada */
   ::-webkit-scrollbar {
-    @apply w-1.5 h-1.5;
+    width: 6px;
+    height: 6px;
   }
+
   ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     @apply bg-white/10 rounded-full;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-white/20;
+  }
+
+  /* Focus visible — acessibilidade */
+  :focus-visible {
+    @apply outline-none ring-2 ring-cyan-500/50 ring-offset-2 ring-offset-slate-950;
   }
 }
 
 @layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.4s ease-out both;
+  /* Glassmorphism */
+  .glass {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08];
   }
-  .animate-slide-in {
-    animation: slideIn 0.3s ease-out both;
-  }
-}
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+  .glass-strong {
+    @apply bg-slate-900/80 backdrop-blur-2xl border border-white/[0.06];
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400;
+  }
+
+  /* Animações */
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-shrink {
+    animation: shrink linear forwards;
   }
 }
 
@@ -54,5 +87,35 @@
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+@media (max-width: 1024px) {
+  .lg\\:ml-64 {
+    margin-left: 0;
   }
 }
