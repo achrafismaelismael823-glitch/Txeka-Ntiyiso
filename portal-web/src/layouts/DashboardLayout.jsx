@@ -47,7 +47,7 @@ const DashboardLayout = () => {
     { path: '/audit', label: 'Auditoria', icon: Activity, roles: ['admin', 'institution'], shortcut: '6' },
     { path: '/credits', label: 'Créditos', icon: CreditCard, roles: ['institution'], shortcut: '7' },
     { path: '/institutions', label: 'Instituições', icon: Building2, roles: ['admin'], shortcut: '8' },
-    { path: '/settings', label: 'Configurações', icon: Settings, roles: ['admin'], shortcut: '9' },
+    { path: '/settings', label: 'Configurações', icon: Settings, roles: ['admin', 'institution'], shortcut: '9' },
   ];
 
   const visibleItems = menuItems.filter(item => item.roles.includes(user?.role));
