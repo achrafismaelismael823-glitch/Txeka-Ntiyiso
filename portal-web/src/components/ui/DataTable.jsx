@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Search, Filter, X, Download, ChevronDown } from 'lucide-react';
-import { EmptyState } from './EmptyState';
 
 export const DataTable = ({
   columns, data, loading = false, emptyText = 'Nenhum registo encontrado', emptyDescription = 'Não existem dados para exibir neste momento.', emptyAction = null,
@@ -166,7 +165,14 @@ export const DataTable = ({
             {actions && <div className="flex items-center gap-2">{actions}</div>}
           </div>
         )}
-        <EmptyState variant={hasActiveFilters ? 'search' : 'empty'} title={hasActiveFilters ? 'Nenhum resultado para os filtros aplicados' : emptyText} description={hasActiveFilters ? 'Tente ajustar os critérios de pesquisa.' : emptyDescription} action={hasActiveFilters ? <button onClick={clearFilters} className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-slate-300 hover:bg-white/[0.06] transition-all"><X className="w-4 h-4" />Limpar filtros</button> : emptyAction} />
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
+            <Search className="w-8 h-8 text-slate-600" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-300 mb-1">{hasActiveFilters ? 'Nenhum resultado para os filtros aplicados' : emptyText}</h4>
+          <p className="text-xs text-slate-500 max-w-xs mb-4">{hasActiveFilters ? 'Tente ajustar os critérios de pesquisa.' : emptyDescription}</p>
+          {hasActiveFilters ? <button onClick={clearFilters} className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-slate-300 hover:bg-white/[0.06] transition-all"><X className="w-4 h-4" />Limpar filtros</button> : emptyAction}
+        </div>
       </div>
     );
   }
@@ -195,4 +201,90 @@ export const DataTable = ({
                 <button onClick={() => setShowFilters(!showFilters)} className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all ${showFilters || hasActiveFilters ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' : 'bg-white/[0.03] border-white/[0.08] text-slate-400 hover:text-slate-200'}`}>
                   <Filter className="w-3.5 h-3.5" />Filtros
                   {hasActiveFilters && <span className="w-4 h-4 rounded-full bg-cyan-500 text-[0.6rem] flex items-center justify-center text-slate-950 font-bold">{Object.values(filters).filter(Boolean).length + (globalFilterValue ? 1 : 0)}</span>}
-                </
+                </button>
+              )}
+              <button onClick={exportCSV} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.03] border border-white/[0.08] text-slate-400 hover:text-slate-200 transition-all">
+                <Download className="w-3.5 h-3.5" />CSV
+              </button>
+            </div>
+          </div>
+          {showFilters && filterable && (
+            <div className="mt-3 pt-3 border-t border-white/[0.06] flex flex-wrap gap-2">
+              {columns.filter((c) => c.filterable !== false).map((col) => (
+                <div key={col.key} className="relative">
+                  <input type="text" placeholder={`Filtrar ${col.label || col.key}...`} value={filters[col.key] || ''} onChange={(e) => handleFilterChange(col.key, e.target.value)} className="px-3 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 w-40" />
+                </div>
+              ))}
+              {hasActiveFilters && <button onClick={clearFilters} className="px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-300 hover:bg-white/[0.03] transition-all">Limpar</button>}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              {selectable && (
+                <th className="px-6 py-3 w-10">
+                  <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected; }} onChange={toggleSelectAll} className="rounded border-white/[0.15] bg-white/[0.03] text-cyan-500 focus:ring-cyan-500/20" />
+                </th>
+              )}
+              {columns.filter((c) => !c.hidden).map((col) => (
+                <th key={col.key} className={`px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider ${col.className || ''}`}>
+                  {sortable && col.sortable !== false ? (
+                    <button onClick={() => handleSort(col.key)} className="flex items-center gap-1 hover:text-slate-200 transition-colors">
+                      {col.label || col.key}
+                      {sortConfig.key === col.key ? (
+                        sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </button>
+                  ) : (
+                    col.label || col.key
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.03]">
+            {paginatedData.map((row, idx) => (
+              <tr key={row[rowKey] || idx} onClick={() => onRowClick?.(row)} className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-white/[0.02]' : ''} ${rowClassName?.(row) || ''}`}>
+                {selectable && (
+                  <td className="px-6 py-3.5">
+                    <input type="checkbox" checked={selectedIds.includes(row[rowKey])} onChange={() => toggleSelectRow(row[rowKey])} onClick={(e) => e.stopPropagation()} className="rounded border-white/[0.15] bg-white/[0.03] text-cyan-500 focus:ring-cyan-500/20" />
+                  </td>
+                )}
+                {columns.filter((c) => !c.hidden).map((col) => (
+                  <td key={col.key} className={`px-6 py-3.5 text-sm text-slate-300 ${col.cellClassName || ''}`}>
+                    {col.render ? col.render(row) : row[col.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pagination !== 'none' && (
+        <div className="px-6 py-4 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="text-xs text-slate-500">
+            Mostrando <span className="font-medium text-slate-300">{startItem}</span> a <span className="font-medium text-slate-300">{endItem}</span> de <span className="font-medium text-slate-300">{totalItems}</span> resultados
+          </div>
+          <div className="flex items-center gap-2">
+            <select value={pageSizeVal} onChange={(e) => handlePageSizeChange(Number(e.target.value))} className="px-2 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-xs text-slate-300 focus:outline-none">
+              {pageSizeOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <div className="flex items-center gap-1">
+              <button onClick={() => handlePageChange(1)} disabled={safePage === 1} className="p-1.5 rounded-lg hover:bg-white/[0.03] text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-all"><ChevronsLeft className="w-4 h-4" /></button>
+              <button onClick={() => handlePageChange(safePage - 1)} disabled={safePage === 1} className="p-1.5 rounded-lg hover:bg-white/[0.03] text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-all"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="px-3 py-1.5 text-xs text-slate-400">{safePage} / {totalPages}</span>
+              <button onClick={() => handlePageChange(safePage + 1)} disabled={safePage === totalPages} className="p-1.5 rounded-lg hover:bg-white/[0.03] text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-all"><ChevronRight className="w-4 h-4" /></button>
+              <button onClick={() => handlePageChange(totalPages)} disabled={safePage === totalPages} className="p-1.5 rounded-lg hover:bg-white/[0.03] text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-all"><ChevronsRight className="w-4 h-4" /></button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DataTable;
+
