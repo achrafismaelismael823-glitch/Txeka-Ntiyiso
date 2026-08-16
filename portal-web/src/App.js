@@ -7,18 +7,19 @@ import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth } from './hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
-// Lazy loading das páginas — performance otimizada
-const LoginPage = lazy(() => import('./pages/LoginPage/LoginPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage/DashboardPage'));
-const DocumentsPage = lazy(() => import('./pages/DocumentsPage/DocumentsPage'));
-const EmitPage = lazy(() => import('./pages/EmitPage/EmitPage'));
-const BulkEmitPage = lazy(() => import('./pages/BulkEmitPage/BulkEmitPage'));
-const VerifyPage = lazy(() => import('./pages/VerifyPage/VerifyPage'));
-const AuditPage = lazy(() => import('./pages/AuditPage/AuditPage'));
-const CreditsPage = lazy(() => import('./pages/CreditsPage/CreditsPage'));
-const InstitutionsPage = lazy(() => import('./pages/InstitutionsPage/InstitutionsPage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage/SettingsPage'));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage/NotFoundPage'));
+// ⚠ ESTRUTURA FLAT — as páginas são arquivos .jsx diretos em src/pages/
+// NÃO são subpastas (ex: pages/LoginPage/LoginPage.jsx)
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
+const EmitPage = lazy(() => import('./pages/EmitPage'));
+const BulkEmitPage = lazy(() => import('./pages/BulkEmitPage'));
+const VerifyPage = lazy(() => import('./pages/VerifyPage'));
+const AuditPage = lazy(() => import('./pages/AuditPage'));
+const CreditsPage = lazy(() => import('./pages/CreditsPage'));
+const InstitutionsPage = lazy(() => import('./pages/InstitutionsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 // PageLoader — skeleton global para lazy loading
 const PageLoader = () => (
@@ -115,3 +116,4 @@ const App = () => {
 };
 
 export default App;
+
