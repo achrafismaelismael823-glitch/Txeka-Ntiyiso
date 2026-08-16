@@ -12,9 +12,12 @@ export class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary capturou erro:', error, errorInfo);
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.error('ErrorBoundary capturou erro:', error, errorInfo);
+    }
     this.setState({ errorInfo });
-    if (window.gtag) {
+    if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'exception', { description: `${error.name}: ${error.message}`, fatal: true });
     }
   }
