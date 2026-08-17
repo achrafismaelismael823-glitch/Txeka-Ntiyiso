@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import { authService } from '../services/auth';
 import { NotificationContext } from '../contexts/NotificationContext';
 import { endpoints } from '../services/api';
 import { authService } from '../services/authService';
