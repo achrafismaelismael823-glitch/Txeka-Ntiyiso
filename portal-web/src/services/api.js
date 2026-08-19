@@ -112,8 +112,8 @@ export const endpoints = {
   },
 
   auth: {
-    login: (credentials) => api.post('/auth/login', credentials),
-    adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
+    login: (credentials) => api.post('/login', credentials),
+    adminLogin: (credentials) => api.post('/admin/login', credentials),
     logout: () => api.post('/logout'),
     refresh: () => api.post('/refresh'),
     me: () => api.get('/auth/me'),
