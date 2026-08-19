@@ -4,17 +4,20 @@ import { authService } from '../services/auth';
 
 export const AuthContext = createContext(null);
 
+const INSTITUTION_KEY = 'txeka_institution';
+
 const decodeUserFromToken = () => {
   const payload = authService.decodeToken();
   if (!payload) return { user: null, isAdmin: false, isInstitution: false };
   const role = payload.role || 'citizen';
+  const institutionData = JSON.parse(localStorage.getItem(INSTITUTION_KEY) || 'null');
   return {
     user: {
       id: payload.id || payload.sub || 'unknown',
       email: payload.email || payload.sub || 'unknown',
-      name: payload.sub || payload.email || 'Utilizador',
+      name: institutionData?.name || payload.sub || payload.email || 'Utilizador',
       role: role,
-      institution: payload.institution || null,
+      institution: institutionData || { id: payload.institution || payload.id },
     },
     isAdmin: role === 'admin',
     isInstitution: role === 'institution',
@@ -49,38 +52,67 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
+  const storeInstitution = (institution) => {
+    if (institution) {
+      localStorage.setItem(INSTITUTION_KEY, JSON.stringify(institution));
+    }
+  };
+
   const login = useCallback(async (institutionId, password) => {
     try {
       const response = await endpoints.auth.login({ institution_id: institutionId, password });
       const token = extractToken(response.data);
+      const institution = response.data?.institution;
       if (token) {
         authService.setToken(token);
+        storeInstitution(institution);
+        authService.resetFailedAttempts();
         setAuthState(decodeUserFromToken());
-        return { success: true };
+        return { success: true, institution };
       }
       return { success: false, error: 'Token não encontrado na resposta' };
     } catch (err) {
-      return { success: false, error: err.normalizedMessage || 'Erro no login' };
+      const attempts = authService.incrementFailedAttempts();
+      const isLocked = authService.isLockedOut();
+      return {
+        success: false,
+        error: err.response?.data?.detail || err.message || 'Erro no login',
+        attempts,
+        isLocked,
+        remainingSeconds: authService.getRemainingLockoutSeconds(),
+      };
     }
   }, []);
 
   const adminLogin = useCallback(async (email, password) => {
     try {
-      const response = await endpoints.auth.adminLogin(email, password);
+      const response = await endpoints.auth.adminLogin({ email, password });
       const token = extractToken(response.data);
+      const institution = response.data?.institution;
       if (token) {
         authService.setToken(token);
+        storeInstitution(institution);
+        authService.resetFailedAttempts();
         setAuthState(decodeUserFromToken());
-        return { success: true };
+        return { success: true, institution };
       }
       return { success: false, error: 'Token não encontrado na resposta' };
     } catch (err) {
-      return { success: false, error: err.normalizedMessage || 'Erro no login' };
+      const attempts = authService.incrementFailedAttempts();
+      const isLocked = authService.isLockedOut();
+      return {
+        success: false,
+        error: err.response?.data?.detail || err.message || 'Erro no login de administrador',
+        attempts,
+        isLocked,
+        remainingSeconds: authService.getRemainingLockoutSeconds(),
+      };
     }
   }, []);
 
   const logout = useCallback(() => {
-    authService.removeToken();
+    authService.logout();
+    localStorage.removeItem(INSTITUTION_KEY);
     setAuthState({ user: null, isAdmin: false, isInstitution: false });
   }, []);
 

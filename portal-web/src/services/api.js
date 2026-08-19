@@ -40,6 +40,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('txeka_token');
       localStorage.removeItem('token');
+      localStorage.removeItem('txeka_institution');
       if (window.location.pathname !== '/login') {
         window.location.replace('/login');
       }
@@ -62,8 +63,8 @@ const normalizePagination = (params = {}) => {
 
 export const endpoints = {
   me: {
-    dashboard: () => api.get('/me/dashboard'),
-    credits: () => api.get('/me/credits'),
+    dashboard: () => api.get('/institutions/me/dashboard'),
+    credits: () => api.get('/institutions/me/credits'),
     creditHistory: (params = {}) => api.get('/me/credit-history', { params: normalizePagination(params) }),
   },
 
@@ -115,8 +116,8 @@ export const endpoints = {
   },
 
   auth: {
-    login: (credentials) => api.post('/login', credentials),
-    adminLogin: (credentials) => api.post('/admin/login', credentials),
+    login: (credentials) => api.post('/auth/login', credentials),
+    adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
     logout: () => api.post('/logout'),
     refresh: () => api.post('/refresh'),
     me: () => api.get('/auth/me'),
