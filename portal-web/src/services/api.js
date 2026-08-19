@@ -3,13 +3,14 @@ import axios from 'axios';
 const getApiBaseUrl = () => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
   const hostname = window.location.hostname;
+
   if (hostname === 'txeka-ntiyiso.co.mz' || hostname === 'www.txeka-ntiyiso.co.mz') {
     return 'https://api.txeka-ntiyiso.co.mz/api/v1';
   }
   if (hostname.includes('staging')) {
     return 'https://api-staging.txeka-ntiyiso.co.mz/api/v1';
   }
-  return 'https://txekantiyiso-api.onrender.com/api/v1';
+  return '/api/v1';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -18,7 +19,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
   },
   timeout: 30000,
 });
@@ -44,6 +44,9 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/login') {
         window.location.replace('/login');
       }
+    }
+    if (error.response?.status === 429) {
+      return Promise.reject(new Error('Muitas requisições. Aguarde um momento.'));
     }
     if (error.code === 'ECONNABORTED') {
       return Promise.reject(new Error('Tempo de conexão esgotado. Verifique sua internet.'));
