@@ -62,10 +62,14 @@ const normalizePagination = (params = {}) => {
 };
 
 export const endpoints = {
+  health: {
+    check: () => api.get('/health'),
+  },
+
   me: {
     dashboard: () => api.get('/institutions/me/dashboard'),
     credits: () => api.get('/institutions/me/credits'),
-    creditHistory: (params = {}) => api.get('/me/credit-history', { params: normalizePagination(params) }),
+    creditHistory: (params = {}) => api.get('/institutions/me/credit-history', { params: normalizePagination(params) }),
   },
 
   emissions: {
@@ -79,40 +83,29 @@ export const endpoints = {
     revoke: (docId, reason) => api.post(`/emissions/${docId}/revoke`, { reason }),
     list: (params = {}) => api.get('/emissions', { params: normalizePagination(params) }),
     get: (id) => api.get(`/emissions/${id}`),
-    verify: (hash) => api.get(`/verify/${hash}`),
-  },
-
-  documents: {
-    list: (params = {}) => api.get('/documents', { params: normalizePagination(params) }),
-    get: (id) => api.get(`/documents/${id}`),
-    revoke: (id, reason) => api.post(`/documents/${id}/revoke`, { reason }),
-  },
-
-  audit: {
-    list: (params = {}) => api.get('/audit', { params: normalizePagination(params) }),
-    get: (id) => api.get(`/audit/${id}`),
   },
 
   verify: {
-    hash: (hash) => api.get(`/verify/${hash}`),
+    hash: (docHash) => api.get(`/verify/${docHash}`),
+    post: (data) => api.post('/verify', data),
     qr: (code) => api.get(`/verify/qr/${code}`),
   },
 
-  admin: {
-    dashboard: () => api.get('/admin/dashboard'),
-    institutions: {
-      list: (params = {}) => api.get('/admin/institutions', { params: normalizePagination(params) }),
-      create: (data) => api.post('/admin/institutions', data),
-      update: (id, data) => api.put(`/admin/institutions/${id}`, data),
-      delete: (id) => api.delete(`/admin/institutions/${id}`),
-      get: (id) => api.get(`/admin/institutions/${id}`),
-    },
-    credits: {
-      add: (institutionId, amount) => api.post(`/admin/credits/${institutionId}`, { amount }),
-      history: (params = {}) => api.get('/admin/credits/history', { params: normalizePagination(params) }),
-    },
-    settings: () => api.get('/admin/settings'),
-    updateSettings: (data) => api.put('/admin/settings', data),
+  audit: {
+    logs: (params = {}) => api.get('/audit/logs', { params: normalizePagination(params) }),
+    documentHistory: (docHash) => api.get(`/audit/document/${docHash}/history`),
+    stats: () => api.get('/audit/stats'),
+  },
+
+  institutions: {
+    list: (params = {}) => api.get('/institutions', { params: normalizePagination(params) }),
+    create: (data) => api.post('/institutions', data),
+    get: (id) => api.get(`/institutions/${id}`),
+    update: (id, data) => api.patch(`/institutions/${id}`, data),
+    addCredits: (id, amount) => api.post(`/institutions/${id}/credits`, { amount }),
+    creditHistory: (id, params = {}) => api.get(`/institutions/${id}/credit-history`, { params: normalizePagination(params) }),
+    resetPassword: (id) => api.post(`/institutions/${id}/reset-password`),
+    regenerateApiKey: (id) => api.post(`/institutions/${id}/regenerate-api-key`),
   },
 
   auth: {
