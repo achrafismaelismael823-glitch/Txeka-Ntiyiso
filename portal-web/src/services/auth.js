@@ -1,11 +1,14 @@
 // ═══════════════════════════════════════════════
-// 🔐 AUTH SERVICE — Unificado e Seguro
+// 🔐 AUTH SERVICE — Txeka Ntiyiso
 // ═══════════════════════════════════════════════
-// Substitui authService.js + auth.js duplicados
-// Token key: txeka_token (fallback para 'token' legado)
+// Token key: txeka_token (fallback 'token' legado)
 // ═══════════════════════════════════════════════
 
 const TOKEN_KEY = 'txeka_token';
+const FAILED_ATTEMPTS_KEY = 'txeka_failed_attempts';
+const LOCKOUT_UNTIL_KEY = 'txeka_lockout_until';
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 300;
 
 export const authService = {
   setToken: (token) => {
@@ -61,8 +64,55 @@ export const authService = {
 
   logout: () => {
     authService.removeToken();
+    authService.resetFailedAttempts();
     window.location.href = '/login';
   },
+
+  getFailedAttempts: () => {
+    const attempts = localStorage.getItem(FAILED_ATTEMPTS_KEY);
+    return attempts ? parseInt(attempts, 10) : 0;
+  },
+
+  incrementFailedAttempts: () => {
+    const current = authService.getFailedAttempts();
+    const next = current + 1;
+    localStorage.setItem(FAILED_ATTEMPTS_KEY, String(next));
+    if (next >= MAX_ATTEMPTS) {
+      authService.setLockout(LOCKOUT_SECONDS);
+    }
+    return next;
+  },
+
+  resetFailedAttempts: () => {
+    localStorage.removeItem(FAILED_ATTEMPTS_KEY);
+    localStorage.removeItem(LOCKOUT_UNTIL_KEY);
+  },
+
+  setLockout: (seconds) => {
+    const until = Date.now() + seconds * 1000;
+    localStorage.setItem(LOCKOUT_UNTIL_KEY, String(until));
+  },
+
+  getRemainingLockoutSeconds: () => {
+    const until = localStorage.getItem(LOCKOUT_UNTIL_KEY);
+    if (!until) return 0;
+    const remaining = Math.ceil((parseInt(until, 10) - Date.now()) / 1000);
+    if (remaining <= 0) {
+      localStorage.removeItem(LOCKOUT_UNTIL_KEY);
+      localStorage.removeItem(FAILED_ATTEMPTS_KEY);
+      return 0;
+    }
+    return remaining;
+  },
+
+  isLockedOut: () => {
+    return authService.getRemainingLockoutSeconds() > 0;
+  },
+
+  getLockoutConfig: () => ({
+    maxAttempts: MAX_ATTEMPTS,
+    lockoutSeconds: LOCKOUT_SECONDS,
+  }),
 };
 
 export default authService;

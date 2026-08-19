@@ -39,7 +39,7 @@ export function useApi(options = {}) {
   }, []);
 
   const invalidateCache = useCallback((key) => {
-n    if (key) {
+    if (key) {
       cacheRef.current.delete(key);
     } else {
       cacheRef.current.clear();
@@ -129,7 +129,7 @@ n    if (key) {
 
         retryCountRef.current = 0;
 
-        if (showErrorToast) {
+        if (showErrorToast && err.response?.status !== 401) {
           notify(errorMsg, 'error');
         }
 
@@ -204,4 +204,3 @@ export function useMutation(options = {}) {
 }
 
 export default useApi;
-
