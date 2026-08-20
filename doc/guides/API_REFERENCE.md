@@ -3,7 +3,8 @@
 > **Versão:** 2.0.0  
 > **Base URL:** `https://txeka-ntiyiso-api.onrender.com`  
 > **Ambiente Local:** `http://localhost:8000`  
-> **Documentação Interativa:** `/docs` (Swagger UI) · `/redoc` (ReDoc)
+> **Documentação Interativa:** `/docs` (Swagger UI) · `/redoc` (ReDoc)  
+> **Prefixo da API:** `/api/v1` — aplicado a todas as rotas listadas abaixo.
 
 ---
 
@@ -12,36 +13,45 @@
 - [Autenticação](#autenticação)
 - [Emissão de Documentos](#emissão-de-documentos)
 - [Verificação](#verificação)
+- [Revogação](#revogação)
 - [Gestão de Instituições](#gestão-de-instituicoes)
 - [Dashboard e Créditos](#dashboard-e-creditos)
 - [Auditoria](#auditoria)
-- [Revogação](#revogação)
 - [Schemas](#schemas)
-- [Códigos de Erro](#códigos-de-erro)
+- [Formato de Erros](#formato-de-erros)
+- [Rate Limiting](#rate-limiting)
+- [Ambientes](#ambientes)
+- [Changelog](#changelog)
 
 ---
 
 ## Autenticação
 
-A API utiliza **JWT (JSON Web Tokens)** para autenticação stateless. Dois fluxos de login coexistem:
+A API utiliza **JWT (JSON Web Tokens)** — algoritmo HS256 — com autenticação *stateless*.
 
-| Fluxo | Endpoint | Token | Expiração | Âmbito |
-|-------|----------|-------|-----------|--------|
-| **Admin** | `POST /api/v1/auth/admin/login` | Bearer | 90 dias | Gestão global do sistema |
-| **Instituição** | `POST /api/v1/auth/login` | Bearer | 30 dias | Emissão, verificação, dashboard |
+| Fluxo | Endpoint | Expiração | Âmbito |
+|-------|----------|-----------|--------|
+| **Admin** | `POST /api/v1/auth/admin/login` | 90 dias | Gestão global do sistema |
+| **Instituição** | `POST /api/v1/auth/login` | 30 dias | Emissão, verificação, revogação, dashboard |
 
-> **Header:** `Authorization: Bearer <token>`
+> **Header de todas as rotas protegidas:** `Authorization: Bearer <access_token>`
+>
+> **Roles (RBAC):** `admin`, `institution`, `citizen`, `system`.
+> - `verify_role("admin")` — apenas admin.
+> - `verify_role("institution")` — instituição **ou** admin.
+> - Modo anónimo (`TXEKA_ALLOW_ANONYMOUS=true`): requisições sem token recebem role `citizen` (apenas verificação pública).
+
+---
 
 ### POST /api/v1/auth/admin/login
 
 Login do administrador do sistema.
 
+> **Atenção:** os parâmetros são passados como **query string**, não como body JSON.
+
 **Request:**
-```json
-{
-  "email": "admin@txeka.co.mz",
-  "password": "string"
-}
+```
+POST /api/v1/auth/admin/login?email=admin@txeka.co.mz&password=s3nh4
 ```
 
 **Response (200):**
@@ -50,19 +60,20 @@ Login do administrador do sistema.
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "token_type": "bearer",
   "role": "admin",
-  "message": "Login bem-sucedido"
+  "expires_in_days": 90,
+  "message": "Bem-vindo, Administrador Txeka Ntiyiso!"
 }
 ```
 
 **Erros:**
-- `401 Unauthorized` — Credenciais inválidas
-- `429 Too Many Requests` — Rate limit excedido
+- `401` — Credenciais inválidas
+- `500` — `ADMIN_PASSWORD_HASH` não configurado
 
 ---
 
 ### POST /api/v1/auth/login
 
-Login de instituição registrada.
+Login de instituição registada.
 
 **Request:**
 ```json
@@ -87,17 +98,17 @@ Login de instituição registrada.
     "docs_emitted_month": 45,
     "status": "active",
     "approved": true,
-    "created_at": "2026-01-15T10:30:00Z",
-    "updated_at": "2026-07-20T14:22:00Z"
+    "created_at": "2026-01-15T10:30:00+02:00",
+    "updated_at": "2026-07-20T14:22:00+02:00"
   },
-  "message": "Login bem-sucedido"
+  "expires_in_days": 30,
+  "message": "Bem-vindo, Instituto Nacional de Gestão de Estabelecimentos!"
 }
 ```
 
 **Erros:**
-- `401 Unauthorized` — Credenciais inválidas ou instituição não aprovada
-- `403 Forbidden` — Instituição suspensa ou inativa
-- `429 Too Many Requests` — Rate limit excedido
+- `401` — Credenciais inválidas
+- `403` — Conta suspensa ou inativa
 
 ---
 
@@ -105,9 +116,10 @@ Login de instituição registrada.
 
 ### POST /api/v1/certify
 
-Emite um documento único (PDF). Gera hash SHA-256, QR code e regista audit log.
+Emite um documento único. Gera hash SHA-256, QR code e regista audit log.
 
-> **Requisitos:** Content-Type `multipart/form-data`  
+> **Auth:** Bearer (instituição)  
+> **Requisitos:** `Content-Type: multipart/form-data`  
 > **Restrição:** APENAS ficheiros PDF  
 > **Custo:** 1 crédito por documento
 
@@ -117,60 +129,61 @@ POST /api/v1/certify
 Authorization: Bearer <institution_token>
 Content-Type: multipart/form-data
 
-file: <arquivo.pdf>
-document_type: "DUAT"          # Tipo do documento (ex: DUAT, CERTIDAO, ALVARA)
-institution_id: "INAGE"         # ID da instituição emissora
+file: <arquivo.pdf>            # obrigatório
+document_type: "DUAT"          # opcional, default "DUAT"
+institution_id: "INAGE"        # opcional, default "INAGE"
 ```
 
-**Response (201):**
+Validação do ficheiro (em ordem): extensão `.pdf` → MIME `application/pdf` → magic bytes `%PDF-` → tamanho ≤ 50MB → nome sem extensões duplas suspeitas.
+
+**Response (200):**
 ```json
 {
-  "doc_id": "DOC-7f8a9b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
-  "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "document_type": "DUAT",
-  "institution_id": "INAGE",
-  "certificate_url": "https://txeka-ntiyiso-api.onrender.com/api/v1/verify/e3b0c44298fc...",
+  "status": "emitted",
+  "doc_id": "DUAT-INAGE-20260820-A1B2C3",
+  "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANS...",
-  "file_name": "duat_2026_001.pdf",
-  "file_size": 245760,
-  "issued_by": "INAGE",
-  "created_at": "2026-07-22T14:24:00Z",
-  "message": "Documento emitido com sucesso"
+  "certificate_url": "https://verify.txekantiyiso.co.mz/DUAT-INAGE-20260820-A1B2C3",
+  "timestamp": "2026-08-20T21:30:00+02:00",
+  "message": "Documento emitido com sucesso. Creditos restantes: 999"
 }
 ```
 
 **Erros:**
-- `400 Bad Request` — Ficheiro não é PDF ou excede tamanho máximo
-- `401 Unauthorized` — Token inválido ou expirado
-- `402 Payment Required` — Créditos insuficientes
-- `403 Forbidden` — Instituição não aprovada
-- `409 Conflict` — Hash já existe (documento duplicado)
-- `429 Too Many Requests` — Rate limit excedido
+- `400` — Ficheiro ausente ou conteúdo sem assinatura PDF válida
+- `401` — Token ausente/inválido
+- `402` — Créditos insuficientes
+- `403` — Instituição suspensa/inativa ou não aprovada
+- `404` — Instituição não encontrada
+- `409` — Hash já certificado no sistema (documento duplicado)
+- `413` — Ficheiro excede 50MB
+- `415` — Extensão/MIME inválido ou nome suspeito (ex: `.pdf.png`)
+- `422` — Parâmetros de formulário inválidos
 
 ---
 
 ### POST /api/v1/certify/bulk
 
-Emite múltiplos documentos em lote (até 100 por requisição).
+Emite múltiplos documentos em lote (B2B/B2G).
 
-> **Requisitos:** Content-Type `application/json`  
+> **Auth:** Bearer (instituição)  
+> **Requisitos:** `Content-Type: application/json`  
 > **Custo:** 1 crédito por documento
 
 **Request:**
 ```json
 {
+  "institution_id": "INAGE",
   "documents": [
     {
-      "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "document_type": "DUAT",
       "file_name": "duat_001.pdf",
-      "file_size": 245760
+      "content": "<conteúdo em base64 ou texto>"
     },
     {
-      "doc_hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
       "document_type": "CERTIDAO",
       "file_name": "certidao_002.pdf",
-      "file_size": 180224
+      "content": "<conteúdo em base64 ou texto>"
     }
   ]
 }
@@ -179,52 +192,51 @@ Emite múltiplos documentos em lote (até 100 por requisição).
 **Response (201):**
 ```json
 {
-  "total_requested": 2,
-  "successful": 2,
-  "failed": 0,
-  "credits_consumed": 2,
-  "credits_remaining": 998,
+  "message": "Lote de 2 documentos processado com sucesso.",
   "documents": [
     {
-      "doc_id": "DOC-7f8a9b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
-      "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "status": "success",
-      "qr_code": "data:image/png;base64,..."
+      "doc_id": "DUAT-INAGE-20260820-C1D2E3",
+      "certificate_url": "https://verify.txekantiyiso.co.mz/DUAT-INAGE-20260820-C1D2E3",
+      "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
-  "message": "2 documentos emitidos com sucesso"
+  "credits_remaining": 998
 }
 ```
 
 **Erros:**
-- `400 Bad Request` — Payload inválido ou documentos mal formatados
-- `401 Unauthorized` — Token inválido
-- `402 Payment Required` — Créditos insuficientes para o lote completo
-- `403 Forbidden` — Instituição não aprovada
-- `429 Too Many Requests` — Rate limit excedido
+- `400` — Lista de documentos vazia
+- `401` — Token ausente/inválido
+- `402` — Créditos insuficientes para o lote completo
+- `403` — Instituição suspensa/inativa ou não aprovada
+- `404` — Instituição não encontrada
+- `409` — Hash já certificado (duplicado no lote)
+- `422` — Payload inválido
 
 ---
 
 ## Verificação
 
+Público — **não requer autenticação**.
+
 ### GET /api/v1/verify/{doc_hash}
 
-Verificação pública via URL. Acessível sem autenticação — ideal para QR codes, WhatsApp e links diretos.
+Verificação pública via URL (QR code, WhatsApp, links diretos).
 
 **Parâmetros:**
 | Nome | Tipo | Obrigatório | Descrição |
 |------|------|-------------|-----------|
-| `doc_hash` | string (path) | ✅ | Hash SHA-256 de 64 caracteres |
+| `doc_hash` | string (path) | ✅ | Hash SHA-256 de **exatamente 64 caracteres** |
 
 **Response (200) — Documento Válido:**
 ```json
 {
-  "status": "valid",
+  "status": "VALID",
   "dados_publicos": {
-    "doc_id": "DOC-7f8a9b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+    "doc_id": "DUAT-INAGE-20260820-A1B2C3",
     "document_type": "DUAT",
     "institution_id": "INAGE",
-    "created_at": "2026-07-22T14:24:00Z",
+    "created_at": "2026-08-20T21:30:00+02:00",
     "revoked": false,
     "revoked_at": null,
     "revoked_reason": null
@@ -235,14 +247,14 @@ Verificação pública via URL. Acessível sem autenticação — ideal para QR 
 **Response (200) — Documento Revogado:**
 ```json
 {
-  "status": "revoked",
+  "status": "REVOKED",
   "dados_publicos": {
-    "doc_id": "DOC-7f8a9b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+    "doc_id": "DUAT-INAGE-20260820-A1B2C3",
     "document_type": "DUAT",
     "institution_id": "INAGE",
-    "created_at": "2026-07-22T14:24:00Z",
+    "created_at": "2026-08-20T21:30:00+02:00",
     "revoked": true,
-    "revoked_at": "2026-07-23T09:15:00Z",
+    "revoked_at": "2026-08-21T09:15:00+02:00",
     "revoked_reason": "Erro administrativo na emissão"
   }
 }
@@ -251,20 +263,22 @@ Verificação pública via URL. Acessível sem autenticação — ideal para QR 
 **Response (200) — Documento Não Encontrado:**
 ```json
 {
-  "status": "not_found",
+  "status": "INVALID",
   "dados_publicos": null
 }
 ```
 
+> **Valores possíveis de `status`:** `VALID` · `REVOKED` · `INVALID`
+
 **Erros:**
-- `400 Bad Request` — Hash mal formatado (não tem 64 caracteres hexadecimais)
-- `429 Too Many Requests` — Rate limit excedido
+- `400` — Hash não tem 64 caracteres
+- `422` — Hash mal formatado (não hexadecimal)
 
 ---
 
 ### POST /api/v1/verify
 
-Verificação B2B/B2G via JSON. Mesma lógica do GET, mas com payload estruturado para integrações programáticas.
+Verificação B2B/B2G via JSON. Mesma lógica do GET, com payload estruturado.
 
 **Request:**
 ```json
@@ -273,21 +287,69 @@ Verificação B2B/B2G via JSON. Mesma lógica do GET, mas com payload estruturad
 }
 ```
 
-**Response:** Idêntico ao GET /api/v1/verify/{doc_hash}
+**Response:** idêntico ao `GET /api/v1/verify/{doc_hash}`.
 
 **Erros:**
-- `400 Bad Request` — Hash inválido ou ausente
-- `429 Too Many Requests` — Rate limit excedido
+- `422` — Hash inválido ou ausente (Pydantic exige 64 caracteres)
+
+---
+
+## Revogação
+
+### POST /api/v1/emissions/{doc_id}/revoke
+
+Revoga (invalida) um documento emitido. Ação **irreversível**.
+
+> **Auth:** Bearer — Admin ou a própria Instituição emissora (RBAC por `institution_id`).
+
+**Parâmetros:**
+| Nome | Tipo | Obrigatório | Descrição |
+|------|------|-------------|-----------|
+| `doc_id` | string (path) | ✅ | ID do documento emitido (ex: `DUAT-INAGE-20260820-A1B2C3`) |
+
+**Request:**
+```json
+{
+  "reason": "Erro administrativo na emissão — DUAT emitido para terreno errado"
+}
+```
+
+**Response (200):**
+```json
+{
+  "status": "revoked",
+  "doc_id": "DUAT-INAGE-20260820-A1B2C3",
+  "revoked_at": "2026-08-21T09:15:00+02:00",
+  "message": "Documento revogado com sucesso. Motivo: Erro administrativo na emissão — DUAT emitido para terreno errado"
+}
+```
+
+**Response (200) — Já revogado:**
+```json
+{
+  "status": "already_revoked",
+  "doc_id": "DUAT-INAGE-20260820-A1B2C3",
+  "message": "Documento ja se encontra revogado. Motivo: ..."
+}
+```
+
+**Erros:**
+- `401` — Token ausente/inválido
+- `403` — Sem permissão (não é admin nem instituição emissora)
+- `404` — Documento não encontrado
+- `422` — `reason` ausente ou com mais de 255 caracteres
 
 ---
 
 ## Gestão de Instituições
 
-> **Acesso:** Endpoints abaixo requerem token de **Admin** (`verify_role("admin")`)
+> **Auth:** endpoints marcados como **Admin** exigem `verify_role("admin")`. Os de **Instituição** exigem token de instituição (ou admin).
 
 ### POST /api/v1/institutions
 
 Cria uma nova instituição no sistema.
+
+> **Auth:** Admin
 
 **Request:**
 ```json
@@ -300,29 +362,72 @@ Cria uma nova instituição no sistema.
 }
 ```
 
-**Response (201):**
+> O `id` é convertido automaticamente para **MAIÚSCULAS**.
+
+**Response (200):**
 ```json
 {
-  "id": "INSS",
-  "name": "Instituto Nacional de Segurança Social",
-  "contact_email": "contacto@inss.gov.mz",
-  "role": "institution",
-  "subscription_plan": "standard",
-  "credits": 500,
-  "docs_emitted_month": 0,
-  "status": "pending",
-  "approved": false,
-  "created_at": "2026-07-22T14:24:00Z",
-  "updated_at": "2026-07-22T14:24:00Z",
-  "message": "Instituição criada com sucesso. Aguarda aprovação do admin."
+  "success": true,
+  "institution": {
+    "id": "INSS",
+    "name": "Instituto Nacional de Segurança Social",
+    "contact_email": "contacto@inss.gov.mz",
+    "credits": 500,
+    "status": "pending"
+  },
+  "api_key": "txk_live_7f8a9b2c3d4e5f6a7b8c9d0e",
+  "temp_password": "TempPass123!",
+  "message": "Instituição criada. Aguarda aprovação do admin."
 }
 ```
 
+> **Atenção:** `api_key` e `temp_password` são mostrados **apenas uma vez**.
+
 **Erros:**
-- `400 Bad Request` — Dados inválidos ou ID já existe
-- `401 Unauthorized` — Token inválido
-- `403 Forbidden` — Sem permissão de admin
-- `409 Conflict` — ID da instituição já existe
+- `400` — Dados inválidos ou ID já existe (`ValueError`)
+- `401` — Token inválido
+- `403` — Sem permissão de admin
+- `422` — Validação Pydantic (email inválido, campos fora do tamanho mínimo, `credits < 0`)
+- `500` — Erro interno
+
+---
+
+### GET /api/v1/institutions
+
+Lista instituições com paginação e filtro de status.
+
+> **Auth:** Admin
+
+**Parâmetros de Query:**
+| Nome | Tipo | Padrão | Descrição |
+|------|------|--------|-----------|
+| `skip` | int | 0 | Offset |
+| `limit` | int | 100 | Limite (1–500) |
+| `status` | string | – | `pending` \| `active` \| `suspended` \| `inactive` |
+
+**Response (200):**
+```json
+{
+  "total": 8,
+  "institutions": [
+    {
+      "id": "INAGE",
+      "name": "Instituto Nacional de Gestão de Estabelecimentos",
+      "contact_email": "contacto@inage.gov.mz",
+      "role": "institution",
+      "subscription_plan": "standard",
+      "credits": 1000,
+      "docs_emitted_month": 45,
+      "status": "active",
+      "approved": true,
+      "created_at": "2026-01-15T10:30:00+02:00",
+      "updated_at": "2026-07-20T14:22:00+02:00"
+    }
+  ]
+}
+```
+
+**Erros:** `401` · `403` · `422` (status inválido)
 
 ---
 
@@ -330,33 +435,21 @@ Cria uma nova instituição no sistema.
 
 Obtém detalhes de uma instituição específica.
 
-**Response (200):**
-```json
-{
-  "id": "INAGE",
-  "name": "Instituto Nacional de Gestão de Estabelecimentos",
-  "contact_email": "contacto@inage.gov.mz",
-  "role": "institution",
-  "subscription_plan": "standard",
-  "credits": 1000,
-  "docs_emitted_month": 45,
-  "status": "active",
-  "approved": true,
-  "created_at": "2026-01-15T10:30:00Z",
-  "updated_at": "2026-07-20T14:22:00Z"
-}
-```
+> **Auth:** Admin
+
+**Response (200):** `InstitutionResponse` (mesmo formato da listagem).
 
 **Erros:**
-- `401 Unauthorized` — Token inválido
-- `403 Forbidden` — Sem permissão
-- `404 Not Found` — Instituição não existe
+- `401` · `403`
+- `404` — Instituição não encontrada
 
 ---
 
 ### PATCH /api/v1/institutions/{institution_id}
 
-Atualiza dados de uma instituição.
+Atualiza dados de uma instituição. Todos os campos são opcionais.
+
+> **Auth:** Admin
 
 **Request:**
 ```json
@@ -369,35 +462,21 @@ Atualiza dados de uma instituição.
 }
 ```
 
-**Response (200):**
-```json
-{
-  "id": "INAGE",
-  "name": "INAGE — Instituto Nacional de Gestão de Estabelecimentos",
-  "contact_email": "novo@inage.gov.mz",
-  "role": "institution",
-  "subscription_plan": "premium",
-  "credits": 1000,
-  "docs_emitted_month": 45,
-  "status": "active",
-  "approved": true,
-  "created_at": "2026-01-15T10:30:00Z",
-  "updated_at": "2026-07-22T14:30:00Z",
-  "message": "Instituição atualizada com sucesso"
-}
-```
+**Response (200):** `InstitutionResponse` atualizado.
 
 **Erros:**
-- `400 Bad Request` — Dados inválidos
-- `401 Unauthorized` — Token inválido
-- `403 Forbidden` — Sem permissão
-- `404 Not Found` — Instituição não existe
+- `400` — Status fora de `pending|active|suspended|inactive`
+- `401` · `403`
+- `404` — Instituição não encontrada
+- `422` — `status` não casa com o padrão permitido
 
 ---
 
 ### POST /api/v1/institutions/{institution_id}/credits
 
 Adiciona créditos à instituição (gestão de pagamentos).
+
+> **Auth:** Admin
 
 **Request:**
 ```json
@@ -416,16 +495,14 @@ Adiciona créditos à instituição (gestão de pagamentos).
 {
   "credits": 2000,
   "status": "active",
-  "docs_emitted_month": 45,
-  "message": "1000 créditos adicionados com sucesso"
+  "docs_emitted_month": 45
 }
 ```
 
 **Erros:**
-- `400 Bad Request` — Quantidade inválida
-- `401 Unauthorized` — Token inválido
-- `403 Forbidden` — Sem permissão de admin
-- `404 Not Found` — Instituição não existe
+- `401` · `403`
+- `404` — Instituição não encontrada
+- `422` — `amount` ≤ 0, `type`/`payment_method` fora do padrão
 
 ---
 
@@ -433,11 +510,13 @@ Adiciona créditos à instituição (gestão de pagamentos).
 
 Histórico de transações de créditos de uma instituição.
 
+> **Auth:** Admin
+
 **Parâmetros de Query:**
 | Nome | Tipo | Padrão | Descrição |
 |------|------|--------|-----------|
-| `skip` | int | 0 | Offset para paginação |
-| `limit` | int | 50 | Limite de resultados (1–100) |
+| `skip` | int | 0 | Offset |
+| `limit` | int | 50 | Limite (1–100) |
 
 **Response (200):**
 ```json
@@ -452,32 +531,32 @@ Histórico de transações de créditos de uma instituição.
     "payment_reference": "TRX-2026-01-001",
     "notes": "Setup inicial",
     "created_by": "admin@txeka.co.mz",
-    "created_at": "2026-01-15T10:30:00Z"
+    "created_at": "2026-01-15T10:30:00+02:00"
   }
 ]
 ```
+
+**Erros:** `401` · `403` · `404` (instituição não encontrada)
 
 ---
 
 ### POST /api/v1/institutions/{institution_id}/reset-password
 
-Reset da password de uma instituição. Gera nova password temporária.
+Reseta a password de uma instituição e gera uma nova temporária.
+
+> **Auth:** Admin
 
 **Response (200):**
 ```json
 {
-  "message": "Password resetada com sucesso",
-  "temporary_password": "TempPass123!",
-  "institution_id": "INAGE"
+  "success": true,
+  "institution_id": "INAGE",
+  "temp_password": "TempPass123!",
+  "message": "Password resetada. Guarde esta senha temporária — não será mostrada novamente."
 }
 ```
 
-> **Atenção:** A instituição deve alterar a password no primeiro login.
-
-**Erros:**
-- `401 Unauthorized` — Token inválido
-- `403 Forbidden` — Sem permissão
-- `404 Not Found` — Instituição não existe
+**Erros:** `401` · `403` · `404` (instituição não encontrada)
 
 ---
 
@@ -485,22 +564,25 @@ Reset da password de uma instituição. Gera nova password temporária.
 
 Regenera a API key de uma instituição. A key anterior é invalidada imediatamente.
 
+> **Auth:** Admin  
+> **Atenção:** todas as integrações que usem a key antiga falharão.
+
 **Response (200):**
 ```json
 {
-  "message": "API key regenerada com sucesso",
+  "success": true,
   "api_key": "txk_live_7f8a9b2c3d4e5f6a7b8c9d0e",
-  "institution_id": "INAGE"
+  "message": "Guarde esta chave — não será mostrada novamente!"
 }
 ```
 
-> **Atenção:** Todas as integrações usando a key antiga irão falhar. Notifique a instituição antes de regenerar.
+**Erros:** `401` · `403` · `404` (instituição não encontrada)
 
 ---
 
 ## Dashboard e Créditos
 
-> **Acesso:** Endpoints abaixo requerem token de **Instituição**
+> **Auth:** token de Instituição ou Admin (`verify_token`)
 
 ### GET /api/v1/institutions/me/dashboard
 
@@ -519,8 +601,8 @@ Dashboard completo da instituição autenticada.
     "docs_emitted_month": 47,
     "status": "active",
     "approved": true,
-    "created_at": "2026-01-15T10:30:00Z",
-    "updated_at": "2026-07-22T14:24:00Z"
+    "created_at": "2026-01-15T10:30:00+02:00",
+    "updated_at": "2026-07-22T14:24:00+02:00"
   },
   "credits_history": [
     {
@@ -533,19 +615,26 @@ Dashboard completo da instituição autenticada.
       "payment_reference": "TRX-2026-01-001",
       "notes": "Setup inicial",
       "created_by": "admin@txeka.co.mz",
-      "created_at": "2026-01-15T10:30:00Z"
+      "created_at": "2026-01-15T10:30:00+02:00"
     }
   ],
-  "total_emitted": 1523,
-  "total_verifications": 8942
+  "total_emitted": 47,
+  "total_verifications": 0
 }
 ```
+
+> `credits_history` retorna os últimos **20** registos. `total_emitted` é o valor de `docs_emitted_month`. `total_verifications` está fixo em `0`.
+
+**Erros:**
+- `400` — Sem instituição associada ao token
+- `403` — Role não permitida, ou instituição tentando aceder dados de outra
+- `404` — Instituição não encontrada
 
 ---
 
 ### GET /api/v1/institutions/me/credits
 
-Status rápido de créditos da instituição.
+Status rápido de créditos da instituição autenticada.
 
 **Response (200):**
 ```json
@@ -556,157 +645,176 @@ Status rápido de créditos da instituição.
 }
 ```
 
+**Erros:** `400` (sem instituição associada) · `403` (role não permitida) · `404` (não encontrada)
+
 ---
 
 ### GET /api/v1/institutions/me/credit-history
 
-Histórico de transações de créditos da instituição autenticada.
+Histórico de transações de créditos da **instituição autenticada**.
+
+> **Auth:** token de Instituição (admin usa `/institutions/{institution_id}/credit-history`)
 
 **Parâmetros de Query:**
 | Nome | Tipo | Padrão | Descrição |
 |------|------|--------|-----------|
-| `skip` | int | 0 | Offset para paginação |
-| `limit` | int | 50 | Limite de resultados (1–100) |
+| `skip` | int | 0 | Offset |
+| `limit` | int | 50 | Limite (1–100) |
 
-**Response:** Idêntico ao `GET /api/v1/institutions/{institution_id}/credit-history`, mas filtrado para a instituição autenticada.
+**Response (200):** `[CreditTransactionResponse]` — mesmo formato de `/institutions/{institution_id}/credit-history`.
+
+**Erros:** `400` (sem instituição associada) · `403` (não é instituição)
 
 ---
 
 ## Auditoria
 
-> **Acesso:** Endpoints abaixo requerem token de **Admin**
+> **Auth:** **Admin** em todos os endpoints (`verify_role("admin")`).  
+> Todos os timestamps são devolvidos em **CAT (UTC+2)**.
 
-### GET /api/v1/logs
+### GET /api/v1/audit/logs
 
-Consulta logs de auditoria com filtros avançados.
+Consulta logs de auditoria com filtros e paginação.
 
-**Parâmetros de Query:**
-| Nome | Tipo | Obrigatório | Descrição |
-|------|------|-------------|-----------|
-| `action` | string | ❌ | Filtrar por ação: `EMIT`, `VERIFY`, `REVOKE`, `LOGIN`, `BULK_EMIT` |
-| `institution_id` | string | ❌ | Filtrar por instituição |
-| `start_date` | datetime | ❌ | Data inicial (ISO 8601) |
-| `end_date` | datetime | ❌ | Data final (ISO 8601) |
-| `skip` | int | ❌ | Offset (padrão: 0) |
-| `limit` | int | ❌ | Limite (padrão: 100, máx: 500) |
+**Parâmetros de Query (todos opcionais):**
+| Nome | Tipo | Padrão | Descrição |
+|------|------|--------|-----------|
+| `action` | string | – | `EMIT` \| `VERIFY` \| `REVOKE` \| `LOGIN` \| `EXPORT` |
+| `resource_type` | string | – | `DOCUMENT` \| `CERTIFICATE` \| `INSTITUTION` |
+| `user_email` | string | – | Email do utilizador |
+| `institution_id` | string | – | ID da instituição |
+| `start_date` | string | – | Data início (ISO 8601), ex: `2026-01-01T00:00:00` |
+| `end_date` | string | – | Data fim (ISO 8601), ex: `2026-12-31T23:59:59` |
+| `limit` | int | 100 | Limite (1–1000) |
+| `offset` | int | 0 | Offset para paginação |
 
 **Response (200):**
 ```json
 {
-  "total": 10547,
+  "success": true,
+  "count": 1,
+  "limit": 100,
+  "offset": 0,
+  "timezone": "CAT (UTC+2)",
   "logs": [
     {
-      "id": 1,
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "user_email": "contacto@inage.gov.mz",
       "action": "EMIT",
+      "resource_type": "DOCUMENT",
+      "resource_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "institution_id": "INAGE",
-      "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "ip_address": "197.218.XX.XX",
-      "user_agent": "Mozilla/5.0...",
-      "details": "Documento emitido com sucesso",
-      "created_at": "2026-07-22T14:24:00Z"
+      "ip_address": "197.218.10.20",
+      "request_path": "/api/v1/certify",
+      "request_method": "POST",
+      "status_code": 200,
+      "success": true,
+      "details": "{\"document_type\": \"DUAT\", \"file_name\": \"duat.pdf\", \"file_size\": 245760, \"doc_id\": \"DUAT-INAGE-20260820-A1B2C3\"}",
+      "timestamp": "2026-08-20T21:30:00+02:00",
+      "created_at": "2026-08-20T21:30:00+02:00"
     }
   ]
 }
 ```
 
+**Erros:** `401` (autenticação obrigatória) · `403` (requer admin) · `422` (limit/offset fora do intervalo)
+
 ---
 
-### GET /api/v1/document/{doc_hash}/history
+### GET /api/v1/audit/document/{doc_hash}/history
 
 Histórico completo de auditoria de um documento específico.
 
 **Response (200):**
 ```json
-[
-  {
-    "id": 1,
-    "action": "EMIT",
-    "institution_id": "INAGE",
-    "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "ip_address": "197.218.XX.XX",
-    "user_agent": "Mozilla/5.0...",
-    "details": "Documento emitido com sucesso",
-    "created_at": "2026-07-22T14:24:00Z"
-  },
-  {
-    "id": 45,
-    "action": "VERIFY",
-    "institution_id": null,
-    "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "ip_address": "197.218.XX.XX",
-    "user_agent": "Mozilla/5.0 (Linux; Android 14)...",
-    "details": "Verificação pública via QR code",
-    "created_at": "2026-07-22T15:30:00Z"
-  }
-]
+{
+  "success": true,
+  "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "total_actions": 2,
+  "timezone": "CAT (UTC+2)",
+  "history": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "user_email": "contacto@inage.gov.mz",
+      "action": "EMIT",
+      "resource_type": "DOCUMENT",
+      "resource_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "institution_id": "INAGE",
+      "ip_address": "197.218.10.20",
+      "request_path": "/api/v1/certify",
+      "request_method": "POST",
+      "status_code": 200,
+      "success": true,
+      "details": null,
+      "timestamp": "2026-08-20T21:30:00+02:00",
+      "created_at": "2026-08-20T21:30:00+02:00"
+    }
+  ]
+}
 ```
+
+**Erros:** `401` · `403`
 
 ---
 
-### GET /api/v1/stats
+### GET /api/v1/audit/stats
 
 Estatísticas agregadas para dashboards administrativos.
 
-**Parâmetros de Query:**
-| Nome | Tipo | Obrigatório | Descrição |
-|------|------|-------------|-----------|
-| `institution_id` | string | ❌ | Filtrar por instituição |
-| `start_date` | datetime | ❌ | Data inicial |
-| `end_date` | datetime | ❌ | Data final |
+**Parâmetros de Query (opcionais):**
+| Nome | Tipo | Descrição |
+|------|------|-----------|
+| `institution_id` | string | Filtrar por instituição |
+| `start_date` | string | Data início (ISO 8601) |
+| `end_date` | string | Data fim (ISO 8601) |
 
 **Response (200):**
 ```json
 {
-  "total_emissions": 1523,
-  "total_verifications": 8942,
-  "total_revocations": 12,
-  "active_institutions": 8,
-  "pending_institutions": 3,
-  "total_credits_consumed": 1535,
+  "success": true,
   "period": {
-    "start_date": "2026-01-01T00:00:00Z",
-    "end_date": "2026-07-22T23:59:59Z"
+    "start": "2026-01-01T00:00:00",
+    "end": "2026-07-22T23:59:59"
+  },
+  "institution_id": null,
+  "timezone": "CAT (UTC+2)",
+  "stats": {
+    "summary": {
+      "total_logs": 10547,
+      "recent_logs_7d": 312,
+      "total_emitted_documents": 1523,
+      "total_revoked_documents": 12,
+      "active_documents": 1511,
+      "total_verifications": 8942,
+      "verification_success_rate": 98.45
+    },
+    "actions_by_type": {
+      "EMIT": 1523,
+      "VERIFY": 8942,
+      "REVOKE": 12,
+      "LOGIN": 210
+    },
+    "verifications": {
+      "success": 8802,
+      "failed": 140,
+      "success_rate_percent": 98.43
+    },
+    "verifications_by_day": [
+      { "date": "2026-07-22", "count": 412 }
+    ],
+    "top_institutions": [
+      { "institution_id": "INAGE", "count": 5210 }
+    ],
+    "period": {
+      "start": "2026-01-01T00:00:00",
+      "end": "2026-07-22T23:59:59",
+      "last_30_days": 30
+    }
   }
 }
 ```
 
----
-
-## Revogação
-
-### POST /api/v1/emissions/{doc_id}/revoke
-
-Revoga (invalida) um documento emitido. Ação irreversível.
-
-> **Acesso:** Admin ou a própria Instituição emissora  
-> **Nota:** A revogação é permanente. O documento continua consultável, mas com status `revoked`.
-
-**Request:**
-```json
-{
-  "reason": "Erro administrativo na emissão — DUAT emitido para terreno errado"
-}
-```
-
-**Response (200):**
-```json
-{
-  "doc_id": "DOC-7f8a9b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
-  "doc_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "revoked": true,
-  "revoked_at": "2026-07-23T09:15:00Z",
-  "revoked_reason": "Erro administrativo na emissão — DUAT emitido para terreno errado",
-  "revoked_by": "admin@txeka.co.mz",
-  "message": "Documento revogado com sucesso"
-}
-```
-
-**Erros:**
-- `400 Bad Request` — Motivo de revogação ausente
-- `401 Unauthorized` — Token inválido
-- `403 Forbidden` — Sem permissão (não é admin nem emissora)
-- `404 Not Found` — Documento não existe
-- `409 Conflict` — Documento já revogado
+**Erros:** `401` · `403`
 
 ---
 
@@ -718,25 +826,57 @@ Revoga (invalida) um documento emitido. Ação irreversível.
   "doc_id": "string",
   "document_type": "string",
   "institution_id": "string",
-  "created_at": "2026-07-22T14:24:00Z",
+  "created_at": "2026-08-20T21:30:00+02:00",
   "revoked": false,
   "revoked_at": null,
   "revoked_reason": null
 }
 ```
 
-### VerifyRequest
+### VerifyRequest / VerifyResponse
 ```json
 {
   "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 }
 ```
-
-### VerifyResponse
 ```json
 {
-  "status": "valid | revoked | not_found",
-  "dados_publicos": { /* DadosPublicos */ }
+  "status": "VALID | REVOKED | INVALID",
+  "dados_publicos": { "DadosPublicos ou null" }
+}
+```
+
+### EmitResponse
+```json
+{
+  "status": "emitted",
+  "doc_id": "string",
+  "hash_sha256": "string (64 hex)",
+  "qr_code": "data:image/png;base64,...",
+  "certificate_url": "string",
+  "timestamp": "ISO 8601 (CAT)",
+  "message": "string"
+}
+```
+
+### BulkEmissionInput / BulkDocumentItem
+```json
+{
+  "institution_id": "INAGE",
+  "documents": [
+    {
+      "document_type": "DUAT",
+      "file_name": "doc.pdf",
+      "content": "<base64 ou texto>"
+    }
+  ]
+}
+```
+
+### RevokeRequest
+```json
+{
+  "reason": "string (máx 255 caracteres)"
 }
 ```
 
@@ -758,7 +898,7 @@ Revoga (invalida) um documento emitido. Ação irreversível.
   "contact_email": "email@exemplo.mz (opcional)",
   "status": "pending | active | suspended | inactive (opcional)",
   "subscription_plan": "string (opcional)",
-  "approved": true | false (opcional)
+  "approved": true
 }
 ```
 
@@ -774,8 +914,8 @@ Revoga (invalida) um documento emitido. Ação irreversível.
   "docs_emitted_month": 45,
   "status": "active",
   "approved": true,
-  "created_at": "2026-01-15T10:30:00Z",
-  "updated_at": "2026-07-22T14:24:00Z"
+  "created_at": "2026-01-15T10:30:00+02:00",
+  "updated_at": "2026-07-22T14:24:00+02:00"
 }
 ```
 
@@ -791,29 +931,85 @@ Revoga (invalida) um documento emitido. Ação irreversível.
 }
 ```
 
-### InstitutionDashboard
+### CreditTransactionResponse
 ```json
 {
-  "institution": { /* InstitutionResponse */ },
-  "credits_history": [ /* CreditTransactionResponse[] */ ],
-  "total_emitted": 1523,
-  "total_verifications": 8942
+  "id": 1,
+  "institution_id": "INAGE",
+  "amount": 1000,
+  "type": "manual_add",
+  "description": "string | null",
+  "payment_method": "string | null",
+  "payment_reference": "string | null",
+  "notes": "string | null",
+  "created_by": "string | null",
+  "created_at": "2026-01-15T10:30:00+02:00"
+}
+```
+
+### InstitutionLoginRequest
+```json
+{
+  "institution_id": "INAGE",
+  "password": "string"
 }
 ```
 
 ---
 
-## Códigos de Erro
+## Formato de Erros
+
+### Erros customizados da plataforma (`TxekaNtiyisoException`)
+```json
+{
+  "success": false,
+  "error_type": "InsufficientCreditsError",
+  "message": "Instituição 'INAGE' sem créditos.",
+  "path": "/api/v1/certify"
+}
+```
+
+`error_type` pode ser: `TxekaNtiyisoException`, `InsufficientCreditsError` (402), `DocumentNotFoundError` (404), `InvalidDocumentContentError` (400), `RevocationError` (403).
+
+### Erros FastAPI (validação Pydantic)
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "hash"],
+      "msg": "String should have at least 64 characters",
+      "type": "string_too_short"
+    }
+  ]
+}
+```
+
+### Erros HTTP padrão
+```json
+{ "detail": "Token inválido ou expirado" }
+```
+
+### Rate limit (slowapi)
+```json
+{
+  "detail": "Rate limit exceeded: ...",
+  "error_type": "rate_limit"
+}
+```
+
+### Códigos de erro
 
 | Código | Significado | Quando Ocorre |
 |--------|-------------|---------------|
-| `400` | Bad Request | Payload inválido, hash mal formatado, ficheiro não-PDF |
+| `400` | Bad Request | Payload inválido, ficheiro não-PDF, hash mal formatado |
 | `401` | Unauthorized | Token ausente, inválido ou expirado |
 | `402` | Payment Required | Créditos insuficientes para operação |
-| `403` | Forbidden | Sem permissão (ex: institution tentando acesso admin) |
+| `403` | Forbidden | Sem permissão, instituição suspensa/não aprovada |
 | `404` | Not Found | Recurso não existe (documento, instituição) |
-| `409` | Conflict | Recurso já existe (hash duplicado, ID duplicado) ou já revogado |
-| `422` | Unprocessable Entity | Dados não passaram na validação Pydantic |
+| `409` | Conflict | Hash já certificado (documento duplicado) |
+| `413` | Payload Too Large | Ficheiro excede 50MB |
+| `415` | Unsupported Media Type | Extensão/MIME não é PDF |
+| `422` | Unprocessable Entity | Falha na validação Pydantic |
 | `429` | Too Many Requests | Rate limit excedido (slowapi) |
 | `500` | Internal Server Error | Erro inesperado no servidor |
 
@@ -821,17 +1017,9 @@ Revoga (invalida) um documento emitido. Ação irreversível.
 
 ## Rate Limiting
 
-A API implementa rate limiting via **slowapi**:
+O `slowapi` está inicializado na aplicação (`main.py`) com um handler global para `RateLimitExceeded`, mas **não existem decoradores `@limiter.limit(...)` aplicados a nenhuma rota** — ou seja, **não há limites por endpoint efetivamente ativos** neste momento.
 
-| Endpoint | Limite |
-|----------|--------|
-| `/api/v1/verify` (GET/POST) | 100 requisições / minuto |
-| `/api/v1/certify` | 60 requisições / minuto |
-| `/api/v1/certify/bulk` | 10 requisições / minuto |
-| `/api/v1/login`, `/api/v1/admin/login` | 5 tentativas / minuto |
-| Outros endpoints | 120 requisições / minuto |
-
-> **Header de resposta:** `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`
+Se forem adicionados no futuro, a resposta será `429` no formato slowapi (ver [Formato de Erros](#formato-de-erros)).
 
 ---
 
@@ -840,7 +1028,7 @@ A API implementa rate limiting via **slowapi**:
 | Ambiente | Base URL | Autenticação |
 |----------|----------|--------------|
 | **Produção** | `https://txeka-ntiyiso-api.onrender.com` | JWT obrigatório |
-| **Local** | `http://localhost:8000` | JWT opcional (dev mode) |
+| **Local** | `http://localhost:8000` | JWT (token anónimo opcional via `TXEKA_ALLOW_ANONYMOUS=true`) |
 
 ---
 
@@ -848,10 +1036,10 @@ A API implementa rate limiting via **slowapi**:
 
 | Versão | Data | Alterações |
 |--------|------|------------|
-| 2.0.0 | 2026-07-22 | Fase 2: Gestão de instituições, créditos, dashboard, bulk emission |
+| 2.0.0 | 2026-07-22 | Fase 2: gestão de instituições, créditos, dashboard, bulk emission |
 | 1.0.0 | 2026-04-15 | Fase 1: MVP core — emissão, verificação, revogação, audit logs |
 
 ---
 
-> **Documentação gerada a partir do código-fonte real.**  
+> **Documentação gerada a partir do código-fonte real** (`api-gateway/src`).  
 > Para reportar inconsistências: [GitHub Issues](https://github.com/achrafismaelismael823-glitch/Txeka-Ntiyiso/issues)
