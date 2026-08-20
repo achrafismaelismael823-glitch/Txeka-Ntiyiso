@@ -1,6 +1,12 @@
 import axios from 'axios';
 
+// ═══════════════════════════════════════════════════════════════
+// API Service — Txeka Ntiyiso
+// ═══════════════════════════════════════════════════════════════
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
+// URL raiz da API (sem /api/v1) — usada para health check
+const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -52,8 +58,9 @@ const normalizePagination = (params = {}) => {
 };
 
 export const endpoints = {
+  // Health check usa a raiz da API, fora do prefixo /api/v1
   health: {
-    check: () => api.get('/health'),
+    check: () => axios.get(`${API_ROOT_URL}/health`, { timeout: 10000 }),
   },
 
   me: {
