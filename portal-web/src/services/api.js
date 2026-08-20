@@ -1,19 +1,6 @@
 import axios from 'axios';
 
-const getApiBaseUrl = () => {
-  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
-  const hostname = window.location.hostname;
-
-  if (hostname === 'txeka-ntiyiso.co.mz' || hostname === 'www.txeka-ntiyiso.co.mz') {
-    return 'https://api.txeka-ntiyiso.co.mz/api/v1';
-  }
-  if (hostname.includes('staging')) {
-    return 'https://api-staging.txeka-ntiyiso.co.mz/api/v1';
-  }
-  return '/api/v1';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -112,8 +99,8 @@ export const endpoints = {
   },
 
   auth: {
-    login: (credentials) => api.post('/login', credentials),
-    adminLogin: (credentials) => api.post('/admin/login', credentials),
+    login: (credentials) => api.post('/auth/login', credentials),
+    adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
     logout: () => api.post('/logout'),
     refresh: () => api.post('/refresh'),
     me: () => api.get('/auth/me'),
