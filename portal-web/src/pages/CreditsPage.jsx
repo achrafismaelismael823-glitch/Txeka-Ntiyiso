@@ -32,8 +32,8 @@ const CreditsPage = () => {
     setError(null);
     try {
       const [credRes, histRes] = await Promise.allSettled([
-        endpoints.institutions.credits(),
-        endpoints.institutions.creditHistory({ limit, skip }),
+        endpoints.me.credits(),
+        endpoints.me.creditHistory({ limit, skip }),
       ]);
       if (credRes.status === 'fulfilled') setCredits(credRes.value.data);
       if (histRes.status === 'fulfilled') {
