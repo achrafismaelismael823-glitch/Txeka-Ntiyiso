@@ -46,8 +46,8 @@ const VerifyPage = () => {
     setVerifiedHash(null);
 
     try {
-      const cleanHash = hash.trim();
-      const { data } = await endpoints.verify.public(cleanHash);
+      const cleanHash = hash.trim().toLowerCase();
+      const { data } = await endpoints.verify.hash(cleanHash);
 
       // A API retorna { status: "VALID" | "INVALID", dados_publicos: object | null }
       if (data.status === 'INVALID') {
@@ -77,8 +77,8 @@ const VerifyPage = () => {
         setResult(null);
         setVerifiedHash(null);
         try {
-          const cleanHash = urlHash.trim();
-          const { data } = await endpoints.verify.public(cleanHash);
+          const cleanHash = urlHash.trim().toLowerCase();
+          const { data } = await endpoints.verify.hash(cleanHash);
 
           if (data.status === 'INVALID') {
             setError('Documento não encontrado ou inválido');

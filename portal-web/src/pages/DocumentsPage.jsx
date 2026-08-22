@@ -9,8 +9,10 @@ import {
   Lock
 } from 'lucide-react';
 
-// Esta página usa audit/logs com action=EMIT para listar documentos emitidos
-// Como não há endpoint dedicado de listagem de documentos, usamos os logs
+/** Listagem de documentos emitidos pela instituição autenticada.
+ *  O backend filtra automaticamente pelo institution_id do token JWT.
+ *  Princípio de segurança: autoria = propriedade. Quem emite, revoga.
+ */
 
 const DocumentsPage = () => {
   const { user, isAdmin, isInstitution, institutionId } = useAuth();
@@ -52,8 +54,8 @@ const DocumentsPage = () => {
         params.institution_id = institutionId;
       }
 
-      const { data } = await endpoints.audit.logs(params);
-      const items = data.items || data.logs || [];
+      const response = await endpoints.emissions.list(params);
+      const items = Array.isArray(response.data) ? response.data : (response.data?.data || response.data?.items || response.data?.logs || []);
 
       // ── CORREÇÃO: Normalizar dados dos logs para formato de documento ──
       // Os logs podem ter estrutura diferente, normalizar para formato consistente
@@ -75,7 +77,7 @@ const normalizedDocs = items.map((item, idx) => ({
       }));
 
       setDocuments(Array.isArray(normalizedDocs) ? normalizedDocs : []);
-      setTotal(data.total || data.count || 0);
+      setTotal(response.data.total || response.data.count || 0);
     } catch (err) {
       setError(err.normalizedMessage || 'Erro ao carregar documentos');
       notify(err.normalizedMessage || 'Erro ao carregar documentos', 'error');
@@ -97,7 +99,7 @@ const normalizedDocs = items.map((item, idx) => ({
     }
     try {
       setRevoking(true);
-      await endpoints.emissions.revoke(selectedDoc.doc_id, { reason: revokeReason.trim() });
+      await endpoints.emissions.revoke(selectedDoc.doc_id, { reason: revokeReason.trim().substring(0, 255) });
       notify('Documento revogado com sucesso', 'success');
       setRevokeModal(false);
       setRevokeReason('');
@@ -266,7 +268,7 @@ const normalizedDocs = items.map((item, idx) => ({
                         >
                           <ShieldCheck className="w-3.5 h-3.5" />
                         </button>
-                        {(isAdmin || doc.institution_id === institutionId) && (
+                        {(doc.institution_id === institutionId) && (
                           <button
                             onClick={() => openRevokeModal(doc)}
                             className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-500 hover:text-red-400 transition-all"

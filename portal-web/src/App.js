@@ -7,21 +7,20 @@ import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth } from './hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
-// ⚠ ESTRUTURA FLAT — as páginas são arquivos .jsx diretos em src/pages/
-// NÃO são subpastas (ex: pages/LoginPage/LoginPage.jsx)
+// ── Lazy loading de todas as páginas ──
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
+const VerifyPage = lazy(() => import('./pages/VerifyPage'));
+const InstitutionDashboardPage = lazy(() => import('./pages/InstitutionDashboardPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const EmitPage = lazy(() => import('./pages/EmitPage'));
 const BulkEmitPage = lazy(() => import('./pages/BulkEmitPage'));
-const VerifyPage = lazy(() => import('./pages/VerifyPage'));
-const AuditPage = lazy(() => import('./pages/AuditPage'));
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
 const CreditsPage = lazy(() => import('./pages/CreditsPage'));
+const AuditPage = lazy(() => import('./pages/AuditPage'));
 const InstitutionsPage = lazy(() => import('./pages/InstitutionsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
-// PageLoader — skeleton global para lazy loading
 const PageLoader = () => (
   <div className="min-h-screen bg-slate-950 flex items-center justify-center">
     <div className="flex flex-col items-center gap-4">
@@ -31,21 +30,35 @@ const PageLoader = () => (
   </div>
 );
 
-// ProtectedRoute — redireciona para login se não autenticado
+/**
+ * ProtectedRoute — Guarda de rotas com verificação de role.
+ * Princípio: nunca confiar no frontend para segurança (backend é a fonte da verdade),
+ * mas o frontend deve espelhar as permissões para UX correta.
+ */
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) return <PageLoader />;
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/" replace />;
+    const fallback = user?.role === 'admin' ? '/admin/dashboard' : '/dashboard';
+    return <Navigate to={fallback} replace />;
   }
 
   return children;
+};
+
+/**
+ * RoleRedirect — Redireciona a raiz "/" conforme o role do utilizador.
+ */
+const RoleRedirect = () => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  return <Navigate to={user?.role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />;
 };
 
 const App = () => {
@@ -56,25 +69,28 @@ const App = () => {
           <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                {/* Pública */}
+                {/* ── Rotas Públicas ── */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/verify" element={<VerifyPage />} />
 
-                {/* Protegidas — Dashboard Layout */}
+                {/* ── Redirect baseado no role ── */}
+                <Route path="/" element={<RoleRedirect />} />
+
+                {/* ── Instituição: operacional, zero configuração ── */}
                 <Route element={<DashboardLayout />}>
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <DashboardPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/documents" element={
-                    <ProtectedRoute allowedRoles={['admin', 'institution']}>
-                      <DocumentsPage />
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute allowedRoles={['institution']}>
+                      <InstitutionDashboardPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/emit" element={
-                    <ProtectedRoute allowedRoles={['admin', 'institution']}>
+                    <ProtectedRoute allowedRoles={['institution']}>
                       <EmitPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/documents" element={
+                    <ProtectedRoute allowedRoles={['institution']}>
+                      <DocumentsPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/bulk-emit" element={
@@ -82,14 +98,18 @@ const App = () => {
                       <BulkEmitPage />
                     </ProtectedRoute>
                   } />
-                  <Route path="/audit" element={
-                    <ProtectedRoute allowedRoles={['admin', 'institution']}>
-                      <AuditPage />
-                    </ProtectedRoute>
-                  } />
                   <Route path="/credits" element={
                     <ProtectedRoute allowedRoles={['institution']}>
                       <CreditsPage />
+                    </ProtectedRoute>
+                  } />
+                </Route>
+
+                {/* ── Admin: gestão do sistema, zero operação de documentos ── */}
+                <Route element={<DashboardLayout />}>
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboardPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/institutions" element={
@@ -97,14 +117,19 @@ const App = () => {
                       <InstitutionsPage />
                     </ProtectedRoute>
                   } />
+                  <Route path="/audit" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AuditPage />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/settings" element={
-                    <ProtectedRoute allowedRoles={['admin', 'institution']}>
+                    <ProtectedRoute allowedRoles={['admin']}>
                       <SettingsPage />
                     </ProtectedRoute>
                   } />
                 </Route>
 
-                {/* 404 */}
+                {/* ── 404 ── */}
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
@@ -116,4 +141,3 @@ const App = () => {
 };
 
 export default App;
-

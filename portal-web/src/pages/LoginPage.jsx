@@ -37,8 +37,7 @@ const LoginPage = () => {
   useEffect(() => {
     if (isAuthenticated && !hasRedirected.current) {
       hasRedirected.current = true;
-      console.log('[LoginPage] Já autenticado. Redirecionando para:', from);
-      navigate(from, { replace: true });
+            navigate(from, { replace: true });
     }
   }, [isAuthenticated, from, navigate]);
 
@@ -92,23 +91,20 @@ const LoginPage = () => {
     if (!password) return;
 
     setLoading(true);
-    console.log('[LoginPage] Iniciando login... modo:', mode);
-
+    
     try {
       const result = mode === 'institution'
         ? await login(institutionId.trim(), password)
         : await adminLogin(email.trim(), password);
 
-      console.log('[LoginPage] Resultado do login:', result);
-
+      
       if (result?.success) {
         authService.resetFailedAttempts();
         setFailedAttempts(0);
 
         // Verifica token foi guardado
         const token = authService.getToken();
-        console.log('[LoginPage] Token no localStorage?', token ? 'SIM' : 'NÃO');
-
+        
         notify(
           mode === 'institution'
             ? 'Sessão iniciada com sucesso'
@@ -116,29 +112,29 @@ const LoginPage = () => {
           'success'
         );
 
-        // ── REDIRECIONAMENTO COM 3 CAMADAS DE FALLBACK ──
+        // ── REDIRECIONAMENTO SEGURO POR ROLE ──
+        const payload = authService.decodeToken();
+        const role = payload?.role;
+        // Whitelist de destinos: evita open redirect attacks
+        const dest = role === 'admin' ? '/admin/dashboard' : '/dashboard';
         setTimeout(() => {
-          console.log('[LoginPage] Camada 1: navigate() →', from);
-          navigate(from, { replace: true });
+          navigate(dest, { replace: true });
 
           setTimeout(() => {
             if (window.location.pathname === '/login') {
-              console.warn('[LoginPage] Camada 2: navigate falhou. Forçando location.replace()');
-              window.location.replace(from);
+              window.location.replace(dest);
             }
           }, 500);
 
           setTimeout(() => {
             if (window.location.pathname === '/login') {
-              console.error('[LoginPage] Camada 3: ainda em /login! Forçando reload...');
-              window.location.href = from;
+              window.location.href = dest;
             }
           }, 1200);
         }, 200);
 
       } else {
-        console.log('[LoginPage] Login falhou:', result?.error);
-        const attempts = authService.incrementFailedAttempts();
+                const attempts = authService.incrementFailedAttempts();
         setFailedAttempts(attempts);
         const cooldown = getCooldownSeconds(attempts);
         if (cooldown > 0) {
@@ -150,8 +146,7 @@ const LoginPage = () => {
         }
       }
     } catch (err) {
-      console.error('[LoginPage] Erro no login:', err);
-      const attempts = authService.incrementFailedAttempts();
+            const attempts = authService.incrementFailedAttempts();
       setFailedAttempts(attempts);
       const cooldown = getCooldownSeconds(attempts);
       if (cooldown > 0) {

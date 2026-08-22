@@ -38,22 +38,30 @@ const DashboardLayout = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const menuItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'institution'], shortcut: '1' },
-    { path: '/emit', label: 'Emitir Documento', icon: FileCheck, roles: ['admin', 'institution'], shortcut: '2' },
-    { path: '/documents', label: 'Documentos', icon: FileText, roles: ['admin', 'institution'], shortcut: '3' },
-    { path: '/bulk-emit', label: 'Emissão Massiva', icon: FileStack, roles: ['institution'], shortcut: '4' },
-    { path: '/verify', label: 'Verificar', icon: ShieldCheck, roles: ['admin', 'institution'], external: true, shortcut: '5' },
-    { path: '/audit', label: 'Auditoria', icon: Activity, roles: ['admin', 'institution'], shortcut: '6' },
-    { path: '/credits', label: 'Créditos', icon: CreditCard, roles: ['institution'], shortcut: '7' },
-    { path: '/institutions', label: 'Instituições', icon: Building2, roles: ['admin'], shortcut: '8' },
-    { path: '/settings', label: 'Configurações', icon: Settings, roles: ['admin', 'institution'], shortcut: '9' },
+  /**
+   * Menus separados por role — princípio de menor privilégio.
+   * Instituição: operacional. Admin: gestão. Nunca misturar.
+   */
+  const institutionMenu = [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, shortcut: '1' },
+    { path: '/emit', label: 'Emitir Documento', icon: FileCheck, shortcut: '2' },
+    { path: '/documents', label: 'Documentos', icon: FileText, shortcut: '3' },
+    { path: '/bulk-emit', label: 'Emissão Massiva', icon: FileStack, shortcut: '4' },
+    { path: '/verify', label: 'Verificar', icon: ShieldCheck, external: true, shortcut: '5' },
+    { path: '/credits', label: 'Créditos', icon: CreditCard, shortcut: '6' },
   ];
 
-  const visibleItems = menuItems.filter(item => item.roles.includes(user?.role));
+  const adminMenu = [
+    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, shortcut: '1' },
+    { path: '/institutions', label: 'Instituições', icon: Building2, shortcut: '2' },
+    { path: '/audit', label: 'Auditoria', icon: Activity, shortcut: '3' },
+  ];
+
+  const visibleItems = isAdmin ? adminMenu : institutionMenu;
 
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
+    if (path === '/admin/dashboard') return location.pathname === '/admin/dashboard';
     return location.pathname.startsWith(path);
   };
 
@@ -73,7 +81,7 @@ const DashboardLayout = () => {
 
   const getBreadcrumbs = () => {
     const items = [{ label: 'Início', path: '/' }];
-    const currentItem = menuItems.find(item => isActive(item.path) && item.path !== '/');
+    const currentItem = visibleItems.find(item => isActive(item.path) && item.path !== '/');
     if (currentItem) items.push({ label: currentItem.label, path: currentItem.path });
     return items;
   };
