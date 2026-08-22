@@ -184,8 +184,8 @@ const InstitutionDashboardPage = () => {
       setError(null);
 
       const [dashRes, credRes] = await Promise.allSettled([
-        endpoints.institutions.dashboard(),
-        endpoints.institutions.credits(),
+        endpoints.me.dashboard(),
+        endpoints.me.credits(),
       ]);
 
       if (dashRes.status === 'fulfilled') {
