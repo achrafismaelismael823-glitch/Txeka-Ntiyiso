@@ -45,16 +45,16 @@ const DashboardLayout = () => {
   const institutionMenu = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, shortcut: '1' },
     { path: '/emit', label: 'Emitir Documento', icon: FileCheck, shortcut: '2' },
-    { path: '/documents', label: 'Documentos', icon: FileText, shortcut: '3' },
-    { path: '/bulk-emit', label: 'Emissão Massiva', icon: FileStack, shortcut: '4' },
-    { path: '/verify', label: 'Verificar', icon: ShieldCheck, external: true, shortcut: '5' },
-    { path: '/credits', label: 'Créditos', icon: CreditCard, shortcut: '6' },
+    { path: '/bulk-emit', label: 'Emissão Massiva', icon: FileStack, shortcut: '3' },
+    { path: '/verify', label: 'Verificar', icon: ShieldCheck, external: true, shortcut: '4' },
+    { path: '/credits', label: 'Créditos', icon: CreditCard, shortcut: '5' },
   ];
 
   const adminMenu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, shortcut: '1' },
     { path: '/institutions', label: 'Instituições', icon: Building2, shortcut: '2' },
     { path: '/audit', label: 'Auditoria', icon: Activity, shortcut: '3' },
+    { path: '/documents', label: 'Documentos', icon: FileText, shortcut: '4' },
   ];
 
   const visibleItems = isAdmin ? adminMenu : institutionMenu;
