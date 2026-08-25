@@ -9,13 +9,12 @@ import {
   Lock
 } from 'lucide-react';
 
-/** Listagem de documentos emitidos pela instituição autenticada.
- *  O backend filtra automaticamente pelo institution_id do token JWT.
- *  Princípio de segurança: autoria = propriedade. Quem emite, revoga.
+/** Listagem de emissões via auditoria (exclusivo de admin).
+ *  Usa /audit/logs?action=EMIT — endpoint admin-only do backend.
  */
 
 const DocumentsPage = () => {
-  const { user, isAdmin, isInstitution, institutionId } = useAuth();
+  const { isAdmin, institutionId } = useAuth();
   const { notify } = useContext(NotificationContext);
   const navigate = useNavigate();
 
@@ -44,40 +43,44 @@ const DocumentsPage = () => {
     setError(null);
 
     try {
-      // Usar audit/logs com filtro EMIT para listar documentos
-      const params = {
-        action: 'EMIT',
-        limit,
-        offset,
-      };
-      if (isInstitution && institutionId) {
+      // Admin: listar emissões via /audit/logs (endpoint admin-only do backend)
+      const params = { action: 'EMIT', limit, offset };
+      if (isAdmin && institutionId) {
         params.institution_id = institutionId;
       }
 
-      const response = await endpoints.emissions.list(params);
-      const items = Array.isArray(response.data) ? response.data : (response.data?.data || response.data?.items || response.data?.logs || []);
+      const response = await endpoints.audit.logs(params);
+      const items = response.data?.logs || [];
 
-      // ── CORREÇÃO: Normalizar dados dos logs para formato de documento ──
-      // Os logs podem ter estrutura diferente, normalizar para formato consistente
-const normalizedDocs = items.map((item, idx) => ({
-        id: item.id || idx,
-        doc_id: item.doc_id || item.resource_id || '—',
-        doc_hash: item.doc_hash || item.hash_sha256 || item.hash || '—',
-        institution_id: item.institution_id || '—',
-        document_type: item.document_type || '—',
-        created_at: item.created_at || item.timestamp,
-        user_email: item.user_email || '—',
-        // Dados de revogação
-        status: item.status || 'emitted',
-        revoked: item.revoked || item.status === 'revoked' || false,
-        revoked_at: item.revoked_at || null,
-        revoked_reason: item.revoked_reason || item.reason || null,
-        // Dados extras se disponíveis
-        certificate_url: item.certificate_url || null,
-      }));
+      // Normalizar logs de emissão para formato de documento
+      const normalizedDocs = items.map((item, idx) => {
+        let details = {};
+        if (item.details) {
+          try {
+            details = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+          } catch {
+            details = {};
+          }
+        }
+        return {
+          id: item.id || idx,
+          doc_id: details.doc_id || item.resource_id || '—',
+          doc_hash: item.resource_id || '—',
+          institution_id: item.institution_id || '—',
+          document_type: details.document_type || '—',
+          file_name: details.file_name || null,
+          created_at: item.created_at || item.timestamp || null,
+          user_email: item.user_email || '—',
+          status: 'emitted',
+          revoked: false,
+          revoked_at: null,
+          revoked_reason: null,
+          certificate_url: null,
+        };
+      });
 
-      setDocuments(Array.isArray(normalizedDocs) ? normalizedDocs : []);
-      setTotal(response.data.total || response.data.count || 0);
+      setDocuments(normalizedDocs);
+      setTotal(response.data.count || response.data.total || 0);
     } catch (err) {
       setError(err.normalizedMessage || 'Erro ao carregar documentos');
       notify(err.normalizedMessage || 'Erro ao carregar documentos', 'error');
@@ -85,7 +88,7 @@ const normalizedDocs = items.map((item, idx) => ({
       setLoading(false);
       fetchedRef.current = false;
     }
-  }, [limit, offset, isInstitution, institutionId, notify]);
+  }, [limit, offset, isAdmin, institutionId, notify]);
 
   useEffect(() => {
     fetchedRef.current = false;
@@ -99,7 +102,7 @@ const normalizedDocs = items.map((item, idx) => ({
     }
     try {
       setRevoking(true);
-      await endpoints.emissions.revoke(selectedDoc.doc_id, { reason: revokeReason.trim().substring(0, 255) });
+      await endpoints.emissions.revoke(selectedDoc.doc_id, revokeReason.trim().substring(0, 255));
       notify('Documento revogado com sucesso', 'success');
       setRevokeModal(false);
       setRevokeReason('');
@@ -268,7 +271,7 @@ const normalizedDocs = items.map((item, idx) => ({
                         >
                           <ShieldCheck className="w-3.5 h-3.5" />
                         </button>
-                        {(doc.institution_id === institutionId) && (
+                        {!doc.revoked && (
                           <button
                             onClick={() => openRevokeModal(doc)}
                             className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-500 hover:text-red-400 transition-all"

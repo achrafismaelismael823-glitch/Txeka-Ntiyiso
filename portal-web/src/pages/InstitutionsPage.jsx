@@ -117,10 +117,19 @@ const InstitutionsPage = () => {
     e.preventDefault();
     try {
       if (modalMode === 'create') {
-        await endpoints.institutions.create(formData);
+        // Backend InstitutionCreate espera id, name e contact_email
+        await endpoints.institutions.create({
+          id: formData.id,
+          name: formData.name,
+          contact_email: formData.email,
+        });
         notify('Instituição criada com sucesso', 'success');
       } else if (modalMode === 'edit') {
-        await endpoints.institutions.update(selected.id, formData);
+        // Backend InstitutionUpdate aceita name e contact_email
+        await endpoints.institutions.update(selected.id, {
+          name: formData.name,
+          contact_email: formData.email,
+        });
         notify('Instituição actualizada com sucesso', 'success');
       }
       setModalOpen(false);

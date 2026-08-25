@@ -78,20 +78,20 @@ export const endpoints = {
     },
     bulkCertify: (payload) => api.post('/certify/bulk', payload),
     revoke: (docId, reason) => api.post(`/emissions/${docId}/revoke`, { reason }),
-    list: (params = {}) => api.get('/emissions', { params: normalizePagination(params) }),
+    list: (params = {}) => api.get('/emissions', { params }),
     get: (id) => api.get(`/emissions/${id}`),
   },
 
   verify: {
     hash: (docHash) => api.get(`/verify/${docHash}`),
     post: (data) => api.post('/verify', data),
-    qr: (code) => api.get(`/verify/qr/${code}`),
   },
 
   audit: {
-    logs: (params = {}) => api.get('/audit/logs', { params: normalizePagination(params) }),
+    // Backend /audit/logs usa offset/limit (não skip)
+    logs: (params = {}) => api.get('/audit/logs', { params }),
     documentHistory: (docHash) => api.get(`/audit/document/${docHash}/history`),
-    stats: () => api.get('/audit/stats'),
+    stats: (params = {}) => api.get('/audit/stats', { params }),
   },
 
   institutions: {
@@ -99,7 +99,7 @@ export const endpoints = {
     create: (data) => api.post('/institutions', data),
     get: (id) => api.get(`/institutions/${id}`),
     update: (id, data) => api.patch(`/institutions/${id}`, data),
-    addCredits: (id, amount) => api.post(`/institutions/${id}/credits`, { amount }),
+    addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
     creditHistory: (id, params = {}) => api.get(`/institutions/${id}/credit-history`, { params: normalizePagination(params) }),
     resetPassword: (id) => api.post(`/institutions/${id}/reset-password`),
     regenerateApiKey: (id) => api.post(`/institutions/${id}/regenerate-api-key`),
@@ -110,9 +110,6 @@ export const endpoints = {
     login: (credentials) => api.post('/auth/login', credentials),
     // Admin: query params (email + password) — alinhado com FastAPI
     adminLogin: (credentials) => api.post('/auth/admin/login', null, { params: credentials }),
-    logout: () => api.post('/logout'),
-    refresh: () => api.post('/refresh'),
-    me: () => api.get('/auth/me'),
   },
 };
 

@@ -88,11 +88,6 @@ const App = () => {
                       <EmitPage />
                     </ProtectedRoute>
                   } />
-                  <Route path="/documents" element={
-                    <ProtectedRoute allowedRoles={['institution']}>
-                      <DocumentsPage />
-                    </ProtectedRoute>
-                  } />
                   <Route path="/bulk-emit" element={
                     <ProtectedRoute allowedRoles={['institution']}>
                       <BulkEmitPage />
@@ -120,6 +115,11 @@ const App = () => {
                   <Route path="/audit" element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <AuditPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/documents" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <DocumentsPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/settings" element={
