@@ -284,14 +284,14 @@ const BulkEmitPage = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Hash SHA-256</span>
-                    <code className="text-xs font-mono text-cyan-400 truncate">{doc.hash_sha256}</code>
+                    <code className="text-xs font-mono text-cyan-400 break-all">{doc.hash_sha256}</code>
                     <button onClick={() => handleCopy(doc.hash_sha256)} className="text-slate-500 hover:text-slate-300">
                       {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[0.6rem] text-slate-500 uppercase tracking-wider">URL</span>
-                    <code className="text-xs font-mono text-slate-500 truncate">{doc.certificate_url}</code>
+                    <code className="text-xs font-mono text-slate-500 break-all">{doc.certificate_url}</code>
                   </div>
                 </div>
               ))}
