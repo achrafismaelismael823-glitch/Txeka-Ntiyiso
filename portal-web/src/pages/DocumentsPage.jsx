@@ -325,7 +325,7 @@ const DocumentsPage = () => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-red-400">Revogar Documento</h3>
-                <p className="text-xs text-slate-500">{selectedDoc.doc_id}</p>
+                <p className="text-xs text-slate-500 break-all">{selectedDoc.doc_id}</p>
               </div>
             </div>
 

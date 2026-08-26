@@ -214,10 +214,6 @@ const AuditPage = () => {
                 <option value="EMIT">EMIT</option>
                 <option value="VERIFY">VERIFY</option>
                 <option value="REVOKE">REVOKE</option>
-                <option value="LOGIN">LOGIN</option>
-                <option value="LOGOUT">LOGOUT</option>
-                <option value="EXPORT">EXPORT</option>
-                <option value="SYSTEM">SYSTEM</option>
               </select>
             </div>
             <div className="space-y-1">

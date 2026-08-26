@@ -3,9 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import {
-  Building2, Plus, Search, RefreshCw, Eye, Pencil, Trash2,
-  Key, CreditCard, Mail, Phone, MapPin, Calendar, CheckCircle2,
-  XCircle, AlertTriangle, Loader2, ChevronLeft, ChevronRight,
+  Building2, Plus, Search, RefreshCw, Eye, Pencil, KeyRound,
+  Key, CreditCard, AlertTriangle, ChevronLeft, ChevronRight,
   Save, X, Lock
 } from 'lucide-react';
 
@@ -28,7 +27,7 @@ const InstitutionsPage = () => {
   const [selected, setSelected] = useState(null);
 
   const [formData, setFormData] = useState({
-    id: '', name: '', email: '', phone: '', address: '', contact_person: ''
+    id: '', name: '', email: '', status: 'active', subscription_plan: 'standard', approved: true
   });
   const [creditAmount, setCreditAmount] = useState('');
   const [creditDescription, setCreditDescription] = useState('');
@@ -65,13 +64,20 @@ const InstitutionsPage = () => {
   }, [fetchInstitutions, isAdmin]);
 
   const handleCreate = () => {
-    setFormData({ id: '', name: '', email: '', phone: '', address: '', contact_person: '' });
+    setFormData({ id: '', name: '', email: '', status: 'active', subscription_plan: 'standard', approved: true });
     setModalMode('create');
     setModalOpen(true);
   };
 
   const handleEdit = (inst) => {
-    setFormData({ ...inst });
+    setFormData({
+      id: inst.id,
+      name: inst.name,
+      email: inst.contact_email || inst.email || '',
+      status: inst.status || 'active',
+      subscription_plan: inst.subscription_plan || 'standard',
+      approved: inst.approved !== false,
+    });
     setModalMode('edit');
     setSelected(inst);
     setModalOpen(true);
@@ -122,13 +128,17 @@ const InstitutionsPage = () => {
           id: formData.id,
           name: formData.name,
           contact_email: formData.email,
+          subscription_plan: formData.subscription_plan,
         });
         notify('Instituição criada com sucesso', 'success');
       } else if (modalMode === 'edit') {
-        // Backend InstitutionUpdate aceita name e contact_email
+        // Backend InstitutionUpdate aceita: name, contact_email, status, subscription_plan, approved
         await endpoints.institutions.update(selected.id, {
           name: formData.name,
           contact_email: formData.email,
+          status: formData.status,
+          subscription_plan: formData.subscription_plan,
+          approved: formData.approved,
         });
         notify('Instituição actualizada com sucesso', 'success');
       }
@@ -247,7 +257,7 @@ const InstitutionsPage = () => {
                   <tr key={inst.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-3 text-xs font-mono text-cyan-400">{inst.id}</td>
                     <td className="px-4 py-3 text-sm text-slate-200">{inst.name}</td>
-                    <td className="px-4 py-3 text-xs text-slate-400">{inst.email}</td>
+                    <td className="px-4 py-3 text-xs text-slate-400">{inst.contact_email || inst.email}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium">
                         <CreditCard className="w-3 h-3" /> {inst.credits ?? inst.balance ?? 0}
@@ -267,8 +277,8 @@ const InstitutionsPage = () => {
                         <button onClick={() => handleRegenerateKey(inst)} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-500 hover:text-blue-400 transition-all" title="Regenerar API Key">
                           <Key className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleResetPassword(inst)} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-500 hover:text-red-400 transition-all" title="Reset Password">
-                          <Trash2 className="w-3.5 h-3.5" />
+                        <button onClick={() => handleResetPassword(inst)} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-500 hover:text-amber-400 transition-all" title="Reset Password">
+                          <KeyRound className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -335,19 +345,31 @@ const InstitutionsPage = () => {
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
                   <span className="text-[0.6rem] text-slate-500 uppercase">Email</span>
-                  <p className="text-sm text-slate-200">{selected.email}</p>
+                  <p className="text-sm text-slate-200 break-all">{selected.contact_email || selected.email || '—'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                    <span className="text-[0.6rem] text-slate-500 uppercase">Estado</span>
+                    <p className="text-sm font-medium">
+                      {selected.status === 'suspended' ? (
+                        <span className="text-red-400">Suspensa</span>
+                      ) : selected.status === 'pending' ? (
+                        <span className="text-amber-400">Pendente</span>
+                      ) : selected.status === 'inactive' ? (
+                        <span className="text-slate-400">Inactiva</span>
+                      ) : (
+                        <span className="text-emerald-400">Activa</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
+                    <span className="text-[0.6rem] text-slate-500 uppercase">Plano</span>
+                    <p className="text-sm text-slate-200">{selected.subscription_plan || '—'}</p>
+                  </div>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
-                  <span className="text-[0.6rem] text-slate-500 uppercase">Telefone</span>
-                  <p className="text-sm text-slate-200">{selected.phone || '—'}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
-                  <span className="text-[0.6rem] text-slate-500 uppercase">Endereço</span>
-                  <p className="text-sm text-slate-200">{selected.address || '—'}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] space-y-1">
-                  <span className="text-[0.6rem] text-slate-500 uppercase">Pessoa de Contacto</span>
-                  <p className="text-sm text-slate-200">{selected.contact_person || '—'}</p>
+                  <span className="text-[0.6rem] text-slate-500 uppercase">Aprovação</span>
+                  <p className="text-sm text-slate-200">{selected.approved ? 'Aprovada' : 'Não aprovada'}</p>
                 </div>
                 {selected.api_key && (
                   <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 space-y-1">
@@ -391,30 +413,42 @@ const InstitutionsPage = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs text-slate-500">Telefone</label>
-                    <input
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    <label className="text-xs text-slate-500">Plano</label>
+                    <select
+                      value={formData.subscription_plan}
+                      onChange={(e) => setFormData({ ...formData, subscription_plan: e.target.value })}
                       className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/30 text-sm"
-                    />
+                    >
+                      <option value="standard">standard</option>
+                      <option value="free">free</option>
+                    </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs text-slate-500">Pessoa de Contacto</label>
-                    <input
-                      value={formData.contact_person}
-                      onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                    <label className="text-xs text-slate-500">Estado</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/30 text-sm"
-                    />
+                      disabled={modalMode === 'create'}
+                    >
+                      <option value="active">active</option>
+                      <option value="pending">pending</option>
+                      <option value="suspended">suspended</option>
+                      <option value="inactive">inactive</option>
+                    </select>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-500">Endereço</label>
-                  <input
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500/30 text-sm"
-                  />
-                </div>
+                {modalMode === 'edit' && (
+                  <label className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.approved}
+                      onChange={(e) => setFormData({ ...formData, approved: e.target.checked })}
+                      className="w-4 h-4 rounded border-white/[0.1] bg-white/[0.03] text-cyan-500 focus:ring-cyan-500/30"
+                    />
+                    <span className="text-xs text-slate-400">Instituição aprovada para emitir documentos</span>
+                  </label>
+                )}
                 <button
                   type="submit"
                   className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
