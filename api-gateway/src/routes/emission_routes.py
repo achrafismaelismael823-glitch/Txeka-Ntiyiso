@@ -99,6 +99,25 @@ async def emit_document(
     current_user: dict = Depends(verify_token)
 ) -> EmitResponse:
     """Emite documento: hash SHA-256 + QR code + audit log. APENAS PDF."""
+
+    # V2 FIX: institution_id autoritativo vem do JWT token
+    token_institution = current_user.get("institution")
+
+    # Admin nao pode emitir documentos
+    if not token_institution:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas instituicoes podem emitir documentos. Admin nao tem permissao de emissao."
+        )
+
+    # Se request enviou institution_id diferente do token -> rejeitar (fail-loud)
+    if institution_id != token_institution:
+        raise HTTPException(
+            status_code=403,
+            detail=f"institution_id do request ({institution_id}) nao corresponde ao token ({token_institution})."
+        )
+
+    # A partir daqui: institution_id == token_institution (garantido)
     if not file:
         raise HTTPException(status_code=400, detail="Nenhum ficheiro fornecido")
     
@@ -175,10 +194,28 @@ async def emit_document_bulk(
 ):
     """Emite múltiplos documentos em lote (B2B/B2G). APENAS PDF."""
     service = EmissionService(db)
+
+    # V2 FIX: institution_id autoritativo vem do JWT token
+    token_institution = current_user.get("institution")
+    if not token_institution:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas instituicoes podem emitir documentos em massa. Admin nao tem permissao."
+        )
+
+    # Se payload enviou institution_id diferente do token -> rejeitar
+    if payload.institution_id != token_institution:
+        raise HTTPException(
+            status_code=403,
+            detail=f"institution_id do payload ({payload.institution_id}) nao corresponde ao token ({token_institution})."
+        )
+
+    institution_id = token_institution  # autoritativo
+
     try:
         documents_list = [doc.model_dump() for doc in payload.documents]
         result = await service.certify_bulk_documents(
-            institution_id=payload.institution_id,  
+            institution_id=institution_id,  
             documents_list=documents_list,
             issued_by=current_user.get("institution", "system")
         )
@@ -189,7 +226,7 @@ async def emit_document_bulk(
                 session=db,
                 user_email=current_user.get("email", "unknown"),
                 doc_hash=doc.get("hash_sha256", "unknown"),
-                institution_id=payload.institution_id,  
+                institution_id=institution_id,  
                 request=req,
                 success=True,
                 status_code=201,
@@ -207,7 +244,7 @@ async def emit_document_bulk(
             session=db,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
-            institution_id=payload.institution_id,  
+            institution_id=institution_id,  
             request=req,
             success=False,
             status_code=e.status_code,
