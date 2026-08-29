@@ -47,6 +47,7 @@ pillow = "11.0.0"
 
 # Dependência Local do Monorepo
 txeka-core = { path = "../core", develop = true }
+sentry-sdk = {extras = ["fastapi"], version = "^2.68.1"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
