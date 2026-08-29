@@ -27,12 +27,20 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(TxekaNtiyisoException, txeka_exception_handler)
 
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "https://txeka-ntiyiso-portal.onrender.com",
-    "https://txeka-ntiyiso-portal-staging.onrender.com"
-]
+ENV = os.getenv("ENVIRONMENT", "production")
+
+if ENV == "production":
+    ALLOWED_ORIGINS = [
+        "https://txeka-ntiyiso-portal.onrender.com",
+        "https://txeka-ntiyiso-portal-staging.onrender.com"
+    ]
+else:
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://txeka-ntiyiso-portal.onrender.com",
+        "https://txeka-ntiyiso-portal-staging.onrender.com"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
