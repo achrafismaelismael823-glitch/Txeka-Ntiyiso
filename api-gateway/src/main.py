@@ -5,6 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+
 from src.database import init_db
 from src.routes import emission_routes, verify, revocation, audit_routes, institution_routes, auth_routes
 from src.exceptions import TxekaNtiyisoException, txeka_exception_handler
@@ -16,6 +20,23 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn")
 
 limiter = Limiter(key_func=get_remote_address)
+
+# ── SENTRY INITIALIZATION ──────────────────────────────────────────
+# Deve ocorrer ANTES de criar a app FastAPI
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.getenv("ENVIRONMENT", "production"),
+        release=os.getenv("RENDER_GIT_COMMIT", "unknown"),
+        integrations=[
+            StarletteIntegration(transaction_style="url"),
+            FastApiIntegration(transaction_style="url"),
+        ],
+        traces_sample_rate=0.2,      # 20% das requisicoes -> performance tracing
+        profiles_sample_rate=0.1,    # 10% -> profiling de CPU
+        send_default_pii=False,      # NAO envia dados sensiveis (tokens, emails)
+    )
 
 app = FastAPI(
     title="Txeka Ntiyiso",
@@ -72,6 +93,15 @@ app.include_router(institution_routes.router, prefix=API_PREFIX)
 app.include_router(auth_routes.router, prefix=API_PREFIX)
 
 logger.info(f"Rotas registadas: {API_PREFIX}")
+
+
+# ── SENTRY DEBUG ENDPOINT ──────────────────────────────────────────
+@app.get("/sentry-debug", include_in_schema=False)
+async def trigger_sentry_error():
+    # Endpoint para testar se o Sentry esta recebendo erros.
+    # Acesse: https://txeka-ntiyiso-api.onrender.com/sentry-debug
+    # Deve gerar um erro ZeroDivisionError no Sentry em ~30 segundos.
+    division_by_zero = 1 / 0
 
 
 @app.get("/health")
