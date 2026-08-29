@@ -108,8 +108,8 @@ export const endpoints = {
   auth: {
     // Instituição: JSON body (institution_id + password)
     login: (credentials) => api.post('/auth/login', credentials),
-    // Admin: query params (email + password) — alinhado com FastAPI
-    adminLogin: (credentials) => api.post('/auth/admin/login', null, { params: credentials }),
+    // Admin: JSON body (email + password) --- V3 compativel
+    adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
   },
 };
 
