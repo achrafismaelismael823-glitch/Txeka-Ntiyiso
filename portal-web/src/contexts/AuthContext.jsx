@@ -1,112 +1,134 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { authService } from '../services/auth';
+import { createContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { endpoints } from '../services/api';
+import { authService } from '../services/auth';
 
 export const AuthContext = createContext(null);
 
+const INSTITUTION_KEY = 'txeka_institution';
+
+const decodeUserFromToken = () => {
+  const payload = authService.decodeToken();
+  if (!payload) return { user: null, isAdmin: false, isInstitution: false };
+  const role = payload.role || 'citizen';
+  const institutionData = JSON.parse(localStorage.getItem(INSTITUTION_KEY) || 'null');
+  return {
+    user: {
+      id: payload.id || payload.sub || 'unknown',
+      email: payload.email || payload.sub || 'unknown',
+      name: institutionData?.name || payload.sub || payload.email || 'Utilizador',
+      role: role,
+      institution: institutionData || { id: payload.institution || payload.id },
+    },
+    isAdmin: role === 'admin',
+    isInstitution: role === 'institution',
+  };
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [authState, setAuthState] = useState(() => decodeUserFromToken());
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const stored = authService.getUser();
-    if (stored && authService.isAuthenticated()) setUser(stored);
-    setLoading(false);
+  const refresh = useCallback(() => {
+    setAuthState(decodeUserFromToken());
   }, []);
+
+  useEffect(() => {
+    refresh();
+    setLoading(false);
+    const handleStorage = (e) => { if (e.key === 'txeka_token') refresh(); };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [refresh]);
+
+  const isAuthenticated = useMemo(() => {
+    return authService.isAuthenticated();
+  }, [authState]);
+
+  const extractToken = (data) => {
+    if (data?.access_token) return data.access_token;
+    if (data?.token) return data.token;
+    if (data?.data?.access_token) return data.data.access_token;
+    if (data?.data?.token) return data.data.token;
+    return null;
+  };
+
+  const storeInstitution = (institution) => {
+    if (institution) {
+      localStorage.setItem(INSTITUTION_KEY, JSON.stringify(institution));
+    }
+  };
 
   const login = useCallback(async (institutionId, password) => {
     try {
       const response = await endpoints.auth.login({ institution_id: institutionId, password });
-      let data = response.data;
-
-      // Se a API retornar string em vez de JSON, faz parse
-      if (typeof data === 'string') {
-        try { data = JSON.parse(data); } catch { /* ignora */ }
+      const token = extractToken(response.data);
+      const institution = response.data?.institution;
+      if (token) {
+        authService.setToken(token);
+        storeInstitution(institution);
+        authService.resetFailedAttempts();
+        setAuthState(decodeUserFromToken());
+        return { success: true, institution };
       }
-
-      const token = data?.access_token || data?.token;
-      if (!token) {
-        const err = new Error('Token não recebido');
-        err.apiResponse = data;
-        err.apiStatus = response.status;
-        err.apiUrl = response.config?.url;
-        err.apiBaseURL = response.config?.baseURL;
-        throw err;
-      }
-
-      authService.setToken(token);
-      const userData = {
-        ...data.institution,
-        role: data.institution?.role || 'institution',
-        id: data.institution?.id || institutionId,
-        token: token,
+      return { success: false, error: 'Token não encontrado na resposta' };
+    } catch (err) {
+      const attempts = authService.incrementFailedAttempts();
+      const isLocked = authService.isLockedOut();
+      return {
+        success: false,
+        error: err.response?.data?.detail || err.message || 'Erro no login',
+        attempts,
+        isLocked,
+        remainingSeconds: authService.getRemainingLockoutSeconds(),
       };
-      authService.setUser(userData);
-      setUser(userData);
-      return data;
-    } catch (error) {
-      authService.logout();
-      setUser(null);
-      throw error;
     }
   }, []);
 
   const adminLogin = useCallback(async (email, password) => {
     try {
-      const response = await endpoints.auth.adminLogin(email, password);
-      let data = response.data;
-
-      if (typeof data === 'string') {
-        try { data = JSON.parse(data); } catch { /* ignora */ }
+      const response = await endpoints.auth.adminLogin({ email, password });
+      const token = extractToken(response.data);
+      const institution = response.data?.institution;
+      if (token) {
+        authService.setToken(token);
+        storeInstitution(institution);
+        authService.resetFailedAttempts();
+        setAuthState(decodeUserFromToken());
+        return { success: true, institution };
       }
-
-      const token = data?.access_token || data?.token;
-      if (!token) {
-        const err = new Error('Token não recebido');
-        err.apiResponse = data;
-        err.apiStatus = response.status;
-        err.apiUrl = response.config?.url;
-        err.apiBaseURL = response.config?.baseURL;
-        throw err;
-      }
-
-      authService.setToken(token);
-      const userData = {
-        id: 'admin',
-        name: 'Administrador Txeka Ntiyiso',
-        email,
-        role: 'admin',
-        token: token,
-        expires_in_days: data?.expires_in_days || 90,
+      return { success: false, error: 'Token não encontrado na resposta' };
+    } catch (err) {
+      const attempts = authService.incrementFailedAttempts();
+      const isLocked = authService.isLockedOut();
+      return {
+        success: false,
+        error: err.response?.data?.detail || err.message || 'Erro no login de administrador',
+        attempts,
+        isLocked,
+        remainingSeconds: authService.getRemainingLockoutSeconds(),
       };
-      authService.setUser(userData);
-      setUser(userData);
-      return data;
-    } catch (error) {
-      authService.logout();
-      setUser(null);
-      throw error;
     }
   }, []);
 
   const logout = useCallback(() => {
     authService.logout();
-    setUser(null);
-    window.location.href = '/login';
+    localStorage.removeItem(INSTITUTION_KEY);
+    setAuthState({ user: null, isAdmin: false, isInstitution: false });
   }, []);
 
+  const value = useMemo(() => ({
+    user: authState.user,
+    isAdmin: authState.isAdmin,
+    isInstitution: authState.isInstitution,
+    isAuthenticated,
+    loading,
+    login,
+    adminLogin,
+    logout,
+  }), [authState, isAuthenticated, loading, login, adminLogin, logout]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      login,
-      adminLogin,
-      logout,
-      isAuthenticated: !!user,
-      isAdmin: user?.role === 'admin',
-      isInstitution: user?.role === 'institution',
-      institutionId: user?.role === 'institution' ? user?.id : null,
-      loading,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

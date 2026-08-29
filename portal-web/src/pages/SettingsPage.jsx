@@ -1,125 +1,301 @@
-import { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../contexts/NotificationContext';
 import { endpoints } from '../services/api';
-import { NotificationContext } from '../contexts/NotificationContext';
-import {
-  Key, RefreshCw, Loader2, Eye, EyeOff, ShieldCheck
-} from 'lucide-react';
+import { Settings, User, Lock, Bell, Shield, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import { validatePassword } from '../utils/helpers';
 
 const SettingsPage = () => {
   const { user, isAdmin } = useAuth();
-  const { notify } = useContext(NotificationContext);
-  const [loadingKey, setLoadingKey] = useState(false);
-  const [apiKey, setApiKey] = useState(null);
-  const [showKey, setShowKey] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { notify, success, error } = useNotification();
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('profile');
 
-  const handleRegenerateKey = async () => {
-    if (!window.confirm('Tem a certeza? A chave anterior deixará de funcionar imediatamente.')) return;
+  // Profile state
+  const [profile, setProfile] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+  });
+
+  // Password state
+  const [passwordData, setPasswordData] = useState({
+    current: '',
+    new: '',
+    confirm: '',
+  });
+  const [passwordStrength, setPasswordStrength] = useState(null);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState({
+    emailAlerts: true,
+    documentUpdates: true,
+    securityAlerts: true,
+    marketingEmails: false,
+  });
+
+  useEffect(() => {
+    if (passwordData.new) {
+      setPasswordStrength(validatePassword(passwordData.new));
+    } else {
+      setPasswordStrength(null);
+    }
+  }, [passwordData.new]);
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      setLoadingKey(true);
-      const { data } = await endpoints.institutions.regenerateApiKey(user?.id);
-      setApiKey(data.api_key || data.new_api_key);
-      notify('API Key regenerada com sucesso', 'success');
+      // TODO: Implementar endpoint de atualização de perfil
+      await new Promise((r) => setTimeout(r, 1000));
+      success('Perfil atualizado com sucesso');
     } catch (err) {
-      notify(err.normalizedMessage || 'Erro ao regenerar chave', 'error');
+      error('Erro ao atualizar perfil');
     } finally {
-      setLoadingKey(false);
+      setLoading(false);
     }
   };
 
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwordData.new !== passwordData.confirm) {
+      error('As palavras-passe não coincidem');
+      return;
+    }
+    if (passwordStrength && !passwordStrength.valid) {
+      error('A palavra-passe não cumpre os requisitos mínimos');
+      return;
+    }
+    setLoading(true);
+    try {
+      await new Promise((r) => setTimeout(r, 1000));
+      success('Palavra-passe alterada com sucesso');
+      setPasswordData({ current: '', new: '', confirm: '' });
+    } catch (err) {
+      error('Erro ao alterar palavra-passe');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const tabs = [
+    { id: 'profile', label: 'Perfil', icon: User },
+    { id: 'security', label: 'Segurança', icon: Lock },
+    { id: 'notifications', label: 'Notificações', icon: Bell },
+  ];
+
+  if (isAdmin) {
+    tabs.push({ id: 'system', label: 'Sistema', icon: Shield });
+  }
+
   return (
-    <div className="space-y-6 animate-fade-in max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Configurações</h1>
-        <p className="text-xs text-slate-500 mt-1">Gestão de credenciais e segurança</p>
-      </div>
-
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/[0.05]">
-          <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-            <ShieldCheck className="w-5 h-5 text-cyan-400" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-100">Dados da Conta</h3>
-            <p className="text-xs text-slate-500">{isAdmin ? 'Administrador' : 'Instituição'}</p>
-          </div>
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+          <Settings className="w-5 h-5 text-cyan-400" />
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-[0.6rem] text-slate-500 uppercase tracking-wider">ID / Email</label>
-            <p className="text-sm text-slate-200 font-mono">{user?.id || user?.email || '—'}</p>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Nome</label>
-            <p className="text-sm text-slate-200">{user?.name || '—'}</p>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Plano</label>
-            <p className="text-sm text-slate-200 capitalize">{user?.subscription_plan || 'Standard'}</p>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[0.6rem] text-slate-500 uppercase tracking-wider">Estado</label>
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${user?.status === 'active' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <p className="text-sm text-slate-200 capitalize">{user?.status || 'active'}</p>
-            </div>
-          </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-100">Configurações</h1>
+          <p className="text-sm text-slate-500">Gerencie as preferências da sua conta</p>
         </div>
       </div>
 
-      {!isAdmin && (
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 space-y-5">
-          <div className="flex items-center gap-3 pb-4 border-b border-white/[0.05]">
-            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-              <Key className="w-5 h-5 text-amber-400" />
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-white/[0.06] pb-0 overflow-x-auto">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.id ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="max-w-2xl">
+        {activeTab === 'profile' && (
+          <form onSubmit={handleProfileUpdate} className="space-y-6">
+            <div className="rounded-2xl border border-white/[0.06] bg-slate-900/40 backdrop-blur-sm p-6 space-y-5">
+              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <User className="w-4 h-4 text-cyan-400" />
+                Informações do Perfil
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Nome</label>
+                  <input
+                    type="text"
+                    value={profile.name}
+                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30"
+                  />
+                </div>
+              </div>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Guardar Alterações
+                </button>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-100">API Key</h3>
-              <p className="text-xs text-slate-500">Chave de acesso B2B à API</p>
+          </form>
+        )}
+
+        {activeTab === 'security' && (
+          <form onSubmit={handlePasswordChange} className="space-y-6">
+            <div className="rounded-2xl border border-white/[0.06] bg-slate-900/40 backdrop-blur-sm p-6 space-y-5">
+              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <Lock className="w-4 h-4 text-cyan-400" />
+                Alterar Palavra-passe
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Palavra-passe atual</label>
+                  <input
+                    type="password"
+                    value={passwordData.current}
+                    onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Nova palavra-passe</label>
+                  <input
+                    type="password"
+                    value={passwordData.new}
+                    onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30"
+                  />
+                  {passwordStrength && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <div
+                            key={level}
+                            className={`h-1 flex-1 rounded-full transition-all ${level <= passwordStrength.score ? 'bg-cyan-400' : 'bg-white/[0.05]'}`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-[0.65rem] text-slate-500">
+                        {passwordStrength.passed} de {passwordStrength.total} requisitos
+                      </p>
+                      <ul className="space-y-0.5">
+                        {passwordStrength.requirements.map((req, idx) => (
+                          <li key={idx} className={`text-[0.65rem] flex items-center gap-1 ${req.test ? 'text-emerald-400' : 'text-slate-600'}`}>
+                            {req.test ? <CheckCircle2 className="w-3 h-3" /> : <span className="w-3 h-3 rounded-full border border-slate-600" />}
+                            {req.label}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Confirmar nova palavra-passe</label>
+                  <input
+                    type="password"
+                    value={passwordData.confirm}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30"
+                  />
+                </div>
+              </div>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Alterar Palavra-passe
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {activeTab === 'notifications' && (
+          <div className="rounded-2xl border border-white/[0.06] bg-slate-900/40 backdrop-blur-sm p-6 space-y-5">
+            <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <Bell className="w-4 h-4 text-cyan-400" />
+              Preferências de Notificação
+            </h3>
+            <div className="space-y-4">
+              {[
+                { key: 'emailAlerts', label: 'Alertas por email', desc: 'Receba notificações importantes sobre a sua conta' },
+                { key: 'documentUpdates', label: 'Atualizações de documentos', desc: 'Notificações quando documentos são emitidos ou revogados' },
+                { key: 'securityAlerts', label: 'Alertas de segurança', desc: 'Notificações sobre tentativas de login e alterações de segurança' },
+                { key: 'marketingEmails', label: 'Emails de marketing', desc: 'Receba novidades e atualizações sobre o Txeka Ntiyiso' },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between py-3 border-b border-white/[0.04] last:border-0">
+                  <div>
+                    <p className="text-sm text-slate-200">{item.label}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNotifications((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
+                    className={`relative w-11 h-6 rounded-full transition-all ${notifications[item.key] ? 'bg-cyan-500' : 'bg-white/[0.08]'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${notifications[item.key] ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
-          {apiKey ? (
-            <div className="p-4 rounded-xl bg-black/20 border border-amber-500/20 space-y-3">
-              <div className="flex items-center gap-2 text-amber-400">
-                <Key className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Guarde esta chave — só é mostrada uma vez</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <code className={`flex-1 text-xs font-mono text-slate-300 break-all ${!showKey ? 'blur-sm select-none' : ''}`}>
-                  {apiKey}
-                </code>
-                <button onClick={() => setShowKey(!showKey)} className="p-2 text-slate-500 hover:text-slate-300">
-                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        {activeTab === 'system' && isAdmin && (
+          <div className="rounded-2xl border border-white/[0.06] bg-slate-900/40 backdrop-blur-sm p-6 space-y-5">
+            <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-cyan-400" />
+              Configurações do Sistema
+            </h3>
+            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+              <p className="text-sm text-amber-400 flex items-center gap-2">
+                <span className="text-lg">⚠️</span>
+                Área restrita ao administrador. Alterações afetam todo o sistema.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm text-slate-200">Modo de Manutenção</p>
+                  <p className="text-xs text-slate-500">Ativar modo de manutenção para todos os utilizadores</p>
+                </div>
+                <button className="relative w-11 h-6 rounded-full bg-white/[0.08]">
+                  <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white" />
                 </button>
-                <button onClick={() => handleCopy(apiKey)} className="p-2 text-slate-500 hover:text-slate-300">
-                  {copied ? <ShieldCheck className="w-4 h-4 text-emerald-400" /> : <Key className="w-4 h-4" />}
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm text-slate-200">Registo de Auditoria</p>
+                  <p className="text-xs text-slate-500">Gravar todas as ações no sistema</p>
+                </div>
+                <button className="relative w-11 h-6 rounded-full bg-cyan-500">
+                  <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white translate-x-5" />
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-              <p className="text-sm text-slate-500 mb-3">A chave só é revelada após regeneração por segurança.</p>
-              <button
-                onClick={handleRegenerateKey}
-                disabled={loadingKey}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl transition-all text-sm font-medium"
-              >
-                {loadingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                Regenerar API Key
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
-from src.models.schemas import InstitutionLoginRequest, InstitutionLoginResponse
+from src.models.schemas import InstitutionLoginRequest, InstitutionLoginResponse, AdminLoginRequest
 from src.services.institution_service import InstitutionService
 from src.security import (
     create_access_token, 
@@ -25,7 +25,8 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 
 @router.post("/admin/login")
-async def login_admin(email: str, password: str):
+async def login_admin(data: AdminLoginRequest):
+    """Login para administradores com acesso full. V3: credenciais via JSON body."""
     admin_email = settings.ADMIN_EMAIL
     admin_password_hash = settings.ADMIN_PASSWORD_HASH.get_secret_value()
     
@@ -33,10 +34,10 @@ async def login_admin(email: str, password: str):
         logger.error("ADMIN_PASSWORD_HASH nao configurado")
         raise HTTPException(status_code=500, detail="Configuracao de admin incompleta")
     
-    if email != admin_email:
+    if data.email != admin_email:
         raise HTTPException(status_code=401, detail="Credenciais invalidas")
     
-    if not verify_password(password, admin_password_hash):
+    if not verify_password(data.password, admin_password_hash):
         raise HTTPException(status_code=401, detail="Credenciais invalidas")
     
     # Admin = 90 dias

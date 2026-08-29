@@ -1,6 +1,6 @@
 """Main — entry point da API Txeka Ntiyiso."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
@@ -27,12 +27,20 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(TxekaNtiyisoException, txeka_exception_handler)
 
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "https://txeka-ntiyiso-portal.onrender.com",
-    "https://txeka-ntiyiso-portal-staging.onrender.com"
-]
+ENV = os.getenv("ENVIRONMENT", "production")
+
+if ENV == "production":
+    ALLOWED_ORIGINS = [
+        "https://txeka-ntiyiso-portal.onrender.com",
+        "https://txeka-ntiyiso-portal-staging.onrender.com"
+    ]
+else:
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://txeka-ntiyiso-portal.onrender.com",
+        "https://txeka-ntiyiso-portal-staging.onrender.com"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -75,6 +83,19 @@ async def health_check():
         "environment": os.getenv("ENVIRONMENT", "production"),
         "api_prefix": API_PREFIX
     }
+
+
+@app.get("/ready")
+async def ready_check():
+    """Readiness probe --- verifica conexao com banco de dados."""
+    try:
+        db_ok = await init_db()
+        if db_ok:
+            return {"status": "ready", "database": "connected"}
+        else:
+            raise HTTPException(status_code=503, detail="Database unavailable")
+    except Exception:
+        raise HTTPException(status_code=503, detail="Service not ready")
 
 
 @app.get("/")

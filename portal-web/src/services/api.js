@@ -1,104 +1,116 @@
 import axios from 'axios';
-import { authService } from './auth';
 
-// ═══════════════════════════════════════════════════
-// NORMALIZAÇÃO ROBUSTA DA URL BASE
-// ═══════════════════════════════════════════════════
-const rawUrl = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
+// ═══════════════════════════════════════════════════════════════
+// API Service — Txeka Ntiyiso
+// ═══════════════════════════════════════════════════════════════
 
-const API_BASE_URL = rawUrl
-  .replace(/\/api\/v1\/?$/i, '')
-  .replace(/\/$/, '');
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
+// URL raiz da API (sem /api/v1) — usada para health check
+const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
 
-export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
-  headers: { 'Content-Type': 'application/json' },
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
   timeout: 30000,
 });
 
-// ═══════════════════════════════════════════════════
-// REQUEST INTERCEPTOR
-// ═══════════════════════════════════════════════════
 api.interceptors.request.use(
   (config) => {
-    if (config.url && typeof config.url === 'string' && config.url.startsWith('/api/v1/')) {
-      config.url = config.url.replace(/^\/api\/v1/, '');
+    const token = localStorage.getItem('txeka_token') || localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    const token = authService.getToken();
-    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// ═══════════════════════════════════════════════════
-// RESPONSE INTERCEPTOR
-// ═══════════════════════════════════════════════════
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const status = error.response?.status;
-    const data = error.response?.data;
-    const url = error.config?.url || '';
-    const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
-
-    if (status === 401 && !url.includes('/auth/login') && !url.includes('/auth/admin')) {
-      authService.logout();
-      window.location.href = '/login?expired=1';
+    if (error.response?.status === 401) {
+      localStorage.removeItem('txeka_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('txeka_institution');
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
     }
-
-    let message = 'Erro de comunicação com o servidor';
-    if (typeof data?.detail === 'string') message = data.detail;
-    else if (Array.isArray(data?.detail) && data.detail[0]?.msg) message = data.detail[0].msg;
-    else if (data?.message) message = data.message;
-    else if (error.message) message = error.message;
-
-    error.normalizedMessage = message;
-    error.debug = { status, statusText: error.response?.statusText, url, method, data };
+    if (error.response?.status === 429) {
+      return Promise.reject(new Error('Muitas requisições. Aguarde um momento.'));
+    }
+    if (error.code === 'ECONNABORTED') {
+      return Promise.reject(new Error('Tempo de conexão esgotado. Verifique sua internet.'));
+    }
     return Promise.reject(error);
   }
 );
 
-// ═══════════════════════════════════════════════════
-// ENDPOINTS
-// ═══════════════════════════════════════════════════
+const normalizePagination = (params = {}) => {
+  const clean = { ...params };
+  if (clean.offset !== undefined) {
+    clean.skip = clean.offset;
+    delete clean.offset;
+  }
+  return clean;
+};
+
 export const endpoints = {
+  // Health check usa a raiz da API, fora do prefixo /api/v1
   health: {
-    check: () => fetch(`${API_BASE_URL}/health`, { method: 'GET', mode: 'cors' }),
+    check: () => axios.get(`${API_ROOT_URL}/health`, { timeout: 10000 }),
   },
-  auth: {
-    adminLogin: (email, password) =>
-      api.post(`/auth/admin/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`),
-    login: (data) => api.post('/auth/login', data),
-  },
-  audit: {
-    logs: (params = {}) => api.get('/audit/logs', { params }),
-    stats: (params = {}) => api.get('/audit/stats', { params }),
-    documentHistory: (docHash) => api.get(`/audit/document/${docHash}/history`),
-  },
-  institutions: {
-    list: (params = {}) => api.get('/institutions', { params }),
-    get: (id) => api.get(`/institutions/${id}`),
-    create: (data) => api.post('/institutions', data),
-    update: (id, data) => api.patch(`/institutions/${id}`, data),
-    resetPassword: (id) => api.post(`/institutions/${id}/reset-password`),
-    regenerateApiKey: (id) => api.post(`/institutions/${id}/regenerate-api-key`),
+
+  me: {
     dashboard: () => api.get('/institutions/me/dashboard'),
     credits: () => api.get('/institutions/me/credits'),
-    creditHistory: (params = {}) => api.get('/institutions/me/credit-history', { params }),
-    creditHistoryById: (id, params = {}) => api.get(`/institutions/${id}/credit-history`, { params }),
-    addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
+    creditHistory: (params = {}) => api.get('/institutions/me/credit-history', { params: normalizePagination(params) }),
   },
-  certify: {
-    single: (formData) =>
-      api.post('/certify', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-    bulk: (data) => api.post('/certify/bulk', data),
-  },
-  verify: {
-    public: (hash) => api.get(`/verify/${hash}`),
-    b2b: (hash) => api.post('/verify', { hash }),
-  },
+
   emissions: {
-    revoke: (docId, data) => api.post(`/emissions/${docId}/revoke`, data),
+    certify: (formData, queryString = '') => {
+      const url = queryString ? `/certify?${queryString}` : '/certify';
+      return api.post(url, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+    bulkCertify: (payload) => api.post('/certify/bulk', payload),
+    revoke: (docId, reason) => api.post(`/emissions/${docId}/revoke`, { reason }),
+    list: (params = {}) => api.get('/emissions', { params }),
+    get: (id) => api.get(`/emissions/${id}`),
+  },
+
+  verify: {
+    hash: (docHash) => api.get(`/verify/${docHash}`),
+    post: (data) => api.post('/verify', data),
+  },
+
+  audit: {
+    // Backend /audit/logs usa offset/limit (não skip)
+    logs: (params = {}) => api.get('/audit/logs', { params }),
+    documentHistory: (docHash) => api.get(`/audit/document/${docHash}/history`),
+    stats: (params = {}) => api.get('/audit/stats', { params }),
+  },
+
+  institutions: {
+    list: (params = {}) => api.get('/institutions', { params: normalizePagination(params) }),
+    create: (data) => api.post('/institutions', data),
+    get: (id) => api.get(`/institutions/${id}`),
+    update: (id, data) => api.patch(`/institutions/${id}`, data),
+    addCredits: (id, data) => api.post(`/institutions/${id}/credits`, data),
+    creditHistory: (id, params = {}) => api.get(`/institutions/${id}/credit-history`, { params: normalizePagination(params) }),
+    resetPassword: (id) => api.post(`/institutions/${id}/reset-password`),
+    regenerateApiKey: (id) => api.post(`/institutions/${id}/regenerate-api-key`),
+  },
+
+  auth: {
+    // Instituição: JSON body (institution_id + password)
+    login: (credentials) => api.post('/auth/login', credentials),
+    // Admin: JSON body (email + password) --- V3 compativel
+    adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
   },
 };
+
+export default api;

@@ -56,25 +56,26 @@ services:
       - "8000:8000"
 
     environment:
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      DEBUG: ${DEBUG:-true}
+      # Configure via .env file --- nunca commitar secrets
+      ENVIRONMENT: ${ENVIRONMENT}
+      DEBUG: ${DEBUG}
       PYTHONUNBUFFERED: "1"
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_LEVEL: ${LOG_LEVEL}
       TZ: Africa/Maputo
       LANG: pt_MZ.UTF-8
       LC_ALL: pt_MZ.UTF-8
 
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/txeka_ntiyiso}
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-prod}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-TXEKA-NTIYISO-2026-k3ab9sGze6Igc1u8Q5@i+j0#0KX0rBzj}
-      ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS:-false}
-      BASE_URL: ${BASE_URL:-http://localhost:8000}
-      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
-      RATE_LIMIT_PERIOD_SECONDS: ${RATE_LIMIT_PERIOD_SECONDS:-60}
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS}
+      BASE_URL: ${BASE_URL}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS}
+      RATE_LIMIT_PERIOD_SECONDS: ${RATE_LIMIT_PERIOD_SECONDS}
 
-      # Fase 2: Multi-tenancy e controlo de créditos
-      ENABLE_MULTI_TENANT: ${ENABLE_MULTI_TENANT:-true}
-      CREDIT_CONSUMPTION_ENABLED: ${CREDIT_CONSUMPTION_ENABLED:-true}
+      # Fase 2: Multi-tenancy e controlo de creditos
+      ENABLE_MULTI_TENANT: ${ENABLE_MULTI_TENANT}
+      CREDIT_CONSUMPTION_ENABLED: ${CREDIT_CONSUMPTION_ENABLED}
 
     volumes:
       - .:/app:ro

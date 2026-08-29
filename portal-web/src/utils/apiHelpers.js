@@ -65,19 +65,52 @@ export const normalizeLogsResponse = (data) => {
 };
 
 /**
- * Normaliza a resposta de stats da API.
+ * Normaliza a resposta de créditos da API.
  */
-export const normalizeStats = (data) => {
-  if (!data?.stats?.summary) {
-    return {
-      total_emitted_documents: 0,
-      total_revoked_documents: 0,
-      active_documents: 0,
-      total_verifications: 0,
-      verification_success_rate: 0,
-      recent_logs_7d: 0,
-    };
-  }
-  return data.stats.summary;
+export const normalizeCreditsResponse = (data) => {
+  if (data?.credits !== undefined) return data.credits;
+  if (data?.balance !== undefined) return data.balance;
+  if (data?.amount !== undefined) return data.amount;
+  return data || 0;
+};
+
+/**
+ * Extrai o nome da instituição de um log (para auditoria).
+ */
+export const getInstitutionNameFromLog = (log) => {
+  const details = parseLogDetails(log);
+  return details.institution_name || log.institution_name || log.institution || '—';
+};
+
+/**
+ * Formata o tipo de ação de auditoria para exibição.
+ */
+export const formatAuditActionType = (action) => {
+  const map = {
+    CREATE: 'Criação',
+    UPDATE: 'Atualização',
+    VERIFY: 'Verificação',
+    REVOKE: 'Revogação',
+    LOGIN: 'Login',
+    LOGOUT: 'Logout',
+    EMIT: 'Emissão',
+    BULK_EMIT: 'Emissão Massiva',
+    CREDIT_ADD: 'Adição de Créditos',
+    CREDIT_REMOVE: 'Remoção de Créditos',
+  };
+  return map[action] || action || '—';
+};
+
+export default {
+  parseLogDetails,
+  getDocIdFromLog,
+  getHashFromLog,
+  getDocTypeFromLog,
+  getFileNameFromLog,
+  formatVerificationStatus,
+  normalizeLogsResponse,
+  normalizeCreditsResponse,
+  getInstitutionNameFromLog,
+  formatAuditActionType,
 };
 

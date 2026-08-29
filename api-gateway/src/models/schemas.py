@@ -119,3 +119,9 @@ class InstitutionLoginResponse(BaseModel):
     token_type: str
     institution: InstitutionResponse
     message: str
+
+
+class AdminLoginRequest(BaseModel):
+    """Schema para login admin via JSON body (V3)."""
+    email: str
+    password: str

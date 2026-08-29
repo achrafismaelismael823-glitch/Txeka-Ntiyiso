@@ -1,18 +1,23 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { authService } from '../services/auth';
 import { AuthContext } from '../contexts/AuthContext';
 import { NotificationContext } from '../contexts/NotificationContext';
+import { endpoints } from '../services/api';
 import {
   ShieldCheck, Building2, User, Eye, EyeOff, Loader2,
-  Wifi, WifiOff, AlertTriangle, Server
+  WifiOff, Server, CheckCircle2, Lock, Timer
 } from 'lucide-react';
 
 const LoginPage = () => {
-  const { login, adminLogin } = useContext(AuthContext);
+  const { login, adminLogin, isAuthenticated } = useContext(AuthContext);
   const { notify } = useContext(NotificationContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/';
+
+  // Destino pós-login: página que o utilizador tentou aceder, ou '/' (dashboard)
+  const rawFrom = location.state?.from?.pathname;
+  const from = rawFrom && rawFrom !== '/login' ? rawFrom : '/';
 
   const [mode, setMode] = useState('institution');
   const [institutionId, setInstitutionId] = useState('');
@@ -21,104 +26,200 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [diag, setDiag] = useState(null);
+  const [failedAttempts, setFailedAttempts] = useState(authService.getFailedAttempts() || 0);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
   const [apiHealth, setApiHealth] = useState(null);
-  const [apiHealthDetail, setApiHealthDetail] = useState(null);
+  const [honeypot, setHoneypot] = useState('');
+  const passwordTimerRef = useRef(null);
+  const hasRedirected = useRef(false);
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://txeka-ntiyiso-api.onrender.com';
+  // ── AUTO-REDIRECT: se já estiver autenticado, não fica preso no /login ──
+  useEffect(() => {
+    if (isAuthenticated && !hasRedirected.current) {
+      hasRedirected.current = true;
+            navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, from, navigate]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const remaining = authService.getRemainingLockoutSeconds() || 0;
+      setLockoutRemaining(remaining);
+      if (remaining === 0 && failedAttempts > 0) {
+        setFailedAttempts(authService.getFailedAttempts() || 0);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [failedAttempts]);
+
+  useEffect(() => {
+    if (showPassword) {
+      passwordTimerRef.current = setTimeout(() => setShowPassword(false), 3000);
+    }
+    return () => { if (passwordTimerRef.current) clearTimeout(passwordTimerRef.current); };
+  }, [showPassword, password]);
 
   const testApiConnection = async () => {
     setApiHealth('checking');
-    setApiHealthDetail(null);
-    setDiag(null);
     try {
-      const healthUrl = API_BASE + '/health';
-      const res = await fetch(healthUrl, { method: 'GET', mode: 'cors' });
-      const text = await res.text().catch(() => '');
-      setApiHealth('ok');
-      setApiHealthDetail({ status: res.status, url: healthUrl, body: text });
-      notify('API está online!', 'success');
-    } catch (err) {
-      setApiHealth('fail');
-      setApiHealthDetail({ error: err.message, url: API_BASE });
-      notify('API não responde', 'error');
-    }
+      const res = await endpoints.health.check();
+      setApiHealth(res.ok || res.status === 200 ? 'ok' : 'fail');
+    } catch { setApiHealth('fail'); }
+  };
+
+  const getCooldownSeconds = (attempts) => {
+    if (attempts >= 9) return 300;
+    if (attempts >= 6) return 120;
+    if (attempts >= 3) return 30;
+    return 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setDiag(null);
 
+    if (honeypot) {
+      await new Promise(r => setTimeout(r, 1500));
+      notify('Credenciais inválidas', 'error');
+      return;
+    }
+
+    const locked = authService.isLockedOut();
+    if (locked) {
+      notify(`Muitas tentativas falhadas. Aguarde ${locked} segundos.`, 'error');
+      return;
+    }
+    if (!password) return;
+
+    setLoading(true);
+    
     try {
-      if (mode === 'institution') {
-        await login(institutionId.trim(), password);
-        notify('Sessão iniciada com sucesso', 'success');
+      const result = mode === 'institution'
+        ? await login(institutionId.trim(), password)
+        : await adminLogin(email.trim(), password);
+
+      
+      if (result?.success) {
+        authService.resetFailedAttempts();
+        setFailedAttempts(0);
+
+        // Verifica token foi guardado
+        const token = authService.getToken();
+        
+        notify(
+          mode === 'institution'
+            ? 'Sessão iniciada com sucesso'
+            : 'Sessão de administrador iniciada',
+          'success'
+        );
+
+        // ── REDIRECIONAMENTO SEGURO POR ROLE ──
+        const payload = authService.decodeToken();
+        const role = payload?.role;
+        // Whitelist de destinos: evita open redirect attacks
+        const dest = role === 'admin' ? '/admin/dashboard' : '/dashboard';
+        setTimeout(() => {
+          navigate(dest, { replace: true });
+
+          setTimeout(() => {
+            if (window.location.pathname === '/login') {
+              window.location.replace(dest);
+            }
+          }, 500);
+
+          setTimeout(() => {
+            if (window.location.pathname === '/login') {
+              window.location.href = dest;
+            }
+          }, 1200);
+        }, 200);
+
       } else {
-        await adminLogin(email.trim(), password);
-        notify('Sessão de administrador iniciada', 'success');
+                const attempts = authService.incrementFailedAttempts();
+        setFailedAttempts(attempts);
+        const cooldown = getCooldownSeconds(attempts);
+        if (cooldown > 0) {
+          authService.setLockout(cooldown);
+          setLockoutRemaining(cooldown);
+          notify(`Credenciais inválidas. Conta bloqueada por ${cooldown}s.`, 'error');
+        } else {
+          notify('Credenciais inválidas. Verifique os dados e tente novamente.', 'error');
+        }
       }
-      navigate(from, { replace: true });
     } catch (err) {
-      const info = {
-        message: err.normalizedMessage || err.message || 'Erro desconhecido',
-        status: err.response?.status || err.apiStatus || 'NO_RESPONSE',
-        statusText: err.response?.statusText || '',
-        url: err.config?.url || err.apiUrl || 'NO_URL',
-        fullUrl: err.config?.baseURL ? `${err.config.baseURL}${err.config.url}` : (err.apiBaseURL ? `${err.apiBaseURL}${err.apiUrl}` : (err.apiUrl || 'NO_URL')),
-        method: err.config?.method?.toUpperCase() || 'POST',
-        requestData: mode === 'institution'
-          ? { institution_id: institutionId.trim(), password: '***' }
-          : { email: email.trim(), password: '***' },
-        responseData: err.response?.data || err.apiResponse || null,
-        isNetworkError: !err.response && !err.apiResponse,
-      };
-      setDiag(info);
-      notify(info.message, 'error');
+            const attempts = authService.incrementFailedAttempts();
+      setFailedAttempts(attempts);
+      const cooldown = getCooldownSeconds(attempts);
+      if (cooldown > 0) {
+        authService.setLockout(cooldown);
+        setLockoutRemaining(cooldown);
+        notify(`Credenciais inválidas. Conta bloqueada por ${cooldown}s.`, 'error');
+      } else {
+        notify('Credenciais inválidas. Verifique os dados e tente novamente.', 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const isLocked = lockoutRemaining > 0;
+  const attemptsBeforeLockout = Math.max(0, 3 - (failedAttempts % 3));
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-5 animate-fade-in">
+      <div className="w-full max-w-md space-y-6 animate-fade-in">
+        {/* Header */}
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto">
             <ShieldCheck className="w-8 h-8 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Txeka Ntiyiso</h1>
-            <p className="text-sm text-slate-500">Plataforma de Certificação Blockchain</p>
+            <h1 className="text-2xl font-bold tracking-wide">
+              <span className="text-white">Txeka</span>
+              <span className="text-cyan-400"> Ntiyiso</span>
+            </h1>
+            <p className="text-sm text-slate-500 max-w-[280px] mx-auto leading-relaxed mt-2">
+              Infraestrutura Tecnológica de Verificação da Integridade e Autenticidade Documental
+            </p>
           </div>
         </div>
 
+        {/* Mode Toggle */}
         <div className="flex p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl">
-          <button
-            type="button"
-            onClick={() => { setMode('institution'); setDiag(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              mode === 'institution'
-                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
+          <button type="button" onClick={() => { if (!isLocked) setMode('institution'); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'institution' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-300'}`}>
             <Building2 className="w-4 h-4" /> Instituição
           </button>
-          <button
-            type="button"
-            onClick={() => { setMode('admin'); setDiag(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              mode === 'admin'
-                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
+          <button type="button" onClick={() => { if (!isLocked) setMode('admin'); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'admin' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-300'}`}>
             <User className="w-4 h-4" /> Administrador
           </button>
         </div>
 
+        {/* Failed Attempts Warning */}
+        {failedAttempts > 0 && !isLocked && (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15 text-amber-400 text-xs">
+            <Lock className="w-3.5 h-3.5" />
+            <span>Tentativa {failedAttempts} falhada{failedAttempts > 1 ? 's' : ''}. {attemptsBeforeLockout} tentativa{attemptsBeforeLockout > 1 ? 's' : ''} antes do bloqueio temporário.</span>
+          </div>
+        )}
+
+        {/* Lockout Banner */}
+        {isLocked && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/15 text-red-400 text-xs">
+            <Timer className="w-3.5 h-3.5 animate-pulse" />
+            <span className="font-bold">Conta temporariamente bloqueada.</span>
+            <span className="ml-auto font-mono">{lockoutRemaining}s</span>
+          </div>
+        )}
+
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Honeypot */}
+          <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0 }}>
+            <input type="text" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} tabIndex={-1} autoComplete="off" />
+          </div>
+
+          {/* ID / Email */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               {mode === 'institution' ? 'ID da Instituição' : 'Email'}
@@ -132,22 +233,19 @@ const LoginPage = () => {
               <input
                 type={mode === 'institution' ? 'text' : 'email'}
                 value={mode === 'institution' ? institutionId : email}
-                onChange={(e) =>
-                  mode === 'institution'
-                    ? setInstitutionId(e.target.value)
-                    : setEmail(e.target.value)
-                }
+                onChange={(e) => mode === 'institution' ? setInstitutionId(e.target.value) : setEmail(e.target.value)}
                 placeholder={mode === 'institution' ? 'Ex: CFN, ISTN' : 'admin@txeka.co.mz'}
                 className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
                 required
+                disabled={isLocked}
+                autoComplete={mode === 'institution' ? 'off' : 'username'}
               />
             </div>
           </div>
 
+          {/* Password */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Palavra-passe
-            </label>
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Palavra-passe</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -156,108 +254,46 @@ const LoginPage = () => {
                 placeholder="••••••••"
                 className="w-full pl-4 pr-10 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/30 text-sm"
                 required
+                disabled={isLocked}
+                autoComplete="current-password"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-              >
+              <button type="button" onClick={() => setShowPassword(!showPassword)} disabled={isLocked}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 disabled:opacity-30"
+                title={showPassword ? 'Ocultar (auto-oculta em 3s)' : 'Mostrar'}>
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {showPassword && <p className="text-[0.6rem] text-amber-400/70">Password visível — auto-oculta em 3 segundos</p>}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 text-slate-950 font-bold rounded-xl transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Entrar'}
+          {/* Submit */}
+          <button type="submit" disabled={loading || !password || isLocked}
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyan-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl transition-all text-sm">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : (isLocked ? `Bloqueado (${lockoutRemaining}s)` : 'Entrar')}
           </button>
         </form>
 
-        <button
-          type="button"
-          onClick={testApiConnection}
-          disabled={apiHealth === 'checking'}
-          className="w-full py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-slate-400 hover:text-cyan-400 hover:border-cyan-500/20 transition-all flex items-center justify-center gap-2"
-        >
-          {apiHealth === 'checking' ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : apiHealth === 'ok' ? (
-            <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+        {/* API Health */}
+        <div className="space-y-2">
+          {apiHealth === 'ok' ? (
+            <div className="flex items-center justify-center gap-2 py-2 text-xs text-emerald-400">
+              <CheckCircle2 className="w-3.5 h-3.5" /><span>Infraestrutura Disponível</span>
+            </div>
           ) : apiHealth === 'fail' ? (
-            <WifiOff className="w-3.5 h-3.5 text-red-400" />
+            <div className="flex items-center justify-center gap-2 py-2 text-xs text-red-400">
+              <WifiOff className="w-3.5 h-3.5" /><span>Serviço indisponível</span>
+            </div>
           ) : (
-            <Server className="w-3.5 h-3.5" />
+            <button type="button" onClick={testApiConnection} disabled={apiHealth === 'checking'}
+              className="w-full py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-slate-500 hover:text-slate-300 hover:border-white/[0.1] transition-all flex items-center justify-center gap-2">
+              {apiHealth === 'checking' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+              {apiHealth === 'checking' ? 'A verificar...' : 'Verificar disponibilidade'}
+            </button>
           )}
-          {apiHealth === 'checking'
-            ? 'A testar...'
-            : apiHealth === 'ok'
-            ? 'API Online ✓'
-            : apiHealth === 'fail'
-            ? 'API Offline ✗'
-            : 'Testar Ligação à API'}
-        </button>
-
-        {apiHealthDetail && (
-          <div className={`rounded-xl border p-3 text-xs font-mono space-y-1 ${
-            apiHealth === 'ok'
-              ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
-              : 'bg-red-500/5 border-red-500/20 text-red-400'
-          }`}>
-            <p><span className="text-slate-500">URL:</span> {apiHealthDetail.url}</p>
-            {apiHealthDetail.status && <p><span className="text-slate-500">Status:</span> {apiHealthDetail.status}</p>}
-            {apiHealthDetail.body && <p><span className="text-slate-500">Resposta:</span> {apiHealthDetail.body.substring(0, 200)}{apiHealthDetail.body.length > 200 ? '...' : ''}</p>}
-            {apiHealthDetail.error && <p><span className="text-slate-500">Erro:</span> {apiHealthDetail.error}</p>}
-          </div>
-        )}
-
-        {diag && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3 text-left">
-            <div className="flex items-center gap-2 text-red-400 text-xs font-bold uppercase tracking-wider">
-              <AlertTriangle className="w-4 h-4" />
-              Diagnóstico do Erro
-            </div>
-
-            <div className="space-y-1.5 text-xs font-mono">
-              <p><span className="text-slate-500">Mensagem:</span> <span className="text-red-300">{diag.message}</span></p>
-              <p><span className="text-slate-500">Status HTTP:</span> <span className={typeof diag.status === 'number' && diag.status >= 400 ? 'text-red-400' : 'text-emerald-400'}>{diag.status} {diag.statusText}</span></p>
-              <p><span className="text-slate-500">Método:</span> <span className="text-cyan-400">{diag.method}</span></p>
-              <p><span className="text-slate-500">URL:</span> <span className="text-cyan-400 break-all">{diag.fullUrl}</span></p>
-
-              {diag.isNetworkError && (
-                <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300">
-                  <p className="font-bold">Erro de Rede / CORS</p>
-                  <p className="text-[0.65rem]">O browser bloqueou a requisição antes de chegar à API.</p>
-                </div>
-              )}
-
-              {diag.requestData && (
-                <div>
-                  <p className="text-slate-500 mb-0.5">Request Body:</p>
-                  <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-emerald-400 overflow-x-auto">{JSON.stringify(diag.requestData, null, 2)}</pre>
-                </div>
-              )}
-
-              {diag.responseData && (
-                <div>
-                  <p className="text-slate-500 mb-0.5">Response Body (o que a API devolveu):</p>
-                  <pre className="bg-black/30 rounded-lg p-2 text-[0.65rem] text-amber-400 overflow-x-auto">{typeof diag.responseData === 'string' ? diag.responseData : JSON.stringify(diag.responseData, null, 2)}</pre>
-                </div>
-              )}
-
-              {!diag.responseData && !diag.isNetworkError && (
-                <p className="text-amber-400 text-[0.65rem]">A API não devolveu body na resposta.</p>
-              )}
-            </div>
-          </div>
-        )}
+        </div>
 
         <p className="text-center text-xs text-slate-600">
-          {mode === 'institution'
-            ? 'Utilize as credenciais fornecidas pelo administrador'
-            : 'Acesso restrito à equipa de gestão'}
+          {mode === 'institution' ? 'Utilize as credenciais fornecidas pelo administrador' : 'Acesso restrito à equipa de gestão'}
         </p>
       </div>
     </div>
@@ -265,4 +301,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-

@@ -31,3 +31,5 @@ export const Toast = ({ id, message, type = 'info', duration = 5000, onRemove })
     </div>
   );
 };
+
+export default Toast;
