@@ -1,6 +1,6 @@
 """Main — entry point da API Txeka Ntiyiso."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
