@@ -22,10 +22,10 @@ router = APIRouter(tags=["revocation"])
 
 @router.post("/emissions/{doc_id}/revoke", status_code=status.HTTP_200_OK)
 @limiter.limit("10/minute")
-async def revoke_emission(request: Request, 
+async def revoke_emission(
+    request: Request,
     doc_id: str,
-    request: RevokeRequest,
-    req: Request,
+    payload: RevokeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ) -> Dict[str, Any]:
@@ -45,10 +45,10 @@ async def revoke_emission(request: Request,
             user_email=current_user.get("email", "unknown"),
             doc_hash=document.doc_hash,
             institution_id=document.institution_id,
-            request=req,
+            request=request,
             success=False,
             status_code=200,
-            details={"reason": "already_revoked", "attempted_reason": request.reason}
+            details={"reason": "already_revoked", "attempted_reason": payload.reason}
         )
         return {
             "status": "already_revoked",
@@ -64,7 +64,7 @@ async def revoke_emission(request: Request,
             user_email=current_user.get("email", "unknown"),
             doc_hash=document.doc_hash,
             institution_id=document.institution_id,
-            request=req,
+            request=request,
             success=False,
             status_code=403,
             details={"reason": "permission_denied"}
@@ -74,7 +74,7 @@ async def revoke_emission(request: Request,
     # Revoga
     document.revoked = True
     document.revoked_at = datetime.now(CAT)
-    document.revoked_reason = request.reason
+    document.revoked_reason = payload.reason
     document.revoked_by = current_user.get("id")  
 
     await db.commit()
@@ -85,16 +85,15 @@ async def revoke_emission(request: Request,
         user_email=current_user.get("email", "unknown"),
         doc_hash=document.doc_hash,
         institution_id=document.institution_id,
-        request=req,
+        request=request,
         success=True,
         status_code=200,
-        details={"reason": request.reason, "revoked_by": current_user.get("id")}
+        details={"reason": payload.reason, "revoked_by": current_user.get("id")}
     )
     
     return {
         "status": "revoked",
         "doc_id": document.doc_id,
         "revoked_at": document.revoked_at.isoformat(),
-        "message": f"Documento revogado com sucesso. Motivo: {request.reason}"
+        "message": f"Documento revogado com sucesso. Motivo: {payload.reason}"
     }
-
