@@ -53,6 +53,10 @@ const VerifyPage = () => {
       if (data.status === 'INVALID') {
         setVerifiedHash(null);
         setError('Documento não encontrado ou inválido');
+      } else if (data.status === 'REVOKED' && data.dados_publicos) {
+        setResult(data);
+        setVerifiedHash(cleanHash);
+        if (!urlHash) navigate(`/verify/${cleanHash}`, { replace: true });
       } else if (data.status === 'VALID' && data.dados_publicos) {
         setResult(data);
         setVerifiedHash(cleanHash);
@@ -63,7 +67,11 @@ const VerifyPage = () => {
       }
     } catch (err) {
       setVerifiedHash(null);
-      setError(err.normalizedMessage || 'Erro de comunicação com o servidor');
+      const msg = err.response?.data?.detail
+        || err.response?.data?.message
+        || err.message
+        || 'Erro de comunicação com o servidor';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -82,6 +90,9 @@ const VerifyPage = () => {
 
           if (data.status === 'INVALID') {
             setError('Documento não encontrado ou inválido');
+          } else if (data.status === 'REVOKED' && data.dados_publicos) {
+            setResult(data);
+            setVerifiedHash(cleanHash);
           } else if (data.status === 'VALID' && data.dados_publicos) {
             setResult(data);
             setVerifiedHash(cleanHash);
@@ -89,7 +100,11 @@ const VerifyPage = () => {
             setError('Resposta inesperada do servidor');
           }
         } catch (err) {
-          setError(err.normalizedMessage || 'Erro de comunicação com o servidor');
+          const msg = err.response?.data?.detail
+            || err.response?.data?.message
+            || err.message
+            || 'Erro de comunicação com o servidor';
+          setError(msg);
         } finally {
           setLoading(false);
         }
