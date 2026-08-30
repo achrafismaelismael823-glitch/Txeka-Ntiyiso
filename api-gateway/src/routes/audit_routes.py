@@ -4,7 +4,8 @@ Audit Routes — Consulta de logs de auditoria.
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
@@ -23,7 +24,8 @@ router = APIRouter(
 
 
 @router.get("/logs", dependencies=[Depends(verify_role("admin"))])
-async def get_audit_logs(
+@limiter.limit("60/minute")
+async def get_audit_logs(request: Request, 
     action: Optional[str] = Query(None, description="Filtrar por acao: EMIT, VERIFY, REVOKE, LOGIN, EXPORT"),
     resource_type: Optional[str] = Query(None, description="Filtrar por tipo: DOCUMENT, CERTIFICATE, INSTITUTION"),
     user_email: Optional[str] = Query(None, description="Filtrar por email do utilizador"),
@@ -58,7 +60,8 @@ async def get_audit_logs(
 
 
 @router.get("/document/{doc_hash}/history", dependencies=[Depends(verify_role("admin"))])
-async def get_document_audit_history(
+@limiter.limit("60/minute")
+async def get_document_audit_history(request: Request, 
     doc_hash: str,
     db: AsyncSession = Depends(get_db),
 ):
@@ -78,7 +81,8 @@ async def get_document_audit_history(
 
 
 @router.get("/stats", dependencies=[Depends(verify_role("admin"))])
-async def get_audit_stats(
+@limiter.limit("60/minute")
+async def get_audit_stats(request: Request, 
     institution_id: Optional[str] = Query(None, description="Filtrar por instituicao"),
     start_date: Optional[str] = Query(None, description="Data inicio (ISO 8601)"),
     end_date: Optional[str] = Query(None, description="Data fim (ISO 8601)"),

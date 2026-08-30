@@ -1,6 +1,6 @@
 """Main — entry point da API Txeka Ntiyiso."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
@@ -12,14 +12,13 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 from src.database import init_db
 from src.routes import emission_routes, verify, revocation, audit_routes, institution_routes, auth_routes
 from src.exceptions import TxekaNtiyisoException, txeka_exception_handler
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from src.core.rate_limiter import limiter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn")
 
-limiter = Limiter(key_func=get_remote_address)
 
 # ── SENTRY INITIALIZATION ──────────────────────────────────────────
 # Deve ocorrer ANTES de criar a app FastAPI
@@ -97,7 +96,8 @@ logger.info(f"Rotas registadas: {API_PREFIX}")
 
 # ── SENTRY DEBUG ENDPOINT ──────────────────────────────────────────
 @app.get("/sentry-debug", include_in_schema=False)
-async def trigger_sentry_error():
+@limiter.limit("5/hour")
+async def trigger_sentry_error(request: Request):
     # Endpoint para testar se o Sentry esta recebendo erros.
     # Acesse: https://txeka-ntiyiso-api.onrender.com/sentry-debug
     # Deve gerar um erro ZeroDivisionError no Sentry em ~30 segundos.
@@ -105,7 +105,8 @@ async def trigger_sentry_error():
 
 
 @app.get("/health")
-async def health_check():
+@limiter.limit("30/minute")
+async def health_check(request: Request):
     return {
         "status": "online",
         "project": "Txeka Ntiyiso",

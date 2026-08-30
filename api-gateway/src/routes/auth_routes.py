@@ -4,7 +4,8 @@ import logging
 import os
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
@@ -25,7 +26,8 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 
 @router.post("/admin/login")
-async def login_admin(data: AdminLoginRequest):
+@limiter.limit("5/minute")
+async def login_admin(data: AdminLoginRequest, request: Request):
     """Login para administradores com acesso full. V3: credenciais via JSON body."""
     admin_email = settings.ADMIN_EMAIL
     admin_password_hash = settings.ADMIN_PASSWORD_HASH.get_secret_value()
@@ -61,7 +63,8 @@ async def login_admin(data: AdminLoginRequest):
 
 
 @router.post("/login", response_model=InstitutionLoginResponse)
-async def login_institution(data: InstitutionLoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login_institution(request: Request, data: InstitutionLoginRequest, db: AsyncSession = Depends(get_db)):
     institution = await InstitutionService.authenticate_institution(
         db, data.institution_id, data.password
     )
