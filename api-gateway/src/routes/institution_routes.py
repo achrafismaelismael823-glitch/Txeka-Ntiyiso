@@ -4,6 +4,7 @@ import logging
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db

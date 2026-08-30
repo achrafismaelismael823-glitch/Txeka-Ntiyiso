@@ -6,6 +6,7 @@ Revocation Routes — Revoga documentos com audit logging imutável.
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from urllib.parse import unquote

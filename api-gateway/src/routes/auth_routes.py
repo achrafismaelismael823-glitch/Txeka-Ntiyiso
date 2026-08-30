@@ -5,6 +5,7 @@ import os
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
+from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db

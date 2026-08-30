@@ -4,6 +4,7 @@ Verification Routes — Verificação pública de documentos via hash.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_db
 from src.models.schemas import VerifyResponse, VerifyRequest

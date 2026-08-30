@@ -5,6 +5,7 @@ Audit Routes — Consulta de logs de auditoria.
 
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
+from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db

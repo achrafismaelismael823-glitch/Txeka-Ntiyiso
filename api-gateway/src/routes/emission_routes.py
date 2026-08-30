@@ -8,6 +8,7 @@ import logging
 import base64
 from typing import List
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Request
+from src.core.rate_limiter import limiter
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
