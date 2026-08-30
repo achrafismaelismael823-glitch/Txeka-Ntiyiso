@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from src.core.rate_limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
