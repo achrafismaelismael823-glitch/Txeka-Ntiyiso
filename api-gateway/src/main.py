@@ -12,14 +12,13 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 from src.database import init_db
 from src.routes import emission_routes, verify, revocation, audit_routes, institution_routes, auth_routes
 from src.exceptions import TxekaNtiyisoException, txeka_exception_handler
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from src.core.rate_limiter import limiter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn")
 
-limiter = Limiter(key_func=get_remote_address)
 
 # ── SENTRY INITIALIZATION ──────────────────────────────────────────
 # Deve ocorrer ANTES de criar a app FastAPI
