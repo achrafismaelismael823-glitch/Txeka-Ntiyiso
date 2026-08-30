@@ -20,7 +20,8 @@ router = APIRouter(tags=["revocation"])
 
 
 @router.post("/emissions/{doc_id}/revoke", status_code=status.HTTP_200_OK)
-async def revoke_emission(
+@limiter.limit("10/minute")
+async def revoke_emission(request: Request, 
     doc_id: str,
     request: RevokeRequest,
     req: Request,

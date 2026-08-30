@@ -97,7 +97,8 @@ logger.info(f"Rotas registadas: {API_PREFIX}")
 
 # ── SENTRY DEBUG ENDPOINT ──────────────────────────────────────────
 @app.get("/sentry-debug", include_in_schema=False)
-async def trigger_sentry_error():
+@limiter.limit("5/hour")
+async def trigger_sentry_error(request: Request):
     # Endpoint para testar se o Sentry esta recebendo erros.
     # Acesse: https://txeka-ntiyiso-api.onrender.com/sentry-debug
     # Deve gerar um erro ZeroDivisionError no Sentry em ~30 segundos.
@@ -105,7 +106,8 @@ async def trigger_sentry_error():
 
 
 @app.get("/health")
-async def health_check():
+@limiter.limit("30/minute")
+async def health_check(request: Request):
     return {
         "status": "online",
         "project": "Txeka Ntiyiso",

@@ -90,7 +90,8 @@ def validate_pdf(file: UploadFile, content: bytes) -> None:
 
 
 @router.post("/certify", response_model=EmitResponse)
-async def emit_document(
+@limiter.limit("50/minute")
+async def emit_document(request: Request, 
     req: Request,
     file: UploadFile = File(...),
     document_type: str = "DUAT",
@@ -186,7 +187,8 @@ async def emit_document(
 
 
 @router.post("/certify/bulk", status_code=status.HTTP_201_CREATED)
-async def emit_document_bulk(
+@limiter.limit("10/minute")
+async def emit_document_bulk(request: Request, 
     req: Request,
     payload: BulkEmissionInput,
     db: AsyncSession = Depends(get_db),

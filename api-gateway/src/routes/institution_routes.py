@@ -21,7 +21,8 @@ router = APIRouter(prefix="/institutions", tags=["Instituições"])
 
 
 @router.post("", response_model=dict, dependencies=[Depends(verify_role("admin"))])
-async def create_institution(
+@limiter.limit("60/minute")
+async def create_institution(request: Request, 
     data: InstitutionCreate,
     current_user: dict = Depends(verify_token),
     db: AsyncSession = Depends(get_db)
@@ -51,7 +52,8 @@ async def create_institution(
 
 
 @router.get("", response_model=InstitutionListResponse, dependencies=[Depends(verify_role("admin"))])
-async def list_institutions(
+@limiter.limit("60/minute")
+async def list_institutions(request: Request, 
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     status: Optional[str] = Query(None, pattern="^(pending|active|suspended|inactive)$"),
@@ -165,7 +167,8 @@ async def regenerate_api_key(institution_id: str, db: AsyncSession = Depends(get
 
 
 @router.get("/me/dashboard", response_model=InstitutionDashboard)
-async def get_my_dashboard(
+@limiter.limit("60/minute")
+async def get_my_dashboard(request: Request, 
     current_user: dict = Depends(verify_token),
     db: AsyncSession = Depends(get_db)
 ):
@@ -194,7 +197,8 @@ async def get_my_dashboard(
 
 
 @router.get("/me/credits", response_model=InstitutionCredits)
-async def get_my_credits(
+@limiter.limit("60/minute")
+async def get_my_credits(request: Request, 
     current_user: dict = Depends(verify_token),
     db: AsyncSession = Depends(get_db)
 ):

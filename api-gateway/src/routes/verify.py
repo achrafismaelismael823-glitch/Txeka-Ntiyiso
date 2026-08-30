@@ -14,7 +14,8 @@ router = APIRouter(tags=["verification"])
 
 
 @router.get("/verify/{doc_hash}", response_model=VerifyResponse)
-async def verify_document_get(
+@limiter.limit("100/minute")
+async def verify_document_get(request: Request, 
     doc_hash: str,
     req: Request,
     db: AsyncSession = Depends(get_db),
@@ -42,7 +43,8 @@ async def verify_document_get(
 
 
 @router.post("/verify", response_model=VerifyResponse)
-async def verify_document_post(
+@limiter.limit("100/minute")
+async def verify_document_post(request: Request, 
     request: VerifyRequest,
     req: Request,
     db: AsyncSession = Depends(get_db),
