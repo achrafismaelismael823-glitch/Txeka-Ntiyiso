@@ -72,6 +72,7 @@ const App = () => {
                 {/* ── Rotas Públicas ── */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/verify" element={<VerifyPage />} />
+                <Route path="/verify/:hash" element={<VerifyPage />} />
 
                 {/* ── Redirect baseado no role ── */}
                 <Route path="/" element={<RoleRedirect />} />
