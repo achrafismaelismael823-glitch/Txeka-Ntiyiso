@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 // ── Lazy loading de todas as páginas ──
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const VerifyPage = lazy(() => import('./pages/VerifyPage'));
+const RevokePage = lazy(() => import('./pages/RevokePage'));
 const InstitutionDashboardPage = lazy(() => import('./pages/InstitutionDashboardPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const EmitPage = lazy(() => import('./pages/EmitPage'));
@@ -97,6 +98,11 @@ const App = () => {
                   <Route path="/credits" element={
                     <ProtectedRoute allowedRoles={['institution']}>
                       <CreditsPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/revoke" element={
+                    <ProtectedRoute allowedRoles={['institution']}>
+                      <RevokePage />
                     </ProtectedRoute>
                   } />
                 </Route>

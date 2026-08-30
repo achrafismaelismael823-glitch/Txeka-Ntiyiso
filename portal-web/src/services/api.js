@@ -78,8 +78,9 @@ export const endpoints = {
     },
     bulkCertify: (payload) => api.post('/certify/bulk', payload),
     revoke: (docId, reason) => api.post(`/emissions/${docId}/revoke`, { reason }),
-    list: (params = {}) => api.get('/emissions', { params }),
-    get: (id) => api.get(`/emissions/${id}`),
+    // NOTA: Não há endpoints GET /emissions nem GET /emissions/{id} no backend.
+    // A listagem de documentos é feita via /audit/logs (admin) ou
+    // /institutions/me/dashboard (instituição — retorna total_emitted).
   },
 
   verify: {

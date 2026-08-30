@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../contexts/NotificationContext';
-import { LayoutDashboard, FileText, FileCheck, FileStack, ShieldCheck, Activity, CreditCard, Settings, Building2, LogOut, Menu, X, ChevronRight, User, Search, Keyboard, Zap } from 'lucide-react';
+import { LayoutDashboard, FileText, FileCheck, FileStack, ShieldCheck, Activity, CreditCard, Settings, Building2, LogOut, Menu, X, ChevronRight, User, Search, Keyboard, Zap, FileX } from 'lucide-react';
 
 const DashboardLayout = () => {
   const { user, isAdmin, isInstitution, logout } = useAuth();
@@ -46,8 +46,9 @@ const DashboardLayout = () => {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, shortcut: '1' },
     { path: '/emit', label: 'Emitir Documento', icon: FileCheck, shortcut: '2' },
     { path: '/bulk-emit', label: 'Emissão Massiva', icon: FileStack, shortcut: '3' },
-    { path: '/verify', label: 'Verificar', icon: ShieldCheck, external: true, shortcut: '4' },
-    { path: '/credits', label: 'Créditos', icon: CreditCard, shortcut: '5' },
+    { path: '/revoke', label: 'Revogar Documento', icon: FileX, shortcut: '4' },
+    { path: '/verify', label: 'Verificar', icon: ShieldCheck, external: true, shortcut: '5' },
+    { path: '/credits', label: 'Créditos', icon: CreditCard, shortcut: '6' },
   ];
 
   const adminMenu = [
