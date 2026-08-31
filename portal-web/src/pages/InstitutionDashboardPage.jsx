@@ -4,13 +4,12 @@ import { endpoints } from '../services/api';
 import { NotificationContext } from '../contexts/NotificationContext';
 import { useAuth } from '../hooks/useAuth';
 import {
-  Activity, FileText, ShieldCheck, AlertTriangle, TrendingUp,
-  CheckCircle2, XCircle, BarChart3, ArrowRight,
-  FileCheck, Search, Zap, RefreshCw, Inbox, Clock,
-  CreditCard, Building2, Wallet, Receipt
+  Activity, FileText, ShieldCheck, AlertTriangle,
+  CheckCircle2, BarChart3, ArrowRight,
+  FileCheck, Search, RefreshCw, Inbox, Clock,
+  CreditCard, Building2, Wallet, Receipt, Minus, Plus
 } from 'lucide-react';
 
-/* ── SKELETONS ── */
 const SkeletonCard = () => (
   <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-3 animate-pulse">
     <div className="flex items-center justify-between">
@@ -34,7 +33,6 @@ const SkeletonRow = () => (
   </div>
 );
 
-/* ── STAT CARD ── */
 const StatCard = ({ icon: Icon, label, value, subtext, color, onClick }) => (
   <div
     onClick={onClick}
@@ -53,7 +51,6 @@ const StatCard = ({ icon: Icon, label, value, subtext, color, onClick }) => (
   </div>
 );
 
-/* ── QUICK ACTION ── */
 const QuickAction = ({ icon: Icon, label, description, to, color }) => {
   const navigate = useNavigate();
   return (
@@ -75,14 +72,13 @@ const QuickAction = ({ icon: Icon, label, description, to, color }) => {
   );
 };
 
-/* ── MINI BAR CHART ── */
 const MiniBarChart = ({ data, label }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-40 text-center space-y-2">
         <BarChart3 className="w-8 h-8 text-slate-700" />
         <p className="text-xs text-slate-600">Sem dados de verificação</p>
-        <p className="text-[0.6rem] text-slate-700">Os dados aparecerão após a primeira verificação</p>
+        <p className="text-[0.6rem] text-slate-700">Os dados aparecerão após a primeira verificação pública</p>
       </div>
     );
   }
@@ -111,35 +107,31 @@ const MiniBarChart = ({ data, label }) => {
   );
 };
 
-/* ── ACTIVITY ROW ── */
-const ActivityRow = ({ action, resource, status, date }) => {
-  const statusConfig = {
-    success: { icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-    failed: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-    pending: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  };
-  const cfg = statusConfig[status?.toLowerCase()] || statusConfig.pending;
-  const Icon = cfg.icon;
-
+const ActivityRow = ({ description, type, date, amount }) => {
+  const isConsumption = type === 'consumption';
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-      <div className={`w-8 h-8 rounded-lg ${cfg.bg} ${cfg.border} border flex items-center justify-center shrink-0`}>
-        <Icon className={`w-4 h-4 ${cfg.color}`} />
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isConsumption ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
+        {isConsumption ? <Minus className="w-4 h-4 text-amber-400" /> : <Plus className="w-4 h-4 text-emerald-400" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-slate-200 uppercase">{action}</span>
-          <span className="text-[0.6rem] text-slate-600">{resource}</span>
+          <span className="text-xs font-medium text-slate-200 truncate">{description}</span>
+          <span className={`text-[0.55rem] px-1.5 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] ${isConsumption ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {isConsumption ? 'Consumo' : type === 'bonus' ? 'Bónus' : type || 'Movimento'}
+          </span>
         </div>
+        <p className="text-[0.6rem] text-slate-500">
+          {date ? new Date(date).toLocaleString('pt-MZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+        </p>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-[0.6rem] text-slate-600">{date}</p>
+      <div className={`text-sm font-bold ${isConsumption ? 'text-amber-400' : 'text-emerald-400'}`}>
+        {isConsumption ? '-' : '+'}{Math.abs(amount)}
       </div>
     </div>
   );
 };
 
-/* ── EMPTY STATE ── */
 const EmptyState = ({ onAction }) => (
   <div className="col-span-full p-8 rounded-2xl bg-slate-900/40 border border-white/[0.06] text-center space-y-4">
     <div className="w-14 h-14 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 flex items-center justify-center mx-auto">
@@ -148,7 +140,7 @@ const EmptyState = ({ onAction }) => (
     <div>
       <p className="text-sm font-medium text-slate-400">Ainda sem actividade registada</p>
       <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
-        A sua dashboard será preenchida automaticamente à medida que emitir e verificar documentos.
+        A sua dashboard será preenchida automaticamente à medida que emitir documentos.
       </p>
     </div>
     <div className="flex flex-wrap justify-center gap-2">
@@ -162,15 +154,12 @@ const EmptyState = ({ onAction }) => (
   </div>
 );
 
-/* ── MAIN ── */
 const InstitutionDashboardPage = () => {
   const { notify } = useContext(NotificationContext);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
-  const [credits, setCredits] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const fetchedRef = useRef(false);
@@ -182,44 +171,16 @@ const InstitutionDashboardPage = () => {
     try {
       setLoading(true);
       setError(null);
-
-      const [dashRes, credRes] = await Promise.allSettled([
-        endpoints.me.dashboard(),
-        endpoints.me.credits(),
-      ]);
-
-      if (dashRes.status === 'fulfilled') {
-        setStats(dashRes.value.data);
-      } else {
-        console.warn('[InstitutionDashboard] dashboard falhou:', dashRes.reason?.normalizedMessage);
-      }
-
-      if (credRes.status === 'fulfilled') {
-        setCredits(credRes.value.data);
-      }
-
-      // Tentar buscar logs da instituição
-      try {
-        const logsRes = await endpoints.audit.logs({
-          limit: 5,
-          institution_id: user?.id || user?.institution,
-        });
-        const logs = logsRes.data?.items || logsRes.data?.logs || logsRes.data || [];
-        setRecentActivity(Array.isArray(logs) ? logs.slice(0, 5) : []);
-      } catch (logErr) {
-        console.log('[InstitutionDashboard] audit/logs não disponível');
-        setRecentActivity([]);
-      }
+      const response = await endpoints.me.dashboard();
+      setStats(response.data);
     } catch (err) {
       console.error('[InstitutionDashboard] Erro:', err);
-      if (err.response?.status !== 403) {
-        setError(err.normalizedMessage || 'Erro ao carregar dados');
-        notify(err.normalizedMessage || 'Erro ao carregar estatísticas', 'error');
-      }
+      setError(err.response?.data?.detail || err.message || 'Erro ao carregar dados');
+      notify(err.response?.data?.detail || 'Erro ao carregar estatísticas', 'error');
     } finally {
       setLoading(false);
     }
-  }, [notify, user]);
+  }, [notify]);
 
   useEffect(() => {
     fetchedRef.current = false;
@@ -227,26 +188,31 @@ const InstitutionDashboardPage = () => {
     return () => { fetchedRef.current = false; };
   }, [fetchDashboardData]);
 
-  const s = stats?.summary || stats || {};
-  const v = stats?.verifications || {};
+  const institution = stats?.institution || {};
+  const totalEmitted = stats?.total_emitted ?? institution?.docs_emitted_month ?? 0;
+  const totalVerifications = stats?.total_verifications ?? 0;
+  const creditsAvailable = stats?.credits ?? institution?.credits ?? 0;
+  const docsEmittedMonth = institution?.docs_emitted_month ?? stats?.docs_emitted_month ?? 0;
+  const creditHistory = stats?.credits_history ?? [];
+  const accountStatus = institution?.status ?? stats?.status ?? 'active';
+  const subscriptionPlan = institution?.subscription_plan ?? 'standard';
 
-  const hasAnyData =
-    (s.total_emitted_documents || s.emitted_documents || s.documents_count || 0) > 0 ||
-    (s.total_verifications || s.verifications_count || 0) > 0 ||
-    recentActivity.length > 0;
+  const creditsConsumed = docsEmittedMonth;
+  const creditsTotal = creditsAvailable + creditsConsumed;
 
-  const creditBalance = credits?.balance || credits?.available || credits?.credits || 0;
-  const creditUsed = credits?.used || credits?.consumed || 0;
-  const creditTotal = creditBalance + creditUsed;
+  const recentEmissions = creditHistory
+    .filter(h => h.type === 'consumption')
+    .slice(0, 5);
+
+  const hasAnyData = totalEmitted > 0 || creditHistory.length > 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Dashboard</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Instituição: <span className="text-cyan-400 font-mono">{user?.name || user?.id || user?.institution || '—'}</span>
+            Instituição: <span className="text-cyan-400 font-mono">{institution?.name || user?.name || user?.id || '—'}</span>
           </p>
         </div>
         <button
@@ -259,7 +225,6 @@ const InstitutionDashboardPage = () => {
         </button>
       </div>
 
-      {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <QuickAction icon={FileCheck} label="Emitir Documento" description="Certifique um novo documento" to="/emit" color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" />
         <QuickAction icon={Search} label="Verificar Documento" description="Valide autenticidade por hash" to="/verify" color="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" />
@@ -267,7 +232,6 @@ const InstitutionDashboardPage = () => {
         <QuickAction icon={CreditCard} label="Créditos" description="Consulte saldo e histórico" to="/credits" color="bg-amber-500/10 text-amber-400 border border-amber-500/20" />
       </div>
 
-      {/* Error */}
       {error && !loading && (
         <div className="p-5 rounded-2xl bg-red-500/5 border border-red-500/15 text-center space-y-3">
           <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" />
@@ -281,7 +245,6 @@ const InstitutionDashboardPage = () => {
         </div>
       )}
 
-      {/* Stats */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
@@ -291,37 +254,38 @@ const InstitutionDashboardPage = () => {
           <StatCard
             icon={FileText}
             label="Documentos Emitidos"
-            value={((s.emitted_documents || s.documents_count || 0)).toLocaleString('pt-MZ')}
-            subtext={`${(s.active_documents || s.active_count || 0).toLocaleString('pt-MZ')} activos`}
+            value={totalEmitted.toLocaleString('pt-MZ')}
+            subtext={`${docsEmittedMonth} este mês`}
             color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate('/credits')}
           />
           <StatCard
             icon={ShieldCheck}
             label="Verificações"
-            value={((s.verifications_count || s.total_verifications || 0)).toLocaleString('pt-MZ')}
-            subtext={`${v.success_rate_percent || s.success_rate || 0}% sucesso`}
+            value={totalVerifications > 0 ? totalVerifications.toLocaleString('pt-MZ') : '—'}
+            subtext={totalVerifications > 0 ? 'Verificações registadas' : 'Sem verificações'}
             color="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
             onClick={() => navigate('/verify')}
           />
           <StatCard
             icon={CheckCircle2}
             label="Documentos Activos"
-            value={((s.active_documents || s.active_count || 0)).toLocaleString('pt-MZ')}
+            value={totalEmitted.toLocaleString('pt-MZ')}
+            subtext="Estimado (sem revogações registadas)"
             color="bg-blue-500/10 text-blue-400 border border-blue-500/20"
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate('/credits')}
           />
           <StatCard
             icon={AlertTriangle}
             label="Documentos Revogados"
-            value={((s.revoked_documents || s.revoked_count || 0)).toLocaleString('pt-MZ')}
+            value="0"
+            subtext="Nenhuma revogação registada"
             color="bg-red-500/10 text-red-400 border border-red-500/20"
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate('/revoke')}
           />
         </div>
       )}
 
-      {/* Credits Card (prominent) */}
       <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
@@ -351,40 +315,37 @@ const InstitutionDashboardPage = () => {
                   <CreditCard className="w-6 h-6 text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-100">{creditBalance.toLocaleString('pt-MZ')}</p>
+                  <p className="text-2xl font-bold text-slate-100">{creditsAvailable.toLocaleString('pt-MZ')}</p>
                   <p className="text-xs text-slate-500">Créditos disponíveis</p>
                 </div>
               </div>
               <div className="text-right space-y-1">
-                <p className="text-xs text-slate-400">{creditUsed.toLocaleString('pt-MZ')} consumidos</p>
-                <p className="text-[0.65rem] text-slate-600">{creditTotal.toLocaleString('pt-MZ')} total atribuído</p>
+                <p className="text-xs text-slate-400">{creditsConsumed.toLocaleString('pt-MZ')} consumidos</p>
+                <p className="text-[0.65rem] text-slate-600">{creditsTotal.toLocaleString('pt-MZ')} total atribuído</p>
               </div>
             </div>
             <div className="w-full h-2 bg-white/[0.03] rounded-full overflow-hidden">
               <div
                 className="h-full bg-amber-500/40 rounded-full transition-all"
-                style={{ width: `${creditTotal > 0 ? (creditBalance / creditTotal) * 100 : 0}%` }}
+                style={{ width: `${creditsTotal > 0 ? (creditsAvailable / creditsTotal) * 100 : 0}%` }}
               />
             </div>
             <div className="flex justify-between text-[0.65rem] text-slate-500">
               <span className="flex items-center gap-1">
-                <Wallet className="w-3 h-3 text-amber-400" /> {creditBalance} disponíveis
+                <Wallet className="w-3 h-3 text-amber-400" /> {creditsAvailable} disponíveis
               </span>
               <span className="flex items-center gap-1">
-                <Receipt className="w-3 h-3 text-slate-400" /> {creditUsed} consumidos
+                <Receipt className="w-3 h-3 text-slate-400" /> {creditsConsumed} consumidos
               </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Empty State */}
       {!loading && !error && !hasAnyData && <EmptyState onAction={(to) => navigate(to)} />}
 
-      {/* Charts + Summary */}
       {(hasAnyData || loading) && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Verifications Chart */}
           <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
             {loading ? (
               <div className="space-y-3 animate-pulse">
@@ -397,13 +358,12 @@ const InstitutionDashboardPage = () => {
               </div>
             ) : (
               <MiniBarChart
-                data={stats?.verifications_by_day || s.verifications_by_day || []}
+                data={stats?.verifications_by_day ?? []}
                 label="Verificações por dia (Sua Instituição)"
               />
             )}
           </div>
 
-          {/* Institution Summary */}
           <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
             <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
               <Building2 className="w-3.5 h-3.5" /> Resumo da Instituição
@@ -421,25 +381,29 @@ const InstitutionDashboardPage = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">Documentos Emitidos</span>
-                  <span className="text-xs font-mono text-slate-300">{(s.emitted_documents || s.documents_count || 0)}</span>
+                  <span className="text-xs font-mono text-slate-300">{totalEmitted}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">Documentos Activos</span>
-                  <span className="text-xs font-mono text-emerald-400">{(s.active_documents || s.active_count || 0)}</span>
+                  <span className="text-xs font-mono text-emerald-400">{totalEmitted}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">Documentos Revogados</span>
-                  <span className="text-xs font-mono text-red-400">{(s.revoked_documents || s.revoked_count || 0)}</span>
+                  <span className="text-xs font-mono text-red-400">0</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">Créditos Disponíveis</span>
-                  <span className="text-xs font-mono text-amber-400">{creditBalance}</span>
+                  <span className="text-xs font-mono text-amber-400">{creditsAvailable}</span>
                 </div>
                 <div className="pt-2 border-t border-white/[0.04]">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Taxa de Sucesso</span>
-                    <span className="text-xs font-mono text-emerald-400">{v.success_rate_percent || s.success_rate || 0}%</span>
+                    <span className="text-xs text-slate-400">Plano</span>
+                    <span className="text-xs font-mono text-cyan-400 capitalize">{subscriptionPlan}</span>
                   </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Estado</span>
+                  <span className={`text-xs font-mono capitalize ${accountStatus === 'active' ? 'text-emerald-400' : 'text-red-400'}`}>{accountStatus}</span>
                 </div>
               </div>
             )}
@@ -447,74 +411,41 @@ const InstitutionDashboardPage = () => {
         </div>
       )}
 
-      {/* Recent Activity */}
-      {(recentActivity.length > 0 || loading) && (
+      {(recentEmissions.length > 0 || loading) && (
         <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-4">
-          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-            <Clock className="w-3.5 h-3.5" /> Actividade Recente
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+              <Clock className="w-3.5 h-3.5" /> Últimas Emissões
+            </div>
+            <button
+              onClick={() => navigate('/credits')}
+              className="text-[0.65rem] text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
+            >
+              Ver histórico completo <ArrowRight className="w-3 h-3" />
+            </button>
           </div>
 
           {loading ? (
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => <SkeletonRow key={i} />)}
             </div>
-          ) : recentActivity.length === 0 ? (
+          ) : recentEmissions.length === 0 ? (
             <div className="text-center py-4">
               <Activity className="w-6 h-6 text-slate-700 mx-auto mb-2" />
-              <p className="text-xs text-slate-600">Sem actividade recente</p>
+              <p className="text-xs text-slate-600">Sem emissões recentes</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {recentActivity.map((log, i) => (
+              {recentEmissions.map((item, i) => (
                 <ActivityRow
                   key={i}
-                  action={log.action || log.acao || '—'}
-                  resource={log.resource || log.recurso || '—'}
-                  status={log.status || log.estado || 'success'}
-                  date={log.created_at
-                    ? new Date(log.created_at).toLocaleString('pt-MZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-                    : '—'}
+                  description={item.description || 'Emissão de documento'}
+                  type={item.type}
+                  date={item.created_at}
+                  amount={item.amount || -1}
                 />
               ))}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Success Rate */}
-      {(hasAnyData || loading) && (
-        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Taxa de sucesso da sua instituição
-            </div>
-            <span className="text-lg font-bold text-emerald-400">{v.success_rate_percent || s.success_rate || 0}%</span>
-          </div>
-          {loading ? (
-            <div className="space-y-3 animate-pulse">
-              <div className="w-full h-2 rounded-full bg-white/[0.05]" />
-              <div className="flex justify-between">
-                <div className="w-20 h-3 rounded bg-white/[0.05]" />
-                <div className="w-20 h-3 rounded bg-white/[0.05]" />
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="w-full h-2 bg-white/[0.03] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500/40 rounded-full transition-all"
-                  style={{ width: `${v.success_rate_percent || s.success_rate || 0}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-2 text-[0.65rem] text-slate-500">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> {v.success || s.success_count || 0} sucessos
-                </span>
-                <span className="flex items-center gap-1">
-                  <XCircle className="w-3 h-3 text-red-400" /> {v.failed || s.failed_count || 0} falhas
-                </span>
-              </div>
-            </>
           )}
         </div>
       )}
@@ -523,4 +454,3 @@ const InstitutionDashboardPage = () => {
 };
 
 export default InstitutionDashboardPage;
-
