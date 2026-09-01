@@ -10,6 +10,7 @@ import bcrypt
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from src.services.institution_service import InstitutionService
 
 
 # ── Environment ───────────────────────────────
@@ -105,13 +106,25 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
             raise HTTPException(status_code=401, detail="Autenticação obrigatória")
 
         payload = decode_token(credentials.credentials)
-        return {
+        user = {
             "email": payload.get("email") or payload.get("sub", "unknown"),
             "role": payload.get("role", "citizen"),
             "id": payload.get("id", "unknown"),
             "institution": payload.get("institution"),
             "authenticated": True
         }
+
+        # Verificar se instituição está ativa e aprovada
+        if user["role"] == "institution" and user["institution"]:
+            institution = await InstitutionService.get_institution(user["institution"])
+            if not institution:
+                raise HTTPException(status_code=403, detail="Instituição não encontrada")
+            if institution.status != "active":
+                raise HTTPException(status_code=403, detail="Instituição desativada")
+            if not institution.approved:
+                raise HTTPException(status_code=403, detail="Instituição pendente de aprovação")
+
+        return user
     except HTTPException:
         raise
     except Exception as e:
