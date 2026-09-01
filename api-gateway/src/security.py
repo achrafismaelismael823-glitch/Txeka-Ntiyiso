@@ -6,7 +6,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Callable, List
 
-import bcrypt
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -37,18 +36,13 @@ JWT_EXPIRATION_DAYS_INSTITUTION = 30
 ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
 
 
-# ── Password hashing (bcrypt nativo) ──────────
-
-def get_password_hash(password: str) -> str:
-    password_bytes = password.encode("utf-8")
-    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
-    return hashed.decode("utf-8")
+from src.core.password import get_password_hash, verify_password
+from src.services.institution_service import InstitutionService
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    plain_bytes = plain_password.encode("utf-8")
-    hash_bytes = hashed_password.encode("utf-8")
-    return bcrypt.checkpw(plain_bytes, hash_bytes)
+# ── Re-export password helpers (backward compatibility) ──
+# get_password_hash and verify_password are imported from src.core.password
+# above and remain available for existing importers.
 
 
 # ── JWT ───────────────────────────────────────
@@ -105,13 +99,25 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
             raise HTTPException(status_code=401, detail="Autenticação obrigatória")
 
         payload = decode_token(credentials.credentials)
-        return {
+        user = {
             "email": payload.get("email") or payload.get("sub", "unknown"),
             "role": payload.get("role", "citizen"),
             "id": payload.get("id", "unknown"),
             "institution": payload.get("institution"),
             "authenticated": True
         }
+
+        # Verificar se instituição está ativa e aprovada
+        if user["role"] == "institution" and user["institution"]:
+            institution = await InstitutionService.get_institution(user["institution"])
+            if not institution:
+                raise HTTPException(status_code=403, detail="Instituição não encontrada")
+            if institution.status != "active":
+                raise HTTPException(status_code=403, detail="Instituição desativada")
+            if not institution.approved:
+                raise HTTPException(status_code=403, detail="Instituição pendente de aprovação")
+
+        return user
     except HTTPException:
         raise
     except Exception as e:
