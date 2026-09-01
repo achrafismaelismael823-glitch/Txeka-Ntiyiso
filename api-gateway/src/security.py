@@ -38,6 +38,7 @@ ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
 
 from src.core.password import get_password_hash, verify_password
 from src.services.institution_service import InstitutionService
+from src.database import AsyncSessionLocal
 
 
 # ── Re-export password helpers (backward compatibility) ──
@@ -109,13 +110,14 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
 
         # Verificar se instituição está ativa e aprovada
         if user["role"] == "institution" and user["institution"]:
-            institution = await InstitutionService.get_institution(user["institution"])
-            if not institution:
-                raise HTTPException(status_code=403, detail="Instituição não encontrada")
-            if institution.status != "active":
-                raise HTTPException(status_code=403, detail="Instituição desativada")
-            if not institution.approved:
-                raise HTTPException(status_code=403, detail="Instituição pendente de aprovação")
+            async with AsyncSessionLocal() as db:
+                institution = await InstitutionService.get_institution(db, user["institution"])
+                if not institution:
+                    raise HTTPException(status_code=403, detail="Instituição não encontrada")
+                if institution.status != "active":
+                    raise HTTPException(status_code=403, detail="Instituição desativada")
+                if not institution.approved:
+                    raise HTTPException(status_code=403, detail="Instituição pendente de aprovação")
 
         return user
     except HTTPException:
