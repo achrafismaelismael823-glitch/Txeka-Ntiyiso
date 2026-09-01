@@ -176,25 +176,25 @@ const AuditPage = () => {
             <div className="flex items-center gap-2 text-[0.65rem] text-slate-500 uppercase tracking-wider">
               <Activity className="w-3.5 h-3.5" /> Total
             </div>
-            <p className="text-2xl font-bold text-slate-100">{stats.total_operations || total}</p>
+            <p className="text-2xl font-bold text-slate-100">{stats.stats.summary.total_logs || total}</p>
           </div>
           <div className="p-4 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-2">
             <div className="flex items-center gap-2 text-[0.65rem] text-slate-500 uppercase tracking-wider">
               <FileText className="w-3.5 h-3.5" /> Emissões
             </div>
-            <p className="text-2xl font-bold text-emerald-400">{stats.total_emitted || '—'}</p>
+            <p className="text-2xl font-bold text-emerald-400">{stats.stats.summary.total_emitted_documents || '—'}</p>
           </div>
           <div className="p-4 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-2">
             <div className="flex items-center gap-2 text-[0.65rem] text-slate-500 uppercase tracking-wider">
               <Shield className="w-3.5 h-3.5" /> Verificações
             </div>
-            <p className="text-2xl font-bold text-blue-400">{stats.total_verified || '—'}</p>
+            <p className="text-2xl font-bold text-blue-400">{stats.stats.summary.total_verifications || '—'}</p>
           </div>
           <div className="p-4 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/[0.06] space-y-2">
             <div className="flex items-center gap-2 text-[0.65rem] text-slate-500 uppercase tracking-wider">
               <XCircle className="w-3.5 h-3.5" /> Revogações
             </div>
-            <p className="text-2xl font-bold text-red-400">{stats.total_revoked || '—'}</p>
+            <p className="text-2xl font-bold text-red-400">{stats.stats.summary.total_revoked_documents || '—'}</p>
           </div>
         </div>
       )}
