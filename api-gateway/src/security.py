@@ -37,9 +37,6 @@ ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
 
 
 from src.core.password import get_password_hash, verify_password
-from src.services.institution_service import InstitutionService
-from src.database import AsyncSessionLocal
-
 
 # ── Re-export password helpers (backward compatibility) ──
 # get_password_hash and verify_password are imported from src.core.password
@@ -53,7 +50,8 @@ def create_access_token(
     user_id: Optional[str] = None,
     role: str = "system",
     institution_id: Optional[str] = None,
-    expires_delta: Optional[timedelta] = None
+    expires_delta: Optional[timedelta] = None,
+    institution_epoch: Optional[int] = None
 ) -> str:
     if expires_delta is None:
         expires_delta = timedelta(hours=JWT_EXPIRATION_HOURS)
@@ -71,6 +69,11 @@ def create_access_token(
         "iat": now,
         "type": "access"
     }
+
+    # Token Epoch Pattern: incluir epoch para invalidação stateless
+    if institution_epoch is not None:
+        payload["epoch"] = institution_epoch
+
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -87,6 +90,7 @@ def decode_token(token: str) -> Dict:
 
 
 async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict:
+    """Valida token JWT — 100% STATELESS. Não consulta banco de dados."""
     try:
         if credentials is None:
             if ALLOW_ANONYMOUS:
@@ -105,19 +109,17 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
             "role": payload.get("role", "citizen"),
             "id": payload.get("id", "unknown"),
             "institution": payload.get("institution"),
+            "epoch": payload.get("epoch"),
             "authenticated": True
         }
 
-        # Verificar se instituição está ativa e aprovada
-        if user["role"] == "institution" and user["institution"]:
-            async with AsyncSessionLocal() as db:
-                institution = await InstitutionService.get_institution(db, user["institution"])
-                if not institution:
-                    raise HTTPException(status_code=403, detail="Instituição não encontrada")
-                if institution.status != "active":
-                    raise HTTPException(status_code=403, detail="Instituição desativada")
-                if not institution.approved:
-                    raise HTTPException(status_code=403, detail="Instituição pendente de aprovação")
+        # NOTA: Checagem de institution.status e institution.approved foi movida
+        # para o momento de LOGIN (auth_routes.py). verify_token é stateless
+        # por design — não consulta o banco de dados.
+        #
+        # Para invalidação de tokens: usar Token Epoch Pattern.
+        # Admin incrementa institution.token_epoch → tokens antigos rejeitados
+        # nos endpoints que validam epoch (futuro) ou expiram naturalmente.
 
         return user
     except HTTPException:

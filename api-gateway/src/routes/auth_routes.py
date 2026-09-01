@@ -75,6 +75,13 @@ async def login_institution(request: Request, data: InstitutionLoginRequest, db:
     # Verificar se a conta está inativa (403 Forbidden)
     if hasattr(institution, '_inactive_reason'):
         raise HTTPException(status_code=403, detail=institution._inactive_reason)
+
+    # Verificar se instituição está ativa e aprovada
+    if institution.status != "active":
+        raise HTTPException(status_code=403, detail="Instituição desativada. Contacte o administrador.")
+
+    if not institution.approved:
+        raise HTTPException(status_code=403, detail="Instituição pendente de aprovação. Aguarde validação do administrador.")
     
     # Institution = 30 dias (mais seguro)
     token = create_access_token(
@@ -82,7 +89,8 @@ async def login_institution(request: Request, data: InstitutionLoginRequest, db:
         user_id=institution.id,
         role="institution",
         institution_id=institution.id,
-        expires_delta=timedelta(days=JWT_EXPIRATION_DAYS_INSTITUTION)
+        expires_delta=timedelta(days=JWT_EXPIRATION_DAYS_INSTITUTION),
+        institution_epoch=institution.token_epoch
     )
     
     logger.info(f"Instituição {institution.id} autenticada com sucesso (token: {JWT_EXPIRATION_DAYS_INSTITUTION} dias)")
