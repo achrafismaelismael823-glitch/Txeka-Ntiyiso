@@ -157,8 +157,8 @@ class AuditService:
         total_verify_failed = (await session.execute(verify_failed)).scalar() or 0
 
         # Emitidos vs revogados
-        emit_count = select(func.count(AuditLog.id)).where(AuditLog.action == "EMIT")
-        revoke_count = select(func.count(AuditLog.id)).where(AuditLog.action == "REVOKE")
+        emit_count = select(func.count(AuditLog.id)).where(and_(AuditLog.action == "EMIT", AuditLog.success == True))
+        revoke_count = select(func.count(AuditLog.id)).where(and_(AuditLog.action == "REVOKE", AuditLog.success == True))
         if where_clause is not None:
             emit_count = emit_count.where(where_clause)
             revoke_count = revoke_count.where(where_clause)

@@ -47,7 +47,7 @@ const DashboardLayout = () => {
     { path: '/emit', label: 'Emitir Documento', icon: FileCheck, shortcut: '2' },
     { path: '/bulk-emit', label: 'Emissão Massiva', icon: FileStack, shortcut: '3' },
     { path: '/revoke', label: 'Revogar Documento', icon: FileX, shortcut: '4' },
-    { path: '/verify', label: 'Verificar', icon: ShieldCheck, external: true, shortcut: '5' },
+    { path: '/verify', label: 'Verificar', icon: ShieldCheck, shortcut: '5' },
     { path: '/credits', label: 'Créditos', icon: CreditCard, shortcut: '6' },
   ];
 

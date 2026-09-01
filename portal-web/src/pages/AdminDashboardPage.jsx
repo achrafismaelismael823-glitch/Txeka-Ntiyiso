@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import {
   Activity, FileText, ShieldCheck, AlertTriangle, TrendingUp,
   Users, CheckCircle2, XCircle, BarChart3, Lock, ArrowRight,
-  FileCheck, Search, Zap, RefreshCw, Inbox, Clock, Eye,
+  Search, Zap, RefreshCw, Inbox, Clock, Eye,
   Building2, Globe, Server
 } from 'lucide-react';
 
@@ -245,7 +245,6 @@ const AdminDashboardPage = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <QuickAction icon={FileCheck} label="Emitir Documento" description="Certifique um novo documento" to="/emit" color="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" />
         <QuickAction icon={Search} label="Verificar Documento" description="Valide autenticidade por hash" to="/verify" color="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" />
         <QuickAction icon={FileText} label="Documentos" description="Consulte o histórico global" to="/documents" color="bg-blue-500/10 text-blue-400 border border-blue-500/20" />
         <QuickAction icon={Activity} label="Auditoria" description="Registo completo de acções" to="/audit" color="bg-amber-500/10 text-amber-400 border border-amber-500/20" />
