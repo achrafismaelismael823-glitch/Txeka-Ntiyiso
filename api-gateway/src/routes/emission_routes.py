@@ -93,7 +93,6 @@ def validate_pdf(file: UploadFile, content: bytes) -> None:
 @router.post("/certify", response_model=EmitResponse)
 @limiter.limit("50/minute")
 async def emit_document(request: Request, 
-    req: Request,
     file: UploadFile = File(...),
     document_type: str = "DUAT",
     institution_id: str = "INAGE",
@@ -152,7 +151,7 @@ async def emit_document(request: Request,
             user_email=current_user.get("email", "unknown"),
             doc_hash=doc_record.doc_hash,
             institution_id=institution_id,
-            request=req,
+            request=request,
             success=True,
             status_code=200,
             details={
@@ -179,7 +178,7 @@ async def emit_document(request: Request,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
             institution_id=institution_id,
-            request=req,
+            request=request,
             success=False,
             status_code=e.status_code,
             details={"error": e.message, "document_type": document_type}
@@ -190,7 +189,6 @@ async def emit_document(request: Request,
 @router.post("/certify/bulk", status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 async def emit_document_bulk(request: Request, 
-    req: Request,
     payload: BulkEmissionInput,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(verify_token)
@@ -230,7 +228,7 @@ async def emit_document_bulk(request: Request,
                 user_email=current_user.get("email", "unknown"),
                 doc_hash=doc.get("hash_sha256", "unknown"),
                 institution_id=institution_id,  
-                request=req,
+                request=request,
                 success=True,
                 status_code=201,
                 details={
@@ -248,7 +246,7 @@ async def emit_document_bulk(request: Request,
             user_email=current_user.get("email", "unknown"),
             doc_hash="unknown",
             institution_id=institution_id,  
-            request=req,
+            request=request,
             success=False,
             status_code=e.status_code,
             details={"error": e.message, "bulk": True, "total_documents": len(payload.documents)}
