@@ -55,6 +55,7 @@ class InstitutionUpdate(BaseModel):
     status: Optional[str] = Field(default=None, pattern="^(pending|active|suspended|inactive)$")
     subscription_plan: Optional[str] = None
     approved: Optional[bool] = None
+    token_epoch: Optional[int] = Field(default=None, description="Campo interno — usado apenas pelo sistema para invalidação de tokens")
 
 class InstitutionResponse(BaseModel):
     id: str
