@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.models import Institution, CreditTransaction
 from src.models.schemas import InstitutionCreate, InstitutionUpdate, CreditTransactionCreate
-from src.security import get_password_hash, verify_password
+from src.core.password import get_password_hash, verify_password
 
 logger = logging.getLogger(__name__)
 

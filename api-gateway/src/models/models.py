@@ -38,6 +38,7 @@ class Institution(AuditBase):
     api_key = Column(String(255), unique=True, index=True, nullable=True)
     api_key_hash = Column(String(255), nullable=False)
     approved = Column(Boolean, default=False, nullable=False)
+    token_epoch = Column(Integer, default=1, nullable=False)
 
 
 class CreditTransaction(Base): 

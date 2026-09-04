@@ -93,11 +93,67 @@ async def get_institution(institution_id: str, db: AsyncSession = Depends(get_db
 
 
 @router.patch("/{institution_id}", response_model=InstitutionResponse, dependencies=[Depends(verify_role("admin"))])
-async def update_institution(institution_id: str, data: InstitutionUpdate, db: AsyncSession = Depends(get_db)):
+async def update_institution(
+    institution_id: str,
+    data: InstitutionUpdate,
+    request: Request,
+    current_user: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_db)
+):
     try:
         # Validar status se fornecido
         if data.status and data.status not in ["pending", "active", "suspended", "inactive"]:
             raise HTTPException(status_code=400, detail=f"Status inválido: {data.status}. Valores permitidos: pending, active, suspended, inactive")
+
+        # Buscar instituição atual para detectar mudanças que requerem invalidação de tokens
+        institution = await InstitutionService.get_institution(db, institution_id)
+        if not institution:
+            raise HTTPException(status_code=404, detail="Instituição não encontrada")
+
+        # Detectar se admin está desativando ou reprovando a instituição
+        should_invalidate = False
+        invalidation_reason = []
+
+        if data.status is not None and data.status != institution.status:
+            if data.status != "active":
+                should_invalidate = True
+                invalidation_reason.append(f"status: {institution.status} → {data.status}")
+
+        if data.approved is not None and data.approved != institution.approved:
+            if data.approved is False:
+                should_invalidate = True
+                invalidation_reason.append(f"approved: {institution.approved} → {data.approved}")
+
+        # Se precisar invalidar, incrementar token_epoch no payload de update
+        if should_invalidate:
+            from src.services.audit_service import AuditService
+
+            old_epoch = institution.token_epoch
+            new_epoch = old_epoch + 1
+
+            # Criar novo update data com token_epoch incluído
+            update_dict = data.model_dump(exclude_unset=True)
+            update_dict["token_epoch"] = new_epoch
+            data = InstitutionUpdate(**update_dict)
+
+            # Audit log da invalidação
+            await AuditService.log(
+                session=db,
+                user_email=current_user.get("email", "unknown"),
+                action="ADMIN_ACTION",
+                resource_type="INSTITUTION",
+                resource_id=institution_id,
+                institution_id=institution_id,
+                request=request,
+                success=True,
+                details={
+                    "action": "token_invalidation",
+                    "reason": "; ".join(invalidation_reason),
+                    "old_epoch": old_epoch,
+                    "new_epoch": new_epoch,
+                    "performed_by": current_user.get("email"),
+                }
+            )
 
         institution = await InstitutionService.update_institution(db, institution_id, data)
         return institution

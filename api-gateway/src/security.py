@@ -6,7 +6,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Callable, List
 
-import bcrypt
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -37,18 +36,11 @@ JWT_EXPIRATION_DAYS_INSTITUTION = 30
 ALLOW_ANONYMOUS = os.getenv("TXEKA_ALLOW_ANONYMOUS", "false").lower() == "true"
 
 
-# ── Password hashing (bcrypt nativo) ──────────
+from src.core.password import get_password_hash, verify_password
 
-def get_password_hash(password: str) -> str:
-    password_bytes = password.encode("utf-8")
-    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
-    return hashed.decode("utf-8")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    plain_bytes = plain_password.encode("utf-8")
-    hash_bytes = hashed_password.encode("utf-8")
-    return bcrypt.checkpw(plain_bytes, hash_bytes)
+# ── Re-export password helpers (backward compatibility) ──
+# get_password_hash and verify_password are imported from src.core.password
+# above and remain available for existing importers.
 
 
 # ── JWT ───────────────────────────────────────
@@ -58,7 +50,8 @@ def create_access_token(
     user_id: Optional[str] = None,
     role: str = "system",
     institution_id: Optional[str] = None,
-    expires_delta: Optional[timedelta] = None
+    expires_delta: Optional[timedelta] = None,
+    institution_epoch: Optional[int] = None
 ) -> str:
     if expires_delta is None:
         expires_delta = timedelta(hours=JWT_EXPIRATION_HOURS)
@@ -76,6 +69,11 @@ def create_access_token(
         "iat": now,
         "type": "access"
     }
+
+    # Token Epoch Pattern: incluir epoch para invalidação stateless
+    if institution_epoch is not None:
+        payload["epoch"] = institution_epoch
+
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -92,6 +90,7 @@ def decode_token(token: str) -> Dict:
 
 
 async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict:
+    """Valida token JWT — 100% STATELESS. Não consulta banco de dados."""
     try:
         if credentials is None:
             if ALLOW_ANONYMOUS:
@@ -105,13 +104,24 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
             raise HTTPException(status_code=401, detail="Autenticação obrigatória")
 
         payload = decode_token(credentials.credentials)
-        return {
+        user = {
             "email": payload.get("email") or payload.get("sub", "unknown"),
             "role": payload.get("role", "citizen"),
             "id": payload.get("id", "unknown"),
             "institution": payload.get("institution"),
+            "epoch": payload.get("epoch"),
             "authenticated": True
         }
+
+        # NOTA: Checagem de institution.status e institution.approved foi movida
+        # para o momento de LOGIN (auth_routes.py). verify_token é stateless
+        # por design — não consulta o banco de dados.
+        #
+        # Para invalidação de tokens: usar Token Epoch Pattern.
+        # Admin incrementa institution.token_epoch → tokens antigos rejeitados
+        # nos endpoints que validam epoch (futuro) ou expiram naturalmente.
+
+        return user
     except HTTPException:
         raise
     except Exception as e:
