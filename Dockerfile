@@ -47,17 +47,17 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV ENVIRONMENT=production
 ENV TZ=Africa/Maputo
-ENV LANG=pt_MZ.UTF-8
-ENV LC_ALL=pt_MZ.UTF-8
+ENV LANG=pt_PT.UTF-8
+ENV LC_ALL=pt_PT.UTF-8
 
 # Instala runtime + locale + curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     locales \
-    && sed -i 's/# pt_MZ.UTF-8 UTF-8/pt_MZ.UTF-8 UTF-8/' /etc/locale.gen \
-    && locale-gen pt_MZ.UTF-8 \
-    && update-locale LANG=pt_MZ.UTF-8 \
+    && sed -i 's/# pt_PT.UTF-8 UTF-8/pt_PT.UTF-8 UTF-8/' /etc/locale.gen \
+    && locale-gen pt_PT.UTF-8 \
+    && update-locale LANG=pt_PT.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
 # Cria usuário não-root (mitiga Elevation of Privilege)
