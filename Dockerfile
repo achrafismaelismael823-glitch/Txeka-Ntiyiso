@@ -68,6 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd -r txeka && useradd -r -g txeka -s /bin/false txeka
 
 WORKDIR /app
+ENV PYTHONPATH=/app/api-gateway
 
 # Copia dependências do builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -88,4 +89,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # 4 workers Uvicorn para concorrência otimizada
-CMD ["uvicorn", "api-gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
