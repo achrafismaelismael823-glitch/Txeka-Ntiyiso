@@ -28,6 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Instala Poetry
 RUN pip install --no-cache-dir poetry
 
+# Copia dependência local do monorepo (txeka-core)
+# Necessário porque api-gateway/pyproject.toml referencia ../core
+COPY core/ /core/
+
 # Copia ficheiros de dependências
 COPY api-gateway/pyproject.toml api-gateway/poetry.lock* ./
 
