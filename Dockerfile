@@ -28,6 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Instala Poetry
 RUN pip install --no-cache-dir poetry
 
+# Copia dependência local do monorepo (txeka-core)
+# Necessário porque api-gateway/pyproject.toml referencia ../core
+COPY core/ /core/
+
 # Copia ficheiros de dependências
 COPY api-gateway/pyproject.toml api-gateway/poetry.lock* ./
 
@@ -47,23 +51,24 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV ENVIRONMENT=production
 ENV TZ=Africa/Maputo
-ENV LANG=pt_MZ.UTF-8
-ENV LC_ALL=pt_MZ.UTF-8
+ENV LANG=pt_PT.UTF-8
+ENV LC_ALL=pt_PT.UTF-8
 
 # Instala runtime + locale + curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     locales \
-    && sed -i 's/# pt_MZ.UTF-8 UTF-8/pt_MZ.UTF-8 UTF-8/' /etc/locale.gen \
-    && locale-gen pt_MZ.UTF-8 \
-    && update-locale LANG=pt_MZ.UTF-8 \
+    && sed -i 's/# pt_PT.UTF-8 UTF-8/pt_PT.UTF-8 UTF-8/' /etc/locale.gen \
+    && locale-gen pt_PT.UTF-8 \
+    && update-locale LANG=pt_PT.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
 # Cria usuário não-root (mitiga Elevation of Privilege)
 RUN groupadd -r txeka && useradd -r -g txeka -s /bin/false txeka
 
 WORKDIR /app
+ENV PYTHONPATH=/app/api-gateway
 
 # Copia dependências do builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -84,4 +89,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # 4 workers Uvicorn para concorrência otimizada
-CMD ["uvicorn", "api-gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
