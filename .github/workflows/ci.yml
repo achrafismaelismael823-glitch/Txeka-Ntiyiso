@@ -159,14 +159,44 @@ jobs:
   gate-4-docker:
     name: "🟣 Gate 4: Docker Build & Health Check"
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: txeka_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: "🟣 Docker Build"
         run: docker build -t txeka-ntiyiso:test .
       - name: "🟣 Docker Run + Health Check"
         run: |
+          # Aguarda PostgreSQL estar pronto
+          until pg_isready -h localhost -p 5432 -U test; do
+            echo "Aguardando PostgreSQL..."; sleep 1;
+          done
+
           # Sobe o container em background com env mínimo
-          docker run -d             --name txeka-test             -e SECRET_KEY=test-secret-key-32-chars-long!!!             -e JWT_SECRET_KEY=test-jwt-secret-key-32-chars-long!!!             -e ALGORITHM=HS256             -e ACCESS_TOKEN_EXPIRE_MINUTES=30             -e DATABASE_URL=sqlite+aiosqlite:///./test.db             -e ENVIRONMENT=test             -e SENTRY_DSN=""             -p 8000:8000             txeka-ntiyiso:test
+          docker run -d \
+            --name txeka-test \
+            --network host \
+            -e SECRET_KEY=test-secret-key-32-chars-long!!! \
+            -e JWT_SECRET_KEY=test-jwt-secret-key-32-chars-long!!! \
+            -e ALGORITHM=HS256 \
+            -e ACCESS_TOKEN_EXPIRE_MINUTES=30 \
+            -e DATABASE_URL=postgresql+asyncpg://test:test@localhost:5432/txeka_test \
+            -e ENVIRONMENT=test \
+            -e SENTRY_DSN="" \
+            -p 8000:8000 \
+            txeka-ntiyiso:test
 
           echo "Aguardando startup (40s max)..."
           for i in {1..40}; do
