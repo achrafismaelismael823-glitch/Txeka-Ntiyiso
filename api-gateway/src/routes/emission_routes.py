@@ -17,7 +17,7 @@ from src.database import get_db
 from src.models.emission import EmitResponse
 from src.models.audit_log import now_cat
 from src.core.qr_generator import gerar_qr_code
-from src.security import verify_token
+from src.security import verify_token, verify_institution_active
 from src.services.emission_service import EmissionService
 from src.services.audit_service import AuditService
 from src.exceptions import TxekaNtiyisoException
@@ -97,7 +97,7 @@ async def emit_document(request: Request,
     document_type: str = "DUAT",
     institution_id: str = "INAGE",
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(verify_institution_active)
 ) -> EmitResponse:
     """Emite documento: hash SHA-256 + QR code + audit log. APENAS PDF."""
 
@@ -191,7 +191,7 @@ async def emit_document(request: Request,
 async def emit_document_bulk(request: Request, 
     payload: BulkEmissionInput,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(verify_institution_active)
 ):
     """Emite múltiplos documentos em lote (B2B/B2G). APENAS PDF."""
     service = EmissionService(db)

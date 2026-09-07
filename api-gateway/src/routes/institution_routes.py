@@ -14,7 +14,7 @@ from src.models.schemas import (
     InstitutionCredits, InstitutionDashboard
 )
 from src.services.institution_service import InstitutionService
-from src.security import verify_token, verify_role
+from src.security import verify_token, verify_role, verify_institution_active
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +226,7 @@ async def regenerate_api_key(institution_id: str, db: AsyncSession = Depends(get
 @router.get("/me/dashboard", response_model=InstitutionDashboard)
 @limiter.limit("60/minute")
 async def get_my_dashboard(request: Request, 
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(verify_institution_active),
     db: AsyncSession = Depends(get_db)
 ):
     if current_user["role"] not in ["institution", "admin"]:

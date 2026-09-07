@@ -13,7 +13,7 @@ from urllib.parse import unquote
 from src.database import get_db
 from src.models.models import Document
 from src.models.emission import RevokeRequest
-from src.security import verify_token
+from src.security import verify_token, verify_institution_active
 from src.services.audit_service import AuditService
 
 CAT = timezone(timedelta(hours=2), name="CAT")
@@ -27,7 +27,7 @@ async def revoke_emission(
     doc_id: str,
     payload: RevokeRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(verify_institution_active)
 ) -> Dict[str, Any]:
     """Revoga documento. Apenas admin ou instituição proprietária."""
     doc_id_decoded = unquote(doc_id)

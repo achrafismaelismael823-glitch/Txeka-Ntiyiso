@@ -141,6 +141,54 @@ def verify_role(required_role: str) -> Callable:
     return role_checker
 
 
+# ── Stateful Institution Validation (Token Epoch) ──
+
+from sqlalchemy import select
+from src.database import AsyncSession, get_db
+from src.models import Institution
+
+async def verify_institution_active(
+    current_user: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Valida estado da instituicao e Token Epoch — stateful layer."""
+    institution_id = current_user.get("institution")
+
+    # Admin, system, citizen sem institution_id → bypass
+    if not institution_id:
+        return current_user
+
+    result = await db.execute(
+        select(Institution).where(Institution.id == institution_id)
+    )
+    institution = result.scalar_one_or_none()
+
+    if not institution:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalido ou expirado. Autentique-se novamente.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if institution.status != "active" or institution.approved is not True:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalido ou expirado. Autentique-se novamente.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token_epoch = current_user.get("epoch")
+    # STRICT MODE: reject tokens without epoch (legacy pre-v3.1)
+    if token_epoch is None or institution.token_epoch != token_epoch:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalido ou expirado. Autentique-se novamente.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return current_user
+
+
 # ── Scopes (prepared, not active) ─────────────
 
 class AuthConfig:
