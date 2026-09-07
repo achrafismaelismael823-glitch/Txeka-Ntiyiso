@@ -259,7 +259,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
 |---------|-------|------|
 | **RTO** | 4 horas | Tempo máximo para restaurar serviço |
 | **RPO** | 15 minutos | Perda máxima de dados aceitável |
-| **Retenção** | Conservação operacional | Hashes e logs (não AC; Decreto 32/2021) |
+| **Retenção** | Política operacional | Hashes e logs (finalidade/necessidade; a formalizar) |
 | **Retenção backup** | 30 dias | Cópias de segurança operacionais |
 
 ---
@@ -308,8 +308,8 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 |-----------|-----------|---------------|--------|
 | Autenticidade | Lei 3/2017, Art. 48 | JWT + institution_id | ✅ |
 | Integridade | Lei 3/2017, Art. 49 | SHA-256 imutável | ✅ |
-| Não-repúdio | Lei 3/2017, Art. 50 | Audit logs + timestamp CAT | ✅ |
-| Conservação de hashes e logs | Decreto 32/2021 | Volumes persistentes `txeka-data` (não AC) | ✅ |
+| Rastreabilidade operacional | Lei 3/2017 | Audit logs + timestamp CAT | ✅ |
+| Conservação de hashes e logs | Política operacional | Volumes persistentes `txeka-data` | ✅ |
 | Proteção de ICI | Resolução 69/2021 (PENSC) | Rede isolada, usuário não-root, TLS 1.3 | ✅ |
 | Cifragem em trânsito | Resolução 69/2021 (PENSC) | HTTPS obrigatório (TLS 1.3) | ✅ |
 | Cifragem em repouso | Resolução 69/2021 (PENSC) | PostgreSQL encriptação nativa | ✅ |
@@ -348,5 +348,5 @@ Disponibilizaremos:
 
 ---
 
-*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 32/2021 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 (SCDM) e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
 *Versão 2.0 — Julho 2026*

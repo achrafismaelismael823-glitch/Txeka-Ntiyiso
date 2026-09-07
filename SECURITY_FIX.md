@@ -133,8 +133,8 @@ else:
 
 | Dado | Retencao | Backup |
 |------|----------|--------|
-| Hashes de documentos | Conservacao operacional (nao AC; Decreto 32/2021) | Diario, criptografado |
-| Logs de auditoria | 20 anos | Diario, criptografado |
+| Hashes de documentos | Politica operacional (a formalizar) | Diario, criptografado |
+| Logs de auditoria | Politica operacional (a formalizar) | Diario, criptografado |
 | Dados de instituicoes | Indefinida | Semanal |
 | Tokens JWT | 30-90 dias | Nao aplicavel (stateless) |
 
@@ -330,7 +330,7 @@ jobs:
 - [OWASP Top 10 (2025)](https://owasp.org/Top10/)
 - [FastAPI Security](https://fastapi.tiangolo.com)
 - [PostgreSQL Row-Level Security](https://postgresql.org)
-- [Decreto n. 32/2021 — Servicos de Confianca e Validacao Cronologica](doc/legal/COMPLIANCE.md)
+- [Decreto n. 59/2019 — Sistema de Certificacao Digital (SCDM)](doc/legal/COMPLIANCE.md)
 
 ---
 

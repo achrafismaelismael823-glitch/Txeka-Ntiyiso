@@ -103,9 +103,9 @@ O Txeka Ntiyiso calcula o hash SHA-256 **no servidor**, em memória. O PDF é en
 
 ## ⚖️ Declaração de Posição Regulatória
 
-O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que garante a **autenticidade, integridade e não-repúdio** de documentos digitais através de criptografia **SHA-256** e **QR codes verificáveis**.
+O **Txeka Ntiyiso** é uma infraestrutura tecnológica de **verificação de integridade documental e evidência operacional**. Utiliza **SHA-256** e **QR codes** para comprovar correspondência criptográfica com um registo previamente criado.
 
-> **Declaração Regulatória:** O Txeka Ntiyiso **não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017. Não emite certificados digitais qualificados, chaves privadas, assinaturas digitais nem carimbos de tempo qualificados. Atua exclusivamente como **validador de integridade criptográfica** e **motor de registo de auditoria temporal imutável**.
+> **Declaração Regulatória:** O Txeka Ntiyiso **não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017 (Arts. 54.º–57.º e 59.º) nem substitui o SCDM (Decreto n.º 59/2019). Não emite certificados digitais, chaves privadas, assinaturas digitais nem carimbos de tempo qualificados. A verificação comprova correspondência criptográfica com o registo Txeka; **não constitui certificado digital emitido pelo SCDM**.
 
 ---
 
@@ -130,7 +130,7 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
      |           |
      v           v
 +---------+  +--------------+
-|PostgreSQL|  |  Audit Logs  |  <- Trilha forense imutável (20 anos)
+|PostgreSQL|  |  Audit Logs  |  <- Rasto de auditoria operacional
 |  15     |  |   Imutáveis  |
 +----+----+  +--------------+
      |
@@ -257,11 +257,11 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 | Legislação | Âmbito | Alinhamento |
 |------------|--------|-------------|
-| Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade, autenticidade e não-repúdio via hashes imutáveis |
-| Decreto n.º 32/2021 | Serviços de Confiança e Validação Cronológica | Rasto de auditoria e carimbo de tempo CAT; retenção de 20 anos aplica-se às Entidades Certificadoras |
+| Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade via SHA-256; evidência operacional. Não é Entidade Certificadora (Arts. 54.º–57.º e 59.º) |
+| Decreto n.º 59/2019 | Sistema de Certificação Digital (SCDM) | Delimitação: o Txeka Ntiyiso não pertence ao SCDM; a verificação não é certificado digital |
 
-- **Proteção de Dados:** Artigo 71.º da Constituição e Privacidade por Design — o PDF é processado em memória e descartado; não retemos o ficheiro original.
-- **Retenção:** Hashes e logs de auditoria imutáveis conservados para verificação; o PDF original não é persistido.
+- **Proteção de Dados:** Artigo 71.º da Constituição e Privacidade por Design — o PDF é processado em memória e descartado. Tratamos dados operacionais (email, IP, actor) nos termos dos Arts. 63.º–65.º da Lei n.º 3/2017.
+- **Retenção:** Hashes e logs conservados por política operacional (finalidade/necessidade). Não existe prazo legal de 20 anos aplicável ao Txeka Ntiyiso.
 
 ---
 
@@ -272,7 +272,7 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 | ⏱️ Tempo de Validação | Desempenho típico < 100 ms em produção |
 | 🛡️ Algoritmo Core | SHA-256 Criptográfico |
 | 💾 PDF original persistido | Não (descartado após o hash) |
-| ⏳ Retenção de Trilha | 20 anos |
+| ⏳ Retenção de Trilha | Política operacional (a formalizar) |
 | 🌍 Cobertura Regional | Pronto para escala imediata em Maputo, Beira, Nampula e resto do país |
 
 ---

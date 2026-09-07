@@ -88,7 +88,7 @@ Content-Type: application/json
 }
 ```
 
-> **Importante:** A revogação **não apaga** o registo — ele permanece na auditoria com status "revogado". Isto garante rastreabilidade completa e conformidade com a Lei 3/2017 (não-repúdio).
+> **Importante:** A revogação **não apaga** o registo — ele permanece na auditoria com status "revogado". Isto garante rastreabilidade operacional (Lei n.º 3/2017); **não constitui não-repúdio do SCDM**.
 >
 > Instantaneamente, verificações futuras retornarão **"Revogado"**.
 
@@ -180,10 +180,10 @@ R: SHA-256 é padrão militar e bancário. É impossível falsificar sem ser det
 R: A verificação é online apenas. Pode guardar o certificado PDF para consulta offline, mas a validação requer conectividade.
 
 **P: Quem tem acesso aos dados?**
-R: Só o hash SHA-256 e metadados (data, instituição). Nenhum dado pessoal é guardado. Alinhado com o Artigo 71.º da Constituição e com a Lei n.º 3/2017 (Transações Eletrónicas).
+R: O PDF original não é guardado. Persistimos o hash SHA-256, metadados (data, instituição) e dados operacionais de conta/auditoria (email, actor, eventualmente IP), nos termos dos Arts. 63.º–65.º da Lei n.º 3/2017 e do Artigo 71.º da Constituição.
 
 **P: Quanto tempo os registos são guardados?**
-R: Hashes e logs de auditoria são conservados de forma imutável para verificação. O PDF original não é retido. O prazo de 20 anos do Decreto n.º 32/2021 aplica-se às Entidades Certificadoras; o Txeka Ntiyiso não o é.
+R: Hashes e logs de auditoria são conservados para verificação, por política operacional. O PDF original não é retido. Não existe prazo legal de 20 anos aplicável ao Txeka Ntiyiso.
 
 **P: Posso integrar com o meu sistema interno?**
 R: Sim. Oferecemos API REST completa com documentação Swagger e exemplos de código em Python e JavaScript.
