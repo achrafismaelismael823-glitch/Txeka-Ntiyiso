@@ -40,7 +40,7 @@ Sistema distribuído B2G/B2B com componente principal:
 
 - **API Gateway** (FastAPI + PostgreSQL)
 - **Portal Web** (React + Tailwind CSS)
-- **Motor de Hashing** (SHA-256 client-side/server-side)
+- **Motor de Hashing** (SHA-256 no servidor, em memória)
 - **Sistema de Auditoria** (logs imutáveis estruturados em JSON)
 
 Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Docker Compose**. A produção cloud atual utiliza Render.com + Supabase; a produção nacional utiliza Docker on-premise em datacenters moçambicanos.
@@ -66,8 +66,7 @@ Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Doc
 |-----------|-----------|
 | **API First** | Toda a funcionalidade é exposta via API REST antes de ser consumida por qualquer interface. Documentação OpenAPI/Swagger gerada automaticamente. |
 | **Security by Design** | Autenticação JWT stateless, bcrypt para passwords, rate limiting por tier, validação rigorosa de inputs, CORS restrito. |
-| **Privacy by Design** | Zero retenção de documentos originais. Apenas hashes SHA-256 de 64 caracteres são persistidos. |
-| **Zero-Knowledge** | O documento original é processado em memória e descartado. O servidor nunca vê, armazena ou transmite o conteúdo do ficheiro. |
+| **Privacy by Design** | O PDF é processado em memória para calcular o hash e é descartado. Apenas hashes SHA-256 de 64 caracteres são persistidos. |
 | **Multi-Tenant** | Segregação lógica por `institution_id`. Cada instituição opera num tenant isolado com dados, créditos e dashboard próprios. |
 | **Cloud Native** | Containerização Docker, healthchecks, auto-scaling ready, deploy em qualquer ambiente cloud ou on-premise. |
 | **Auditabilidade** | Cada operação é registada imutavelmente em JSON com timestamp CAT (UTC+2), IP, user e resultado. Retenção mínima de 20 anos. |
@@ -817,14 +816,14 @@ GET /health
 
 **Decisão:** SHA-256 com PostgreSQL oferece imutabilidade via audit logs sem complexidade de blockchain.
 
-### 13.4 Zero-Knowledge: Client-Side vs Server-Side Hashing
+### 13.4 Privacidade por Design: Hashing no Servidor
 
 | Abordagem | Privacidade | Complexidade | Conformidade |
 |-----------|------------|--------------|--------------|
 | **Server-Side** (atual) | Alta (não guarda PDF) | Baixa | Lei 3/2017 ✅ |
 | **Client-Side** (futuro) | Máxima (nunca toca no PDF) | Média | Lei 3/2017 ✅ |
 
-**Decisão atual:** Server-side hashing — o PDF é processado em memória, o hash é guardado, o PDF é descartado. Nunca persistido.
+**Decisão atual:** hashing no servidor — o PDF é processado em memória, o hash é guardado, o PDF é descartado. Nunca persistido.
 
 ---
 

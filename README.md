@@ -46,7 +46,7 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 | **Integridade** | Garantia de que o documento não foi alterado desde a emissão |
 | **Autenticidade** | Confirmação da origem e legitimidade do documento |
 | **Rastreabilidade** | Trilha de auditoria completa de todas as operações |
-| **Privacidade por Design** | Processamento exclusivo de hashes, zero exposição de dados pessoais |
+| **Privacidade por Design** | O PDF é processado em memória para calcular o hash SHA-256 e é descartado de imediato. Não retemos o ficheiro original. |
 | **Interoperabilidade** | API REST padronizada para integração com sistemas existentes |
 | **Auditabilidade** | Logs imutáveis acessíveis para auditorias internas e externas |
 | **Segurança por Defeito** | Configurações seguras por padrão, sem necessidade de ajustes manuais |
@@ -87,17 +87,17 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 
 ---
 
-## 🛡️ Zero-Knowledge: Privacidade por Design
+## 🛡️ Privacidade por Design
 
-O Txeka Ntiyiso foi concebido para que os documentos originais permaneçam no dispositivo do utilizador. A plataforma processa apenas o hash criptográfico necessário para a verificação da integridade documental.
+O Txeka Ntiyiso calcula o hash SHA-256 **no servidor**, em memória. O PDF é enviado na emissão (`POST /api/v1/certify`), validado, hashed e **descartado de imediato**. O ficheiro original **não é gravado** na base de dados nem em disco.
 
-1. O utilizador anexa o PDF no portal.
-2. O Hash SHA-256 é calculado **diretamente no navegador** (client-side).
-3. Apenas a linha de 64 caracteres viaja até ao servidor.
-4. O documento original **não sai do dispositivo**.
-5. O sistema regista: *"Esta impressão digital foi validada e existe desde [data]"*.
+1. A instituição anexa o PDF no portal (ou envia via API).
+2. A API valida o ficheiro (extensão `.pdf`, MIME `application/pdf`, magic bytes `%PDF-`).
+3. O hash SHA-256 é calculado em memória a partir dos bytes do PDF.
+4. Persistimos o hash (64 caracteres) e metadados operacionais — não o conteúdo do PDF.
+5. O documento original é descartado após o cálculo do hash.
 
-**Resultado:** O risco de exposição de dados confidenciais é minimizado na origem, por construção arquitetural.
+**Resultado:** minimização de dados por construção — o servidor precisa do PDF para emitir, mas não o retém.
 
 ---
 
@@ -116,13 +116,13 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
            |
            v
    +---------------+
-   |  Client-Side  |  <- Hash SHA-256 calculado no navegador
-   |   SHA-256     |
+   |  Upload PDF   |  <- Ficheiro em trânsito (HTTPS)
+   |   (portal)    |
    +-------+-------+
-           |  Hash (64 chars)
+           |  PDF (multipart)
            v
    +---------------+
-   |  API REST     |  <- FastAPI + Python 3.11 + JWT + Rate Limiting
+   |  API REST     |  <- Hash SHA-256 em memória; PDF descartado
    |  Txeka Ntiyiso|     Prefixo: /api/v1
    +-------+-------+
            |
@@ -260,7 +260,7 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 | Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade, autenticidade e não-repúdio via hashes imutáveis |
 | Decreto n.º 59/2019 | Serviços de Validação Cronológica e Eletrónica | Retenção mínima de 20 anos; trilha de auditoria completa |
 
-- **Proteção de Dados:** A arquitetura Zero-Knowledge reduz drasticamente o processamento de dados pessoais sensíveis em servidores centrais.
+- **Proteção de Dados:** Privacidade por Design — o PDF é processado em memória e descartado; não retemos o ficheiro original.
 - **Retenção:** Hashes e logs de auditoria imutáveis conservados de forma redundante pelo período mínimo de 20 anos.
 
 ---
@@ -271,7 +271,7 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 |---------|-------|
 | ⏱️ Tempo de Validação | Desempenho típico < 100 ms em produção |
 | 🛡️ Algoritmo Core | SHA-256 Criptográfico |
-| 💾 Dados Pessoais Armazenados | Zero (0%) |
+| 💾 PDF original persistido | Não (descartado após o hash) |
 | ⏳ Retenção de Trilha | 20 anos |
 | 🌍 Cobertura Regional | Pronto para escala imediata em Maputo, Beira, Nampula e resto do país |
 

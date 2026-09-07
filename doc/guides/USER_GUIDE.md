@@ -20,7 +20,7 @@
 
 O Txeka Ntiyiso é uma plataforma de infraestrutura digital que permite às instituições emitirem documentos com **prova de integridade criptográfica** e a qualquer pessoa verificar a sua autenticidade em **menos de 100 milissegundos**.
 
-> **Princípio fundamental:** A plataforma armazena apenas **hashes SHA-256** (impressões digitais matemáticas de 64 caracteres). Os documentos originais **nunca** saem do ambiente do cliente.
+> **Princípio fundamental:** A plataforma armazena **hashes SHA-256** (impressões digitais matemáticas de 64 caracteres). O PDF é processado em memória no servidor e **descartado** após o cálculo do hash — o ficheiro original **não é retido**.
 
 ---
 
@@ -113,7 +113,7 @@ Content-Type: application/json
 4. O sistema recalcula o hash e compara com o registo
 5. Resultado instantâneo
 
-> **Nota:** O cálculo do hash é feito **no navegador** (client-side). O documento original **nunca** é enviado para o servidor.
+> **Nota:** O cálculo do hash é feito **no servidor**, em memória. O PDF original é **descartado** após o hash — não é gravado na base de dados.
 
 ---
 

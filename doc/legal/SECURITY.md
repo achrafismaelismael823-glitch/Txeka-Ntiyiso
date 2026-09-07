@@ -34,7 +34,7 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 | **S**poofing | Falsificar identidade do emissor | JWT + institution_id validado no servidor |
 | **T**ampering | Alterar documento após emissão | SHA-256 imutável; qualquer alteração invalida hash |
 | **R**epudiation | Emissor negar que emitiu | Audit logs imutáveis com timestamp CAT (UTC+2) |
-| **I**nformation Disclosure | Vazamento de dados | Zero-Knowledge: apenas hashes de 64 caracteres armazenados |
+| **I**nformation Disclosure | Vazamento de dados | Privacidade por Design: PDF processado em memória e descartado; apenas o hash é persistido |
 | **D**enial of Service | Sobrecarga do sistema | Rate limiting (100 req/min), resource limits (1.0 CPU / 512M RAM) |
 | **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root `txeka` no container |
 

@@ -59,7 +59,7 @@ Para efeitos do Txeka Ntiyiso, as seguintes definições aplicam-se:
 **Exigência legal:** Garantir que o documento não foi modificado após emissão.
 
 **Implementação Txeka Ntiyiso:**
-- **SHA-256** do documento original calculado client-side (navegador)
+- **SHA-256** do documento original calculado no servidor, em memória; o PDF é descartado após o hash
 - Qualquer alteração de **1 byte** gera hash completamente diferente
 - Verificação compara hash calculado vs hash guardado no momento da emissão
 - SHA-256 é função **one-way**: impossível reverter ou forjar colisão
@@ -130,28 +130,28 @@ A **Política Nacional de Segurança Cibernética e Estratégia da sua Implement
 
 ## Proteção de Dados e Privacidade
 
-### Princípio Zero-Knowledge
+### Princípio de Privacidade por Design
 
 O Txeka Ntiyiso implementa **Privacidade por Design** (Privacy by Design):
 
 | Dado | Processado? | Armazenado? | Nota |
 |------|-------------|-------------|------|
-| Documento original (PDF) | Sim (client-side) | **Não** | Hash calculado no navegador |
+| Documento original (PDF) | Sim (em memória, no servidor) | **Não** | Hash calculado e PDF descartado |
 | Hash SHA-256 | Sim | **Sim** | 64 caracteres hexadecimais |
-| Metadados (data, tipo, instituição) | Sim | **Sim** | Sem identificação pessoal |
-| Dados pessoais (nome, BI, NIF) | **Não** | **Não** | Nunca solicitados |
+| Metadados (data, tipo, instituição) | Sim | **Sim** | Identificadores operacionais |
+| Dados civis do titular (nome, BI, NIF) | **Não** | **Não** | Nunca solicitados |
 | Chaves privadas | **Não** | **Não** | Não faz parte do modelo |
 
-**Resultado:** A plataforma **nunca** processa dados pessoais identificáveis (PII). Está isenta de obrigações de registo de proteção de dados ao abrigo da Lei n.º 3/2017.
+**Resultado:** o conteúdo binário do PDF **não é retido**. Persistimos hashes e metadados operacionais necessários à verificação e à auditoria.
 
 ### Conformidade com a Lei n.º 3/2017 (Proteção de Dados e Privacidade)
 
 O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy by Design), garantindo conformidade absoluta com as regras de sigilo e salvaguarda de dados previstas na Lei n.º 3/2017:
 
-- **Minimização:** A plataforma processa e armazena exclusivamente hashes criptográficos de 64 caracteres hexadecimais. Os documentos originais (PDFs) nunca saem do ambiente do cliente (processamento client-side), eliminando qualquer risco de fuga de dados sensíveis ou PII (Personally Identifiable Information).
+- **Minimização:** A plataforma processa o PDF em memória para calcular o hash SHA-256 e descarta o ficheiro de imediato. Não há persistência do documento original. Persistimos hashes criptográficos e metadados operacionais.
 - **Integridade e Rastreabilidade:** Os logs de auditoria garantem transparência total sobre as operações realizadas pelas instituições autorizadas, sem expor dados dos cidadãos titulares dos documentos.
 
-**Resultado:** Como a plataforma não recolhe, armazena ou processa dados pessoais identificáveis no seu servidor central, mitiga-se a necessidade de processos burocráticos complexos de notificação de bases de dados, mantendo o foco na segurança matemática pura.
+**Resultado:** Como a plataforma não retém o PDF original nem recolhe dados de identificação civil do titular, o risco de exposição do conteúdo documental é mitigado na origem, por minimização de dados.
 
 ---
 
@@ -214,7 +214,7 @@ O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy b
 | **Integridade** | Garantia de que o documento não foi alterado | Identidade entre hash SHA-256 do documento original e hash armazenado |
 | **Não-repúdio** | Impossibilidade de negar a emissão | Registo imutável com timestamp, actor e evidência criptográfica |
 | **Hash SHA-256** | Não definido em lei (termo técnico) | Impressão digital matemática de 64 caracteres hexadecimais |
-| **Zero-Knowledge** | Não definido em lei (termo técnico) | Arquitetura onde o servidor nunca acede ao conteúdo original |
+| **Privacidade por Design** | Não definido em lei (termo técnico) | O PDF é processado em memória para o hash e descartado; o ficheiro original não é persistido |
 | **Prova de existência** | Evidência de que um documento existia num momento | Registo temporal do hash na base de dados |
 | **Selo de tempo** | Carimbo de tempo qualificado (ICP) | Registo temporal sincronizado com CAT (não qualificado) |
 | **Entidade Certificadora** | Entidade autorizada a emitir certificados digitais | **Não aplicável** — Txeka Ntiyiso declara explicitamente não o ser |

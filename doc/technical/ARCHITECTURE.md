@@ -46,7 +46,7 @@
 +---------------------+
 ```
 
-**Princípio Zero-Knowledge:** A plataforma armazena apenas hashes SHA-256 (64 caracteres hexadecimais). Os documentos originais (PDF) nunca saem do ambiente do cliente.
+**Princípio de Privacidade por Design:** A plataforma armazena hashes SHA-256 (64 caracteres hexadecimais). O PDF é processado em memória no servidor e descartado — o ficheiro original não é persistido.
 
 ---
 
@@ -314,7 +314,7 @@ CREATE INDEX idx_audit_logs_details ON audit_logs USING GIN(details);
 | **S**poofing | Falsificar identidade | JWT + institution_id validado no servidor |
 | **T**ampering | Alterar documento | SHA-256 imutável; qualquer alteração invalida hash |
 | **R**epudiation | Negar emissão | Audit logs imutáveis com timestamp CAT |
-| **I**nformation Disclosure | Vazamento | Zero-Knowledge: apenas hashes armazenados |
+| **I**nformation Disclosure | Vazamento | Privacidade por Design: PDF descartado; apenas hashes persistidos |
 | **D**enial of Service | Sobrecarga | Rate limiting (100 req/min), resource limits |
 | **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root no container |
 
