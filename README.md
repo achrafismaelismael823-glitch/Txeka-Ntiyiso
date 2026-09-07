@@ -83,7 +83,7 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 - **Criptografia SHA-256:** Algoritmo criptográfico amplamente adotado na indústria. Qualquer alteração ao ficheiro original modifica completamente o hash, tornando a adulteração imediatamente detetável.
 - **Velocidade Extrema:** Desempenho típico inferior a 100 ms em ambiente de produção.
 - **Soberania Nacional:** Custos fixos em Meticais e total respeito pelo sigilo de dados do Estado.
-- **Retenção de 20 anos:** Registos de auditoria imutáveis conforme Decreto n.º 59/2019.
+- **Rasto de auditoria:** Hashes e logs imutáveis conservados para verificação; o PDF original não é retido (não somos Entidade Certificadora).
 
 ---
 
@@ -159,7 +159,7 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
 
 **Ambiente Local:** Docker + docker-compose com PostgreSQL 15, pronto para `docker-compose up`.
 
-**Futuro:** Migração para infraestrutura nacional (Docker on-premise) para soberania digital, conformidade com a Lei de Proteção de Dados Pessoais e resiliência independente de conectividade internacional.
+**Futuro:** Migração para infraestrutura nacional (Docker on-premise) para soberania digital, alinhamento com o Artigo 71.º da Constituição e resiliência independente de conectividade internacional.
 
 ---
 
@@ -258,10 +258,10 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 | Legislação | Âmbito | Alinhamento |
 |------------|--------|-------------|
 | Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade, autenticidade e não-repúdio via hashes imutáveis |
-| Decreto n.º 59/2019 | Serviços de Validação Cronológica e Eletrónica | Retenção mínima de 20 anos; trilha de auditoria completa |
+| Decreto n.º 32/2021 | Serviços de Confiança e Validação Cronológica | Rasto de auditoria e carimbo de tempo CAT; retenção de 20 anos aplica-se às Entidades Certificadoras |
 
-- **Proteção de Dados:** Privacidade por Design — o PDF é processado em memória e descartado; não retemos o ficheiro original.
-- **Retenção:** Hashes e logs de auditoria imutáveis conservados de forma redundante pelo período mínimo de 20 anos.
+- **Proteção de Dados:** Artigo 71.º da Constituição e Privacidade por Design — o PDF é processado em memória e descartado; não retemos o ficheiro original.
+- **Retenção:** Hashes e logs de auditoria imutáveis conservados para verificação; o PDF original não é persistido.
 
 ---
 

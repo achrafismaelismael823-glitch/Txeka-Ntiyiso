@@ -180,10 +180,10 @@ R: SHA-256 é padrão militar e bancário. É impossível falsificar sem ser det
 R: A verificação é online apenas. Pode guardar o certificado PDF para consulta offline, mas a validação requer conectividade.
 
 **P: Quem tem acesso aos dados?**
-R: Só o hash SHA-256 e metadados (data, instituição). Nenhum dado pessoal é guardado. Totalmente conforme com a Lei 3/2017.
+R: Só o hash SHA-256 e metadados (data, instituição). Nenhum dado pessoal é guardado. Alinhado com o Artigo 71.º da Constituição e com a Lei n.º 3/2017 (Transações Eletrónicas).
 
 **P: Quanto tempo os registos são guardados?**
-R: Mínimo 20 anos, em compliance com o Decreto n.º 59/2019. Impossível apagar (imutabilidade garantida).
+R: Hashes e logs de auditoria são conservados de forma imutável para verificação. O PDF original não é retido. O prazo de 20 anos do Decreto n.º 32/2021 aplica-se às Entidades Certificadoras; o Txeka Ntiyiso não o é.
 
 **P: Posso integrar com o meu sistema interno?**
 R: Sim. Oferecemos API REST completa com documentação Swagger e exemplos de código em Python e JavaScript.

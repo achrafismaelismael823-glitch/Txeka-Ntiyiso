@@ -259,7 +259,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
 |---------|-------|------|
 | **RTO** | 4 horas | Tempo máximo para restaurar serviço |
 | **RPO** | 15 minutos | Perda máxima de dados aceitável |
-| **Retenção** | 20 anos | Hashes e logs (Decreto 59/2019) |
+| **Retenção** | Conservação operacional | Hashes e logs (não AC; Decreto 32/2021) |
 | **Retenção backup** | 30 dias | Cópias de segurança operacionais |
 
 ---
@@ -309,15 +309,15 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 | Autenticidade | Lei 3/2017, Art. 48 | JWT + institution_id | ✅ |
 | Integridade | Lei 3/2017, Art. 49 | SHA-256 imutável | ✅ |
 | Não-repúdio | Lei 3/2017, Art. 50 | Audit logs + timestamp CAT | ✅ |
-| Retenção 20 anos | Decreto 59/2019 | Volumes persistentes `txeka-data` | ✅ |
+| Conservação de hashes e logs | Decreto 32/2021 | Volumes persistentes `txeka-data` (não AC) | ✅ |
 | Proteção de ICI | Resolução 69/2021 (PENSC) | Rede isolada, usuário não-root, TLS 1.3 | ✅ |
 | Cifragem em trânsito | Resolução 69/2021 (PENSC) | HTTPS obrigatório (TLS 1.3) | ✅ |
 | Cifragem em repouso | Resolução 69/2021 (PENSC) | PostgreSQL encriptação nativa | ✅ |
 | Rate limiting | Banco de Moçambique | 100 req/min (público), 1000 req/min (B2B) | ✅ |
 | Zero PII | Banco de Moçambique | Apenas hashes de 64 caracteres | ✅ |
 | Trilha de auditoria | Banco de Moçambique | Tabela `audit_logs` imutável | ✅ |
-| Backup automático | Decreto 59/2019 | Script diário + retenção 30 dias | ✅ |
-| RTO/RPO | Decreto 59/2019 | 4h / 15min | ✅ |
+| Backup automático | Boa prática operacional | Script diário + retenção 30 dias | ✅ |
+| RTO/RPO | Boa prática operacional | 4h / 15min | ✅ |
 
 ---
 
@@ -348,5 +348,5 @@ Disponibilizaremos:
 
 ---
 
-*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 32/2021 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
 *Versão 2.0 — Julho 2026*

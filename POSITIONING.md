@@ -60,7 +60,7 @@ Ao registar cada ação de emissão, verificação e revogação na tabela audit
 | **Hash SHA-256** | Algoritmo criptográfico que gera uma impressão digital única de 64 caracteres hexadecimais para cada documento. |
 | **QR Code Verificável** | Código bidimensional que permite a qualquer cidadão verificar a autenticidade de um documento via telemóvel, sem registo obrigatório. |
 | **API REST** | Interface padronizada para integração com sistemas governamentais e corporativos existentes. |
-| **Logs de Auditoria** | Registos imutáveis estruturados em JSON de todas as operações, com retenção mínima de 20 anos. |
+| **Logs de Auditoria** | Registos imutáveis estruturados em JSON de todas as operações, conservados para auditoria (o Txeka Ntiyiso não é Entidade Certificadora). |
 | **Privacidade por Design** | O PDF transita para o servidor apenas para o cálculo do hash; é descartado de imediato. Não há persistência do ficheiro original. |
 
 ---
@@ -69,9 +69,9 @@ Ao registar cada ação de emissão, verificação e revogação na tabela audit
 
 | Legislação / Regulamento | Alinhamento Txeka Ntiyiso |
 |--------------------------|---------------------------|
-| **Lei n.º 3/2017** (Transações Eletrónicas) | Foi concebido em conformidade com os princípios de integridade e não-repúdio via hashes SHA-256 imutáveis e logs de auditoria detalhados. |
-| **Decreto n.º 59/2019** (Regulamento de Certificação) | Estrutura técnica e pipeline preparados para suporte à retenção de registos de logs por até 20 anos. |
-| **Proteção de Dados e Privacidade** | Alinhado com o Capítulo V da Lei n.º 3/2017 através de Privacidade por Design: o PDF não é retido; persistimos hashes e metadados operacionais. |
+| **Lei n.º 3/2017** (Transações Eletrónicas) | Alinhado com autenticidade (Art. 14.º), integridade (Art. 15.º) e não-repúdio (Art. 16.º) via hashes SHA-256 e logs de auditoria. |
+| **Decreto n.º 32/2021** (Serviços de Confiança) | Validação cronológica e rasto de auditoria com carimbo de tempo CAT. O prazo de retenção de 20 anos aplica-se às Entidades Certificadoras; o Txeka Ntiyiso não o é. |
+| **Proteção de Dados e Privacidade** | Alinhado com o Artigo 71.º da Constituição (direito à privacidade) através de Privacidade por Design: o PDF não é retido; persistimos hashes e metadados operacionais. |
 | **Resolução n.º 69/2021** (Segurança Cibernética) | Mascaramento ativo de IPs em consultas públicas e isolamento lógico para proteção de infraestruturas críticas. |
 | **Soberania Digital** | Arquitetura baseada em Docker, desenhada e pronta para deploys on-premises dentro de datacenters geolocalizados em território moçambicano, em resposta às exigências de localização de dados para Infraestruturas Críticas de Informação (ICI) previstas na PENSC. |
 
@@ -81,7 +81,7 @@ Ao registar cada ação de emissão, verificação e revogação na tabela audit
 
 > ⚠️ Declaração formal de não-enquadramento e limitações de escopo:
 
-1. **Não somos uma Entidade Certificadora** — Não emitimos, não gerimos e não revogamos certificados digitais qualificados nos termos estritos da Lei n.º 3/2017.
+1. **Não somos uma Entidade Certificadora** — Não emitimos, não gerimos e não revogamos certificados digitais públicos nos termos do Decreto n.º 32/2021.
 
 2. **Não somos uma ICP concorrente** — Não operamos Infraestruturas de Chaves Públicas, não geramos pares de chaves assimétricas para os utilizadores finais, nem emitimos assinaturas digitais qualificadas.
 
@@ -89,7 +89,7 @@ Ao registar cada ação de emissão, verificação e revogação na tabela audit
 
 4. **Não substituímos órgãos emissores** — Não competimos com o INAGE, Ministérios, Conservatórias ou Universidades. Somos uma camada tecnológica de validação daquilo que estas entidades de direito já emitiram.
 
-5. **Não prestamos serviço de Validação Cronológica Qualificada** — O registo de data e hora utiliza o fuso horário de Moçambique (CAT, UTC+2) sincronizado internamente na infraestrutura, funcionando exclusivamente como rasto de auditoria cronológica transacional para consistência de logs, não constituindo um serviço de Validação Cronológica qualificada nos termos do Decreto n.º 59/2019.
+5. **Não prestamos serviço de Validação Cronológica Qualificada** — O registo de data e hora utiliza o fuso horário de Moçambique (CAT, UTC+2) sincronizado internamente na infraestrutura, funcionando exclusivamente como rasto de auditoria cronológica transacional para consistência de logs, não constituindo um serviço de Validação Cronológica qualificada nos termos do Decreto n.º 32/2021.
 
 ---
 
@@ -110,7 +110,7 @@ Ao registar cada ação de emissão, verificação e revogação na tabela audit
 |-------------|-------------------|----------------------------|
 | **Governo (B2G)** | Falsificação de certidões, alvarás e DUATs entre órgãos; burocracia de validação cruzada. | Verificação criptográfica instantânea (< 100ms) entre instituições, eliminando deslocações físicas e intermediários. |
 | **Empresas (B2B)** | Fraude documental em processos KYC, onboarding e compliance; perdas financeiras por documentos adulterados. | Validação automatizada via API REST com deteção matemática de adulterações, reduzindo risco operacional. |
-| **Reguladores (INTIC)** | Incumprimento de retenção de trilhas de auditoria; falta de evidências digitais em processos de fiscalização. | Logs imutáveis estruturados em JSON com retenção mínima de 20 anos, prontos para auditorias e perícias forenses. |
+| **Reguladores (INTIC)** | Incumprimento de retenção de trilhas de auditoria; falta de evidências digitais em processos de fiscalização. | Logs imutáveis estruturados em JSON (hashes e rasto de auditoria, sem o PDF original), prontos para auditorias e perícias forenses. |
 | **Cidadãos** | Vazamento do conteúdo documental em plataformas de verificação; dependência de intermediários para autenticar documentos. | Privacidade por Design: o PDF não é retido após o hash. Verificação pública por hash, sem registo obrigatório. |
 
 ---

@@ -846,9 +846,9 @@ GET /health
 | [API Reference](../guides/API_REFERENCE.md) | Referência completa da API REST (endpoints, schemas, exemplos) |
 | [Estratégia de Implantação](DEPLOYMENT.md) | Docker, deploy nacional, infraestrutura, SSL, backup |
 | [Runbook de Produção](RUNBOOK.md) | Operações diárias, troubleshooting, manutenção, contactos de emergência |
-| [Dossiê de Conformidade](../legal/COMPLIANCE.md) | Lei 3/2017, Decreto 59/2019, mapeamento de requisitos |
+| [Dossiê de Conformidade](../legal/COMPLIANCE.md) | Lei 3/2017, Decreto 32/2021, mapeamento de requisitos |
 | [Políticas de Segurança](../legal/SECURITY.md) | Threat model, ataques mitigados, incident response |
 
 ---
 
-*Documento gerado em conformidade com os princípios da Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Documento gerado em conformidade com os princípios da Lei n.º 3/2017, Decreto n.º 32/2021 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*

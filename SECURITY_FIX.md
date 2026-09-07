@@ -133,7 +133,7 @@ else:
 
 | Dado | Retencao | Backup |
 |------|----------|--------|
-| Hashes de documentos | 20 anos (Decreto 59/2019) | Diario, criptografado |
+| Hashes de documentos | Conservacao operacional (nao AC; Decreto 32/2021) | Diario, criptografado |
 | Logs de auditoria | 20 anos | Diario, criptografado |
 | Dados de instituicoes | Indefinida | Semanal |
 | Tokens JWT | 30-90 dias | Nao aplicavel (stateless) |
@@ -330,7 +330,7 @@ jobs:
 - [OWASP Top 10 (2025)](https://owasp.org/Top10/)
 - [FastAPI Security](https://fastapi.tiangolo.com)
 - [PostgreSQL Row-Level Security](https://postgresql.org)
-- [Decreto n. 59/2019 — Retencao de dados em Mocambique](doc/legal/COMPLIANCE.md)/(https://intic.gov.mz)
+- [Decreto n. 32/2021 — Servicos de Confianca e Validacao Cronologica](doc/legal/COMPLIANCE.md)
 
 ---
 

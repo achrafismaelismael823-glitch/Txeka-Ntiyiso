@@ -14,7 +14,7 @@
 |--------|-----------|---------------------|
 | 👨‍💻 **Desenvolvedor / Integrador** | [API Reference](guides/API_REFERENCE.md) · [Arquitetura Técnica](technical/TECHNICAL.md) | Endpoints, schemas, exemplos de request/response, stack, fluxos de dados |
 | 🏢 **Instituição / Operador** | [Manual do Utilizador](guides/USER_GUIDE.md) · [Estratégia de Implantação](technical/DEPLOYMENT.md) | Como emitir, verificar e revogar documentos; deploy, backup, monitoramento |
-| ⚖️ **Jurista / Auditor / Regulador** | [Dossiê de Conformidade](legal/COMPLIANCE.md) · [Declaração de Posicionamento](../POSITIONING.md) | Lei 3/2017, Decreto 59/2019, posicionamento não-ICP, responsabilidades |
+| ⚖️ **Jurista / Auditor / Regulador** | [Dossiê de Conformidade](legal/COMPLIANCE.md) · [Declaração de Posicionamento](../POSITIONING.md) | Lei 3/2017, Decreto 32/2021, posicionamento não-ICP, responsabilidades |
 | 🔧 **DevOps / Operações** | [Runbook de Produção](technical/RUNBOOK.md) · [Políticas de Segurança](legal/SECURITY.md) | Checklist diário, troubleshooting, incident response, threat model |
 
 ---
@@ -36,7 +36,7 @@ doc/
 │
 └── legal/
     ├── SECURITY.md        ← Políticas de segurança e threat model
-    └── COMPLIANCE.md      ← Conformidade Lei 3/2017, Decreto 59/2019
+    └── COMPLIANCE.md      ← Conformidade Lei 3/2017, Decreto 32/2021
 ```
 
 > Para o estado atual do projeto, roadmap e contactos, consulte o [README principal](../README.md).
