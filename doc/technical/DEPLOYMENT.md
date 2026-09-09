@@ -53,7 +53,7 @@ O sistema Txeka Ntiyiso utiliza duas abordagens de deploy distintas:
 # Infraestrutura tecnológica para verificação da
 # integridade e autenticidade documental
 #
-# Alinhamento: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
+# Alinhamento: Lei 3/2017, Decreto 59/2019 (SCDM), Resolução 69/2021
 # Fuso horário: CAT (UTC+2) - Moçambique
 # Versão: 2.0.0
 # ============================================================
@@ -66,7 +66,7 @@ LABEL description="API Gateway para validação criptográfica de documentos"
 LABEL version="2.0.0"
 LABEL country="MZ"
 LABEL timezone="CAT"
-LABEL legislation="Lei 3/2017, Decreto 59/2019"
+LABEL legislation="Lei 3/2017, Decreto 59/2019 (SCDM)"
 
 WORKDIR /app
 
@@ -141,7 +141,7 @@ CMD ["sh", "-c", "poetry run alembic upgrade head && poetry run uvicorn src.main
 **Notas de conformidade:**
 - **Multi-stage build**: Reduz a superfície de ataque — apenas dependências de runtime no container final.
 - **Usuário não-root (`txeka`)**: Mitigação de Elevation of Privilege (STRIDE), alinhado com a Resolução n.º 69/2021 (PENSC).
-- **Locale `pt_MZ.UTF-8` e TZ `Africa/Maputo`**: Garante timestamps auditáveis em CAT (UTC+2), conforme Decreto 59/2019.
+- **Locale `pt_MZ.UTF-8` e TZ `Africa/Maputo`**: Garante timestamps auditáveis em CAT (UTC+2) para rasto de auditoria operacional.
 - **Healthcheck**: Verificação periódica de disponibilidade; falha após 3 tentativas em 30s.
 - **Alembic no startup**: Migrations aplicadas automaticamente antes do servidor iniciar.
 
@@ -157,7 +157,7 @@ CMD ["sh", "-c", "poetry run alembic upgrade head && poetry run uvicorn src.main
 #
 # Ambiente: Desenvolvimento e Produção Nacional
 # Fuso horário: CAT (UTC+2) - Moçambique
-# Alinhamento: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
+# Alinhamento: Lei 3/2017, Decreto 59/2019 (SCDM), Resolução 69/2021
 # Versão: 2.0.0
 # ============================================================
 
@@ -529,7 +529,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso -c "SELECT COUNT(
 |---------|-------|------|
 | **RTO** | 4 horas | Tempo máximo para restaurar serviço |
 | **RPO** | 15 minutos | Perda máxima de dados aceitável |
-| **Retenção** | 20 anos | Hashes e logs (Decreto 59/2019) |
+| **Retenção** | Política operacional | Hashes e logs (finalidade/necessidade; a formalizar) |
 | **Retenção backup** | 30 dias | Cópias de segurança operacionais |
 
 ---
@@ -603,7 +603,7 @@ docker exec txeka-ntiyiso-api cat /app/logs/app.json | jq
 ### Conformidade
 - [ ] TZ = Africa/Maputo (CAT UTC+2)
 - [ ] Locale = pt_MZ.UTF-8
-- [ ] Retenção de logs configurada (20 anos)
+- [ ] Retenção de logs configurada (política operacional)
 - [ ] Backup diário ativo
 - [ ] Usuário não-root no container
 - [ ] **Multi-tenancy ativo (Fase 2)**
@@ -619,9 +619,9 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 |-----------|--------------|----------|
 | **Lei 3/2017** — Autenticidade | JWT + institution_id no payload | `src/security.py` |
 | **Lei 3/2017** — Integridade | SHA-256 imutável | `src/core/hashing.py` |
-| **Lei 3/2017** — Não-repúdio | Logs auditáveis em `txeka-logs` | `docker-compose.yml` (volume) |
-| **Decreto 59/2019** — Retenção 20 anos | Volume `txeka-data` persistente | `docker-compose.yml` |
-| **Decreto 59/2019** — Auditoria cronológica | TZ Africa/Maputo, locale pt_MZ | `Dockerfile` |
+| **Lei 3/2017** — Rastreabilidade operacional | Logs auditáveis em `txeka-logs` | `docker-compose.yml` (volume) |
+| **Política operacional** — Conservação de hashes e logs | Volume `txeka-data` persistente | `docker-compose.yml` |
+| **Rasto de auditoria operacional** — Timestamps CAT | TZ Africa/Maputo, locale pt_MZ | `Dockerfile` |
 | **Resolução 69/2021 (PENSC)** — ICI | Rede isolada, usuário não-root, resource limits | `docker-compose.yml` + `Dockerfile` |
 | **Resolução 69/2021 (PENSC)** — Cifragem | TLS 1.3 no Nginx, segredos via `.env` | `nginx.conf` + `.env` |
 
@@ -662,5 +662,5 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 ---
 
-*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 (SCDM) e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
 *Versão 2.0 — Julho 2026*

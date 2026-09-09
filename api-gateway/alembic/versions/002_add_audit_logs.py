@@ -1,6 +1,6 @@
 """
 Add audit_logs table and audit columns to documents
-Legal compliance: Decreto 59/2019, Lei 3/2017
+Legal alignment: Lei 3/2017 (operational audit trail); not SCDM certification
 
 Revision ID: 002
 Revises: 001
