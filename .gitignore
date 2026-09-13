@@ -106,3 +106,4 @@ txeka.db
 **/.pytest_cache/
 **/.venv/
 **/venv/
+MiniCPM5-2B-Q4_K_M.gguf
