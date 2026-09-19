@@ -96,6 +96,10 @@ class AuditService:
     @staticmethod
     async def log_revoke(session, user_email, doc_hash, institution_id, request=None, success=True, status_code=None, details=None):
         return await AuditService.log(session, user_email, "REVOKE", "DOCUMENT", doc_hash, institution_id, request, success, status_code, details)
+
+    @staticmethod
+    async def log_login(session, user_email, resource_type, resource_id, institution_id=None, request=None, success=True, status_code=None, details=None):
+        return await AuditService.log(session, user_email, "LOGIN", resource_type, resource_id, institution_id, request, success, status_code, details)
     
     @staticmethod
     async def get_logs(session, action=None, resource_type=None, user_email=None, institution_id=None, start_date=None, end_date=None, limit=100, offset=0):
