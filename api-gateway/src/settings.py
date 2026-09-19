@@ -1,7 +1,6 @@
 """Settings — configuração centralizada da API."""
 
 import os
-from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import PostgresDsn, SecretStr, Field
 
@@ -41,11 +40,6 @@ class Settings(BaseSettings):
     # Admin do Sistema
     ADMIN_EMAIL: str = "admin@txeka.co.mz"
     ADMIN_PASSWORD_HASH: SecretStr = ""
-
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173"
-    ]
 
     RATE_LIMIT_GLOBAL: str = "100/minute"
     RATE_LIMIT_LOGIN: str = "5/minute"
