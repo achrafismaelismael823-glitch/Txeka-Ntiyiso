@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+import ast
+import json
 import logging
 import os
 
@@ -49,25 +51,79 @@ app.add_exception_handler(TxekaNtiyisoException, txeka_exception_handler)
 
 ENV = os.getenv("ENVIRONMENT", "production")
 
-if ENV == "production":
-    ALLOWED_ORIGINS = [
-        "https://txeka-ntiyiso-portal.onrender.com",
-        "https://txeka-ntiyiso-portal-staging.onrender.com"
-    ]
-else:
-    ALLOWED_ORIGINS = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://txeka-ntiyiso-portal.onrender.com",
-        "https://txeka-ntiyiso-portal-staging.onrender.com"
-    ]
+CORS_ALLOW_METHODS = ["GET", "POST", "OPTIONS", "PATCH"]
+CORS_ALLOW_HEADERS = ["Authorization", "Content-Type", "X-API-Key", "Accept"]
+NON_PRODUCTION_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+
+
+def parse_allowed_origins(raw):
+    if raw is None:
+        return None, "absent"
+    value = raw.strip()
+    if not value:
+        return [], "empty"
+
+    parsed = None
+    if value.startswith("["):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            try:
+                parsed = ast.literal_eval(value)
+            except (ValueError, SyntaxError):
+                return [], "malformed"
+        if not isinstance(parsed, list):
+            return [], "malformed"
+    else:
+        parsed = [part.strip() for part in value.split(",")]
+
+    origins = []
+    for item in parsed:
+        if not isinstance(item, str):
+            return [], "malformed"
+        origin = item.strip().strip("'").strip('"')
+        if not origin:
+            continue
+        if "*" in origin:
+            return [], "wildcard"
+        origins.append(origin)
+    return origins, None
+
+
+def resolve_cors_origins(environment=None, raw=None):
+    env = ENV if environment is None else environment
+    if raw is None:
+        if "ALLOWED_ORIGINS" in os.environ:
+            raw = os.environ.get("ALLOWED_ORIGINS")
+            origins, error = parse_allowed_origins(raw)
+        else:
+            origins, error = None, "absent"
+    else:
+        origins, error = parse_allowed_origins(raw)
+
+    if error in ("absent",) and origins is None:
+        if env == "production":
+            logger.error("ALLOWED_ORIGINS nao configurado. CORS fail-closed.")
+            return []
+        return list(NON_PRODUCTION_CORS_ORIGINS)
+
+    if error:
+        logger.error("ALLOWED_ORIGINS invalido. CORS fail-closed.")
+        return []
+    return origins
+
+
+ALLOWED_ORIGINS = resolve_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "X-API-Key", "Accept"]
+    allow_methods=CORS_ALLOW_METHODS,
+    allow_headers=CORS_ALLOW_HEADERS,
 )
 
 

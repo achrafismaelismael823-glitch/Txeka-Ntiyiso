@@ -316,7 +316,7 @@ docker-compose logs -f api
 | `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `API_V1_STR` | `/api/v1` | Prefixo da API |
 | `PROJECT_NAME` | `Txeka Ntiyiso` | Nome do projeto nos logs |
-| `BACKEND_CORS_ORIGINS` | `[]` | Lista de origens CORS permitidas |
+| `ALLOWED_ORIGINS` | fail-closed | Origens CORS. Producao: `["https://txeka-ntiyiso-portal.onrender.com"]` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Tempo de expiracao do refresh token |
 | `RATE_LIMIT_GLOBAL` | `100/minute` | Limite global de requisicoes |
 | `RATE_LIMIT_LOGIN` | `5/minute` | Limite de tentativas de login |
