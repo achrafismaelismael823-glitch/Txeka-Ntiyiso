@@ -1,6 +1,6 @@
 """
 TXEKA NTIYISO API - AUDIT LOG MODEL
-Legal compliance: Decreto 59/2019, Lei 3/2017, Banco de Mocambique
+Legal alignment: Lei 3/2017 (operational audit trail); not SCDM certification
 """
 
 import uuid
@@ -24,9 +24,9 @@ class AuditLog(Base):
     Tabela de auditoria para rastreabilidade legal.
     
     Conformidade:
-    - Decreto 59/2019: Retencao minima 20 anos
-    - Lei 3/2017: Nao-repudio de timestamps
-    - Banco de Mocambique: Rastreabilidade de transacoes
+    - Lei 3/2017: rasto de auditoria operacional (actor, timestamp, accao)
+    - Nao constitui nao-repudio do SCDM nem retencao legal de 20 anos
+    - Retencao definida por politica operacional (finalidade/necessidade)
     """
     __tablename__ = "audit_logs"
     

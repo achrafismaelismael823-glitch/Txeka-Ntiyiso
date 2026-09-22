@@ -2,7 +2,7 @@
 # TXEKA NTIYISO - API Gateway
 # Infraestrutura tecnológica para verificação da integridade e autenticidade documental
 #
-# Conformidade: Lei 3/2017, Decreto 59/2019, Resolução 69/2021
+# Conformidade: Lei 3/2017, Decreto 59/2019 (SCDM), Resolução 69/2021
 # Fuso horário: CAT (UTC+2) - Moçambique
 # Versão: 2.0.0
 # ============================================================
@@ -15,7 +15,7 @@ LABEL description="API Gateway para validação criptográfica de documentos"
 LABEL version="2.0.0"
 LABEL country="MZ"
 LABEL timezone="CAT"
-LABEL legislation="Lei 3/2017, Decreto 59/2019"
+LABEL legislation="Lei 3/2017, Decreto 59/2019 (SCDM)"
 
 WORKDIR /app
 

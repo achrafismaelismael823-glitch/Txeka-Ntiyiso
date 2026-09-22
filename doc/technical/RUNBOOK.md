@@ -466,5 +466,5 @@ poetry run pytest tests/test_core_security.py -v
 
 ---
 
-*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
+*Documento elaborado em alinhamento com a Lei n.º 3/2017, Decreto n.º 59/2019 (SCDM) e Resolução n.º 69/2021 (PENSC) da República de Moçambique.*
 *Versão 2.0.0 — Julho 2026*

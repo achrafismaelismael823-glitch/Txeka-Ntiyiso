@@ -8,7 +8,7 @@
 
 1. [Enquadramento Legal](#enquadramento-legal)
 2. [Lei n.º 3/2017 — Transações Eletrónicas](#lei-nº-32017--transações-eletrónicas)
-3. [Decreto n.º 59/2019 — Validação Cronológica](#decreto-nº-592019--validação-cronológica)
+3. [Decreto n.º 59/2019 — SCDM](#decreto-nº-592019--sistema-de-certificação-digital-scdm)
 4. [Resolução n.º 69/2021 — Segurança Cibernética](#resolução-nº-692021--segurança-cibernética)
 5. [Proteção de Dados e Privacidade](#proteção-de-dados-e-privacidade)
 6. [Soberania Digital e Retenção de Dados](#soberania-digital-e-retenção-de-dados)
@@ -19,15 +19,16 @@
 
 ## Enquadramento Legal
 
-O Txeka Ntiyiso opera no âmbito do regime jurídico moçambicano de comércio eletrónico e serviços de validação, com especial atenção às seguintes legislações:
+O Txeka Ntiyiso opera no âmbito do regime jurídico moçambicano de transações eletrónicas, com especial atenção às seguintes legislações:
 
 | Legislação | Âmbito | Relevância para Txeka Ntiyiso |
 |------------|--------|-------------------------------|
-| **Lei n.º 3/2017** | Transações Eletrónicas de Moçambique | Define os requisitos de autenticidade, integridade e não-repúdio, além de regular a proteção de dados pessoais e privacidade no ambiente eletrónico |
-| **Decreto n.º 59/2019** | Sistema de Certificação Digital | Cria o SCDM e estabelece os prazos de retenção mínima de 20 anos e requisitos de auditoria para serviços de validação |
-| **Resolução n.º 69/2021** | Segurança Cibernética (PENSC) | Define a Política e Estratégia Nacional de Segurança Cibernética, orientando a proteção de infraestruturas críticas |
+| **Lei n.º 3/2017** | Transações Eletrónicas | Integridade criptográfica e evidência operacional (Arts. 14.º–16.º). Arts. 54.º–57.º e 59.º: não é Entidade Certificadora. Arts. 63.º–65.º: dados operacionais (email, IP, actor). Art. 13.º: classificação PISEOPD ainda não fechada |
+| **Decreto n.º 59/2019** | Sistema de Certificação Digital de Moçambique (SCDM) | Delimita a fronteira: o Txeka Ntiyiso **não pertence ao SCDM** nem emite certificados digitais |
+| **Decreto n.º 59/2023**, redacção do **Decreto n.º 44/2025** | Registo e licenciamento de PISEOPD | Obrigação condicional — classificação jurídica formal ainda não fechada |
+| **Resolução n.º 69/2021** | Segurança Cibernética (PENSC) | Referência de governação e boas práticas; não constitui licença |
 
-> **Nota:** O Txeka Ntiyiso **não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017. Não emite certificados digitais qualificados, chaves privadas nem assinaturas digitais. Atua exclusivamente como **validador de integridade criptográfica** e **motor de auditoria cronológica**.
+> **Nota:** O Txeka Ntiyiso é uma **infraestrutura tecnológica de verificação de integridade documental e evidência operacional**. **Não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017 (Arts. 54.º–57.º e 59.º) nem substitui o SCDM. Não emite certificados digitais, chaves privadas nem assinaturas digitais.
 
 ---
 
@@ -39,7 +40,7 @@ Para efeitos do Txeka Ntiyiso, as seguintes definições aplicam-se:
 
 - **"Dados eletrónicos"**: Hashes SHA-256 e metadados de documentos, no sentido do artigo 3.º, alínea c).
 - **"Assinatura eletrónica"**: Não aplicável. O Txeka Ntiyiso não utiliza nem emite assinaturas eletrónicas.
-- **"Sistema de validação cronológica"**: Aplicável. O Txeka Ntiyiso opera como sistema de registo temporal de existência de documentos.
+- **"Sistema de validação cronológica"**: Não aplicável como serviço qualificado. O Txeka Ntiyiso regista timestamps de sistema (CAT) para rasto de auditoria operacional.
 
 ### Artigo 14.º — Requisitos de Autenticidade
 
@@ -59,7 +60,7 @@ Para efeitos do Txeka Ntiyiso, as seguintes definições aplicam-se:
 **Exigência legal:** Garantir que o documento não foi modificado após emissão.
 
 **Implementação Txeka Ntiyiso:**
-- **SHA-256** do documento original calculado client-side (navegador)
+- **SHA-256** do documento original calculado no servidor, em memória; o PDF é descartado após o hash
 - Qualquer alteração de **1 byte** gera hash completamente diferente
 - Verificação compara hash calculado vs hash guardado no momento da emissão
 - SHA-256 é função **one-way**: impossível reverter ou forjar colisão
@@ -67,14 +68,14 @@ Para efeitos do Txeka Ntiyiso, as seguintes definições aplicam-se:
 **Evidência de conformidade:**
 > Testes automatizados provam que alterar um único pixel num PDF invalida o documento. O hash do original (e3b0c44...) difere do hash alterado (f2a9b11...) em 100% dos caracteres.
 
-### Artigo 16.º — Não-Repúdio
+### Artigo 16.º — Evidência operacional (não-repúdio do SCDM não reivindicado)
 
-**Exigência legal:** A emissora não pode negar que emitiu o documento.
+**Enquadramento:** O Txeka Ntiyiso **não confere, por si só, os efeitos jurídicos de não-repúdio** atribuídos às assinaturas e certificados do SCDM (Decreto n.º 59/2019, Art. 4.º). Fornece evidência técnica de integridade e rastreabilidade operacional da emissão e verificação.
 
 **Implementação Txeka Ntiyiso:**
 - `issued_at`: Timestamp UTC+2 (CAT) da emissão, sincronizado com NTP
 - `issued_by`: Email registado no JWT, auditável
-- Tabela `audit_logs`: Todos os acessos guardados imutavelmente
+- Tabela `audit_logs`: Actor, instituição, acção, recurso e timestamp
 - Logs estruturados (JSON): Quem verificou, quando, de que IP, resultado
 
 **Evidência de conformidade:**
@@ -82,31 +83,28 @@ Para efeitos do Txeka Ntiyiso, as seguintes definições aplicam-se:
 
 ---
 
-## Decreto n.º 59/2019 — Validação Cronológica
+## Decreto n.º 59/2019 — Sistema de Certificação Digital (SCDM)
 
-### Artigo 5.º — Retenção de Registos (20 Anos)
+O Decreto n.º 59/2019 cria o **Sistema de Certificação Digital de Moçambique (SCDM)**. O Txeka Ntiyiso **não pertence ao SCDM** e **não deve ser apresentado como certificado digital**.
 
-**Exigência legal:** Período mínimo de 20 anos para a conservação de registos probatórios e auditorias de validação eletrónica.
+### Delimitação (Arts. 1.º, 2.º e 4.º do Regulamento)
+
+| SCDM | Txeka Ntiyiso |
+|------|---------------|
+| Certificação digital, PKI, assinaturas electrónicas | Hash SHA-256 + QR + rasto de auditoria operacional |
+| Pode conferir autenticidade, integridade, confidencialidade e não-repúdio no seu regime | Fornece correspondência criptográfica com o registo Txeka; **não constitui certificado digital emitido pelo SCDM** |
+
+> A verificação Txeka comprova correspondência criptográfica com o registo Txeka; **não constitui certificado digital emitido pelo SCDM**.
 
 **Implementação Txeka Ntiyiso:**
-- **Hashes SHA-256**: Conservados indefinidamente (mínimo 20 anos)
-- **Logs de auditoria**: Imutáveis, impossível editar ou apagar
-- **Timestamps**: Sincronizados com NTP, fuso horário CAT (UTC+2)
+- **Documento original (PDF)**: Não retido — processado em memória e descartado após o hash
+- **Hashes SHA-256**: Conservados para verificação de integridade, por política operacional
+- **Logs de auditoria**: Append-only na aplicação; a evidência de tamper-evidence (hash chaining) ainda não está formalizada
+- **Timestamps**: Sincronizados com NTP, fuso horário CAT (UTC+2) — rasto operacional, não validação cronológica qualificada
 - **Revogações**: Registadas com razão, autor e timestamp
 
 **Garantia técnica:**
-> A base de dados PostgreSQL utiliza transações ACID. Os registos de auditoria são append-only. Não existe endpoint ou função administrativa para editar ou eliminar logs históricos.
-
-### Artigo 7.º — Requisitos de Segurança
-
-**Exigência legal:** Medidas técnicas e organizacionais adequadas à proteção dos dados.
-
-**Implementação Txeka Ntiyiso:**
-- **Cifragem em trânsito:** TLS 1.3 obrigatório (HTTPS apenas)
-- **Cifragem em repouso:** PostgreSQL com encriptação de volume
-- **Autenticação:** JWT com HS256, secret mínimo 256 bits
-- **Rate limiting:** Proteção contra abuso e DoS
-- **Validação de entrada:** Magic bytes PDF, limite de tamanho (50MB), prepared statements
+> A base de dados PostgreSQL utiliza transações ACID. Não existe endpoint de aplicação para editar ou eliminar logs históricos. Isto **não equivale** a imutabilidade criptográfica nem a retenção legal de 20 anos.
 
 ---
 
@@ -130,28 +128,31 @@ A **Política Nacional de Segurança Cibernética e Estratégia da sua Implement
 
 ## Proteção de Dados e Privacidade
 
-### Princípio Zero-Knowledge
+### Princípio de Privacidade por Design
 
 O Txeka Ntiyiso implementa **Privacidade por Design** (Privacy by Design):
 
 | Dado | Processado? | Armazenado? | Nota |
 |------|-------------|-------------|------|
-| Documento original (PDF) | Sim (client-side) | **Não** | Hash calculado no navegador |
+| Documento original (PDF) | Sim (em memória, no servidor) | **Não** | Hash calculado e PDF descartado |
 | Hash SHA-256 | Sim | **Sim** | 64 caracteres hexadecimais |
-| Metadados (data, tipo, instituição) | Sim | **Sim** | Sem identificação pessoal |
-| Dados pessoais (nome, BI, NIF) | **Não** | **Não** | Nunca solicitados |
+| Metadados (data, tipo, instituição) | Sim | **Sim** | Identificadores operacionais |
+| Dados civis do titular (nome, BI, NIF) | **Não** | **Não** | Nunca solicitados |
 | Chaves privadas | **Não** | **Não** | Não faz parte do modelo |
 
-**Resultado:** A plataforma **nunca** processa dados pessoais identificáveis (PII). Está isenta de obrigações de registo de proteção de dados ao abrigo da Lei n.º 3/2017.
+**Resultado:** o conteúdo binário do PDF **não é retido**. Persistimos hashes e metadados operacionais necessários à verificação e à auditoria.
 
-### Conformidade com a Lei n.º 3/2017 (Proteção de Dados e Privacidade)
+### Conformidade com a Proteção de Dados e as Transações Eletrónicas
 
-O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy by Design), garantindo conformidade absoluta com as regras de sigilo e salvaguarda de dados previstas na Lei n.º 3/2017:
+O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy by Design):
 
-- **Minimização:** A plataforma processa e armazena exclusivamente hashes criptográficos de 64 caracteres hexadecimais. Os documentos originais (PDFs) nunca saem do ambiente do cliente (processamento client-side), eliminando qualquer risco de fuga de dados sensíveis ou PII (Personally Identifiable Information).
-- **Integridade e Rastreabilidade:** Os logs de auditoria garantem transparência total sobre as operações realizadas pelas instituições autorizadas, sem expor dados dos cidadãos titulares dos documentos.
+- **Direito à Privacidade:** Alinhado com o **Artigo 71.º da Constituição da República de Moçambique**, a plataforma aplica minimização de dados e não expõe dados de identificação civil do titular nos ecrãs públicos.
+- **Minimização do PDF:** A plataforma processa o PDF em memória para calcular o hash SHA-256 e descarta o ficheiro de imediato. Não há persistência do documento original.
+- **Dados operacionais (Lei n.º 3/2017, Arts. 63.º–65.º):** Mesmo sem reter o PDF, o sistema pode tratar email de utilizador, identificador de conta, IP, instituição, actor, logs e timestamps. Não se afirma que “não processa dados pessoais”.
+- **Validade jurídica:** A **Lei n.º 3/2017 (Transações Eletrónicas)** fundamenta a evidência técnica de integridade (Art. 15.º) e de rastreabilidade operacional; **não se reivindica o não-repúdio do SCDM**.
+- **Integridade e Rastreabilidade:** Os logs de auditoria registam operações das instituições autorizadas, sem expor dados civis dos titulares dos documentos.
 
-**Resultado:** Como a plataforma não recolhe, armazena ou processa dados pessoais identificáveis no seu servidor central, mitiga-se a necessidade de processos burocráticos complexos de notificação de bases de dados, mantendo o foco na segurança matemática pura.
+**Resultado:** O conteúdo binário do PDF **não é retido**. Persistimos hashes, metadados operacionais e dados de conta/auditoria necessários ao serviço.
 
 ---
 
@@ -161,7 +162,7 @@ O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy b
 
 | Ambiente | Localização dos Dados | Jurisdição |
 |----------|----------------------|------------|
-| Produção Cloud | Supabase (EUA) | EUA / Moçambique (acordo) |
+| Produção Cloud | Render + Supabase | Infraestrutura internacional; transferência e salvaguardas a documentar (Decreto n.º 72/2025) |
 | Produção Nacional | Servidores em Maputo/Beira/Nampula | Moçambique |
 | Híbrido | Replicação assíncrona | Ambas |
 
@@ -169,12 +170,15 @@ O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy b
 
 ### Retenção e Arquivamento
 
-| Tipo de Dado | Prazo de Retenção | Base Legal |
-|--------------|-------------------|------------|
-| Hashes SHA-256 | Indefinido (mínimo 20 anos) | Decreto 59/2019 |
-| Logs de auditoria | Indefinido (mínimo 20 anos) | Decreto 59/2019 |
-| Metadados de documentos | Indefinido (mínimo 20 anos) | Decreto 59/2019 |
-| Backups | 30 dias (ciclo) | Boa prática |
+| Tipo de Dado | Prazo de Retenção | Base |
+|--------------|-------------------|------|
+| Hashes SHA-256 | Política operacional (a formalizar) | Finalidade: verificação de integridade |
+| Logs de auditoria | Política operacional (a formalizar) | Finalidade: rasto de auditoria; evidência forense potencial |
+| Email / actor / IP | Política operacional (a formalizar) | Lei n.º 3/2017, Arts. 63.º–65.º |
+| Metadados de documentos | Política operacional (a formalizar) | Finalidade: emissão e verificação |
+| Backups | 30 dias (ciclo) | Boa prática operacional |
+
+Não existe disposição legal identificada que imponha ao Txeka Ntiyiso um prazo de 20 anos. A retenção define-se por finalidade, necessidade, contrato e política interna.
 
 ### Portabilidade e Interoperabilidade
 
@@ -190,7 +194,7 @@ O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy b
 
 1. **Integridade matemática:** O hash SHA-256 prova que o documento não foi alterado desde a emissão.
 2. **Autenticidade de emissão:** O registo prova que uma instituição específica emitiu o documento num momento específico.
-3. **Não-repúdio:** A emissora não pode negar a emissão, pois existe registo imutável.
+3. **Rastreabilidade operacional:** Existe registo de actor, instituição, timestamp e acção; **não se reivindica não-repúdio do SCDM**.
 4. **Disponibilidade:** O serviço está disponível 99.9% do tempo (SLA).
 
 ### O que o Txeka Ntiyiso NÃO Garante
@@ -212,9 +216,9 @@ O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy b
 |-------|-----------------|-----------------------------------|
 | **Autenticidade** | Garantia de que o documento foi emitido pela entidade indicada | Correspondência entre `institution_id` no registo e JWT do emissor |
 | **Integridade** | Garantia de que o documento não foi alterado | Identidade entre hash SHA-256 do documento original e hash armazenado |
-| **Não-repúdio** | Impossibilidade de negar a emissão | Registo imutável com timestamp, actor e evidência criptográfica |
+| **Não-repúdio** | Efeito jurídico do SCDM (assinaturas/certificados) | **Não reivindicado.** O Txeka fornece evidência operacional de emissão e verificação |
 | **Hash SHA-256** | Não definido em lei (termo técnico) | Impressão digital matemática de 64 caracteres hexadecimais |
-| **Zero-Knowledge** | Não definido em lei (termo técnico) | Arquitetura onde o servidor nunca acede ao conteúdo original |
+| **Privacidade por Design** | Princípio de protecção desde a conceção (CRM Art. 71.º) | O PDF é processado em memória para o hash e descartado; o ficheiro original não é persistido |
 | **Prova de existência** | Evidência de que um documento existia num momento | Registo temporal do hash na base de dados |
 | **Selo de tempo** | Carimbo de tempo qualificado (ICP) | Registo temporal sincronizado com CAT (não qualificado) |
 | **Entidade Certificadora** | Entidade autorizada a emitir certificados digitais | **Não aplicável** — Txeka Ntiyiso declara explicitamente não o ser |
@@ -228,12 +232,12 @@ O Txeka Ntiyiso implementa o princípio de **Privacidade por Design** (Privacy b
 
 O Txeka Ntiyiso declara, perante as entidades reguladoras e o público em geral, que:
 
-1. Cumpre os requisitos de **autenticidade, integridade e não-repúdio** da Lei n.º 3/2017
-2. Mantém **retenção mínima de 20 anos** nos termos do Decreto n.º 59/2019
-3. **Não processa dados pessoais identificáveis**, conforme princípio de minimização da Lei n.º 3/2017
-4. **Não se enquadra como Entidade Certificadora**, não competindo com a ICP-MZ
-5. Está **pronto para deploy nacional**, garantindo soberania digital futura
-6. Alinha-se com a **PENSC** (Resolução n.º 69/2021) na proteção de infraestruturas críticas e prevenção de crimes cibernéticos
+1. Fornece evidência técnica de **integridade** (SHA-256) e **rastreabilidade operacional**, alinhada com a Lei n.º 3/2017 — **sem reivindicar os efeitos jurídicos do SCDM**
+2. Conserva hashes e logs para verificação, por política operacional; **não retém o PDF original**
+3. Minimiza dados do titular (Art. 71.º da Constituição); trata dados operacionais (email, IP, actor) nos termos dos Arts. 63.º–65.º da Lei n.º 3/2017
+4. **Não se enquadra como Entidade Certificadora** nem substitui o SCDM (Lei n.º 3/2017, Arts. 54.º–57.º e 59.º; Decreto n.º 59/2019)
+5. A classificação como PISEOPD (Decreto n.º 59/2023, redacção do Decreto n.º 44/2025) **ainda não está fechada**
+6. Alinha-se com a **PENSC** (Resolução n.º 69/2021) como referência de governação, sem a tratar como licença
 
 ---
 

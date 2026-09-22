@@ -133,8 +133,8 @@ else:
 
 | Dado | Retencao | Backup |
 |------|----------|--------|
-| Hashes de documentos | 20 anos (Decreto 59/2019) | Diario, criptografado |
-| Logs de auditoria | 20 anos | Diario, criptografado |
+| Hashes de documentos | Politica operacional (a formalizar) | Diario, criptografado |
+| Logs de auditoria | Politica operacional (a formalizar) | Diario, criptografado |
 | Dados de instituicoes | Indefinida | Semanal |
 | Tokens JWT | 30-90 dias | Nao aplicavel (stateless) |
 
@@ -198,28 +198,28 @@ def validate_pdf(file: UploadFile, content: bytes) -> None:
         raise HTTPException(status_code=413, detail="Tamanho excedido")
 ```
 
-### 4. Zero-Knowledge Architecture
+### 4. Privacidade por Design
 
 ```
 Documento Original (PDF)
          |
          v
 +---------------+
-| Client-Side   |  <- Hash SHA-256 calculado no navegador
-| SHA-256       |
+| Upload PDF    |  <- Ficheiro em transito (HTTPS)
+| (portal/API)  |
 +-------+-------+
-    |  Apenas hash (64 chars) viaja
+    |  PDF (multipart)
     v
 +---------------+
-| Servidor      |  <- NUNCA ve o documento original
+| Servidor      |  <- Hash SHA-256 em memoria; PDF descartado
 | Txeka Ntiyiso |
 +---------------+
 ```
 
 **Garantias:**
-- O servidor nunca processa o conteudo do documento
-- Apenas o hash SHA-256 e persistido
-- Zero risco de vazamento de dados pessoais via servidor
+- O PDF e processado em memoria e descartado apos o hash
+- Apenas o hash SHA-256 e persistido (nao o ficheiro original)
+- O conteudo binario do documento nao e gravado em disco nem na base de dados
 
 ---
 
@@ -330,7 +330,7 @@ jobs:
 - [OWASP Top 10 (2025)](https://owasp.org/Top10/)
 - [FastAPI Security](https://fastapi.tiangolo.com)
 - [PostgreSQL Row-Level Security](https://postgresql.org)
-- [Decreto n. 59/2019 — Retencao de dados em Mocambique](doc/legal/COMPLIANCE.md)/(https://intic.gov.mz)
+- [Decreto n. 59/2019 — Sistema de Certificacao Digital (SCDM)](doc/legal/COMPLIANCE.md)
 
 ---
 
