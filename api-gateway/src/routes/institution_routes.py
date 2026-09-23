@@ -85,7 +85,8 @@ async def get_my_credit_history(
 
 
 @router.get("/{institution_id}", response_model=InstitutionResponse, dependencies=[Depends(verify_role("admin"))])
-async def get_institution(institution_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def get_institution(request: Request, institution_id: str, db: AsyncSession = Depends(get_db)):
     institution = await InstitutionService.get_institution(db, institution_id)
     if not institution:
         raise HTTPException(status_code=404, detail="Instituição não encontrada")
@@ -93,6 +94,7 @@ async def get_institution(institution_id: str, db: AsyncSession = Depends(get_db
 
 
 @router.patch("/{institution_id}", response_model=InstitutionResponse, dependencies=[Depends(verify_role("admin"))])
+@limiter.limit("15/minute")
 async def update_institution(
     institution_id: str,
     data: InstitutionUpdate,
@@ -162,7 +164,9 @@ async def update_institution(
 
 
 @router.post("/{institution_id}/credits", response_model=InstitutionCredits, dependencies=[Depends(verify_role("admin"))])
+@limiter.limit("10/minute")
 async def add_credits(
+    request: Request,
     institution_id: str,
     data: CreditTransactionCreate,
     current_user: dict = Depends(verify_token),
@@ -182,7 +186,9 @@ async def add_credits(
 
 
 @router.get("/{institution_id}/credit-history", response_model=List[CreditTransactionResponse], dependencies=[Depends(verify_role("admin"))])
+@limiter.limit("30/minute")
 async def get_institution_credit_history(
+    request: Request,
     institution_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -195,7 +201,8 @@ async def get_institution_credit_history(
 
 
 @router.post("/{institution_id}/reset-password", response_model=dict, dependencies=[Depends(verify_role("admin"))])
-async def reset_institution_password(institution_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def reset_institution_password(request: Request, institution_id: str, db: AsyncSession = Depends(get_db)):
     try:
         result = await InstitutionService.reset_password(db, institution_id)
         # Senha NÃO é logada em texto puro — devolvida apenas uma vez na resposta HTTP ao admin autenticado
@@ -211,7 +218,8 @@ async def reset_institution_password(institution_id: str, db: AsyncSession = Dep
 
 
 @router.post("/{institution_id}/regenerate-api-key", response_model=dict, dependencies=[Depends(verify_role("admin"))])
-async def regenerate_api_key(institution_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def regenerate_api_key(request: Request, institution_id: str, db: AsyncSession = Depends(get_db)):
     try:
         new_key = await InstitutionService.regenerate_api_key(db, institution_id)
         return {
