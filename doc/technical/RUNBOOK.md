@@ -223,9 +223,10 @@ curl -i https://txeka-ntiyiso-api.onrender.com/api/v1/verify/abc123
 ```
 
 **Resolução:**
-1. Verificar se IP está em whitelist
-2. Ajustar limites temporariamente (se ataque DDoS confirmado)
-3. Implementar CDN (Cloudflare)
+1. Confirmar o limite da rota (SlowAPI por IP e por URL; storage in-memory por processo)
+2. Os valores `RATE_LIMIT_*` em env **não** alteram os decoradores — o limite está hardcoded na rota
+3. Limites admin FASE 1.5: GET `{id}` 30/min, PATCH 15/min, credits 10/min, credit-history 30/min, reset-password 5/min, regenerate-api-key 5/min
+4. Não há whitelist de IP no código actual
 
 ### 5.4 Documento Não Encontrado (404)
 
@@ -260,7 +261,8 @@ print('Now:', int(time.time()))
 
 **Resolução:**
 1. Fazer login novamente para obter novo token
-2. Verificar `ACCESS_TOKEN_EXPIRE_MINUTES` (default: 60 minutos)
+2. Expiração efectiva: admin 90 dias, instituição 30 dias (`JWT_EXPIRATION_DAYS_*`). `ACCESS_TOKEN_EXPIRE_MINUTES` em settings **não** é usado no login
+3. Instituição: 401 também ocorre se `epoch` do JWT ≠ `institution.token_epoch` (Token Epoch) ou se a conta deixou de estar `active`/`approved` (`verify_institution_active`)
 
 ### 5.6 Falha na Emissão em Bulk
 

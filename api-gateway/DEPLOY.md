@@ -316,11 +316,11 @@ docker-compose logs -f api
 | `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `API_V1_STR` | `/api/v1` | Prefixo da API |
 | `PROJECT_NAME` | `Txeka Ntiyiso` | Nome do projeto nos logs |
-| `ALLOWED_ORIGINS` | fail-closed | Origens CORS. Producao: `["https://txeka-ntiyiso-portal.onrender.com"]` |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Tempo de expiracao do refresh token |
-| `RATE_LIMIT_GLOBAL` | `100/minute` | Limite global de requisicoes |
-| `RATE_LIMIT_LOGIN` | `5/minute` | Limite de tentativas de login |
-| `RATE_LIMIT_CERTIFY` | `10/minute` | Limite de emissoes |
+| `ALLOWED_ORIGINS` | fail-closed | Origens CORS (FASE 1.2). Producao: `["https://txeka-ntiyiso-portal.onrender.com"]`. Ausente/vazio/`*` em producao = CORS vazio |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Declarado em settings; **nao** usado no login (nao ha refresh tokens) |
+| `RATE_LIMIT_GLOBAL` | `100/minute` | Declarado em settings; **nao** alimenta SlowAPI |
+| `RATE_LIMIT_LOGIN` | `5/minute` | Declarado em settings; login usa `@limiter.limit("5/minute")` hardcoded |
+| `RATE_LIMIT_CERTIFY` | `10/minute` | Declarado em settings; certify usa `50/minute` hardcoded |
 
 ---
 

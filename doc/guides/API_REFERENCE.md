@@ -1,7 +1,7 @@
 # API Reference — Txeka Ntiyiso
 
-> **Versão:** 2.0.0  
-> **Base URL:** `https://txeka-ntiyiso-api.onrender.com`  
+> **Versão:** 2.1.0 (V3 homologação — `Staging/v3-homologacao`)  
+> **Base URL produção:** `https://txeka-ntiyiso-api.onrender.com`  
 > **Ambiente Local:** `http://localhost:8000`  
 > **Documentação Interativa:** `/docs` (Swagger UI) · `/redoc` (ReDoc)  
 > **Prefixo da API:** `/api/v1` — aplicado a todas as rotas listadas abaixo.
@@ -45,13 +45,14 @@ A API utiliza **JWT (JSON Web Tokens)** — algoritmo HS256 — com autenticaç�
 
 ### POST /api/v1/auth/admin/login
 
-Login do administrador do sistema.
-
-> **Atenção:** os parâmetros são passados como **query string**, não como body JSON.
+Login do administrador do sistema. Credenciais via **JSON body** (V3). Rate limit: 5/minuto.
 
 **Request:**
-```
-POST /api/v1/auth/admin/login?email=admin@txeka.co.mz&password=s3nh4
+```json
+{
+  "email": "admin@txeka.co.mz",
+  "password": "string"
+}
 ```
 
 **Response (200):**
@@ -67,13 +68,16 @@ POST /api/v1/auth/admin/login?email=admin@txeka.co.mz&password=s3nh4
 
 **Erros:**
 - `401` — Credenciais inválidas
+- `429` — Rate limit (5/minuto)
 - `500` — `ADMIN_PASSWORD_HASH` não configurado
+
+Auditoria FASE 1.4: cada tentativa gera `LOGIN` (`resource_type=ADMIN`) via sessão isolada. Falha de audit não quebra o login.
 
 ---
 
 ### POST /api/v1/auth/login
 
-Login de instituição registada.
+Login de instituição registada. Rate limit: 5/minuto. JWT inclui `epoch` (`institution.token_epoch`).
 
 **Request:**
 ```json
@@ -107,8 +111,10 @@ Login de instituição registada.
 ```
 
 **Erros:**
-- `401` — Credenciais inválidas
-- `403` — Conta suspensa ou inativa
+- `401` — Todas as falhas de autenticação institucional (`authenticate_institution` devolve `None`) → `"Credenciais inválidas"`
+- `429` — Rate limit (5/minuto)
+
+Auditoria FASE 1.4: sucesso com `user_email` da instituição; falha com `user_email=unknown`. Falha de audit não quebra o login.
 
 ---
 
@@ -435,13 +441,15 @@ Lista instituições com paginação e filtro de status.
 
 Obtém detalhes de uma instituição específica.
 
-> **Auth:** Admin
+> **Auth:** Admin  
+> **Rate limit:** 30/minuto (FASE 1.5)
 
 **Response (200):** `InstitutionResponse` (mesmo formato da listagem).
 
 **Erros:**
 - `401` · `403`
 - `404` — Instituição não encontrada
+- `429` — Rate limit excedido
 
 ---
 
@@ -449,7 +457,10 @@ Obtém detalhes de uma instituição específica.
 
 Atualiza dados de uma instituição. Todos os campos são opcionais.
 
-> **Auth:** Admin
+> **Auth:** Admin  
+> **Rate limit:** 15/minuto (FASE 1.5)
+
+Se `status` passar a valor diferente de `active`, ou `approved` passar a `false`, o servidor incrementa `token_epoch` (FASE 1.1) e regista `ADMIN_ACTION` / `token_invalidation`.
 
 **Request:**
 ```json
@@ -469,6 +480,7 @@ Atualiza dados de uma instituição. Todos os campos são opcionais.
 - `401` · `403`
 - `404` — Instituição não encontrada
 - `422` — `status` não casa com o padrão permitido
+- `429` — Rate limit excedido
 
 ---
 
@@ -476,7 +488,8 @@ Atualiza dados de uma instituição. Todos os campos são opcionais.
 
 Adiciona créditos à instituição (gestão de pagamentos).
 
-> **Auth:** Admin
+> **Auth:** Admin  
+> **Rate limit:** 10/minuto (FASE 1.5)
 
 **Request:**
 ```json
@@ -503,6 +516,7 @@ Adiciona créditos à instituição (gestão de pagamentos).
 - `401` · `403`
 - `404` — Instituição não encontrada
 - `422` — `amount` ≤ 0, `type`/`payment_method` fora do padrão
+- `429` — Rate limit excedido
 
 ---
 
@@ -510,7 +524,8 @@ Adiciona créditos à instituição (gestão de pagamentos).
 
 Histórico de transações de créditos de uma instituição.
 
-> **Auth:** Admin
+> **Auth:** Admin  
+> **Rate limit:** 30/minuto (FASE 1.5)
 
 **Parâmetros de Query:**
 | Nome | Tipo | Padrão | Descrição |
@@ -536,7 +551,7 @@ Histórico de transações de créditos de uma instituição.
 ]
 ```
 
-**Erros:** `401` · `403` · `404` (instituição não encontrada)
+**Erros:** `401` · `403` · `404` (instituição não encontrada) · `429`
 
 ---
 
@@ -544,7 +559,10 @@ Histórico de transações de créditos de uma instituição.
 
 Reseta a password de uma instituição e gera uma nova temporária.
 
-> **Auth:** Admin
+> **Auth:** Admin  
+> **Rate limit:** 5/minuto (FASE 1.5)
+
+A senha **não** é logada. Cada 200 invalida a senha anterior; só a última é válida.
 
 **Response (200):**
 ```json
@@ -556,7 +574,7 @@ Reseta a password de uma instituição e gera uma nova temporária.
 }
 ```
 
-**Erros:** `401` · `403` · `404` (instituição não encontrada)
+**Erros:** `401` · `403` · `404` (instituição não encontrada) · `429`
 
 ---
 
@@ -565,7 +583,8 @@ Reseta a password de uma instituição e gera uma nova temporária.
 Regenera a API key de uma instituição. A key anterior é invalidada imediatamente.
 
 > **Auth:** Admin  
-> **Atenção:** todas as integrações que usem a key antiga falharão.
+> **Rate limit:** 5/minuto (FASE 1.5)  
+> **Atenção:** todas as integrações que usem a key antiga falharão. Cada 200 invalida a chave anterior.
 
 **Response (200):**
 ```json
@@ -576,7 +595,7 @@ Regenera a API key de uma instituição. A key anterior é invalidada imediatame
 }
 ```
 
-**Erros:** `401` · `403` · `404` (instituição não encontrada)
+**Erros:** `401` · `403` · `404` (instituição não encontrada) · `429`
 
 ---
 
@@ -1017,9 +1036,29 @@ Estatísticas agregadas para dashboards administrativos.
 
 ## Rate Limiting
 
-O `slowapi` está inicializado na aplicação (`main.py`) com um handler global para `RateLimitExceeded`, mas **não existem decoradores `@limiter.limit(...)` aplicados a nenhuma rota** — ou seja, **não há limites por endpoint efetivamente ativos** neste momento.
+SlowAPI (`src/core/rate_limiter.py`): `Limiter(key_func=get_remote_address)`, quota **por IP e por rota**, storage in-memory. Handler global `RateLimitExceeded` → HTTP **429**. Env `RATE_LIMIT_*` não alimenta os decoradores.
 
-Se forem adicionados no futuro, a resposta será `429` no formato slowapi (ver [Formato de Erros](#formato-de-erros)).
+| Rota | Limite |
+|------|--------|
+| `POST /api/v1/auth/admin/login` | 5/minuto |
+| `POST /api/v1/auth/login` | 5/minuto |
+| `GET` / `POST /api/v1/verify` | 100/minuto |
+| `POST /api/v1/certify` | 50/minuto |
+| `POST /api/v1/certify/bulk` | 10/minuto |
+| `POST /api/v1/emissions/{id}/revoke` | 10/minuto |
+| `/api/v1/audit/*` | 60/minuto |
+| `POST` / `GET /api/v1/institutions` | 60/minuto |
+| `GET /api/v1/institutions/{id}` | 30/minuto |
+| `PATCH /api/v1/institutions/{id}` | 15/minuto |
+| `POST /api/v1/institutions/{id}/credits` | 10/minuto |
+| `GET /api/v1/institutions/{id}/credit-history` | 30/minuto |
+| `POST /api/v1/institutions/{id}/reset-password` | 5/minuto |
+| `POST /api/v1/institutions/{id}/regenerate-api-key` | 5/minuto |
+| `GET /api/v1/institutions/me/dashboard` | 60/minuto |
+| `GET /api/v1/institutions/me/credits` | 60/minuto |
+| `GET /health` | 30/minuto |
+
+FASE 1.5: os seis endpoints admin de instituição. Dentro do limite os códigos HTTP originais mantêm-se; só depois **429**. Baseline de homologação, não SLO de produção.
 
 ---
 
@@ -1036,6 +1075,7 @@ Se forem adicionados no futuro, a resposta será `429` no formato slowapi (ver [
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 2.1.0 | 2026-09-28 | V3 homologação: Token Epoch (1.1), CORS `ALLOWED_ORIGINS` (1.2), audit LOGIN (1.4), rate limits admin (1.5); admin login JSON body |
 | 2.0.0 | 2026-07-22 | Fase 2: gestão de instituições, créditos, dashboard, bulk emission |
 | 1.0.0 | 2026-04-15 | Fase 1: MVP core — emissão, verificação, revogação, audit logs |
 

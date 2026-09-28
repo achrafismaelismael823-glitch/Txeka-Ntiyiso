@@ -6,7 +6,7 @@
 
 | Versão | Estado | Última Atualização | Contacto |
 |--------|--------|-------------------|----------|
-| 2.0 | Final | 2026-07-22 | geral.txekantiyiso@gmail.com |
+| 2.1 | V3 homologação (`Staging/v3-homologacao`) | 2026-09-28 | geral.txekantiyiso@gmail.com |
 
 Implementação de conformidade legal, modelo de ameaças e resposta a incidentes.
 
@@ -35,7 +35,7 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 | **T**ampering | Alterar documento após emissão | SHA-256 imutável; qualquer alteração invalida hash |
 | **R**epudiation | Emissor negar que emitiu | Audit logs imutáveis com timestamp CAT (UTC+2) |
 | **I**nformation Disclosure | Vazamento de dados | Zero-Knowledge: apenas hashes de 64 caracteres armazenados |
-| **D**enial of Service | Sobrecarga do sistema | Rate limiting (100 req/min), resource limits (1.0 CPU / 512M RAM) |
+| **D**enial of Service | Sobrecarga do sistema | SlowAPI por IP/rota (login 5/min, verify 100/min, admin reset-password 5/min); resource limits (1.0 CPU / 512M RAM) |
 | **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root `txeka` no container |
 
 ---
@@ -60,8 +60,10 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 |-------------|-------|
 | Algoritmo | HS256 (HMAC + SHA-256) |
 | Secret | Armazenado em `.env` (nunca em código) |
-| Payload | `{email, role, institution, exp, iat}` |
-| Validação | Assinatura verificada em cada request |
+| Payload | `{sub, email, id, role, institution, exp, iat, type}`; instituição também `epoch` |
+| Validação | Assinatura HS256 com `JWT_SECRET_KEY`; `verify_token` stateless |
+| Expiração | Admin 90 dias; instituição 30 dias |
+| Invalidação | Token Epoch (`verify_institution_active`) |
 
 > **⚠️ Problema Conhecido:** O `docker-compose.yml` contém fallbacks inseguros para `SECRET_KEY` e `JWT_SECRET_KEY`. Estes devem ser removidos em produção.
 
@@ -107,8 +109,8 @@ ROLES = {
 
 | Endpoint | Método | Requisito | Log de Auditoria |
 |----------|--------|-----------|------------------|
-| `/api/v1/auth/admin/login` | POST | Público | LOGIN |
-| `/api/v1/auth/login` | POST | Público | LOGIN |
+| `/api/v1/auth/admin/login` | POST | Público (JSON body); 5/min | LOGIN |
+| `/api/v1/auth/login` | POST | Público (JSON body); 5/min | LOGIN |
 | `/api/v1/certify` | POST | JWT + role institution | EMIT |
 | `/api/v1/certify/bulk` | POST | JWT + role institution | EMIT_BULK |
 | `/api/v1/verify/{hash}` | GET | Público (não requer token) | VERIFY (anonymous) |
@@ -117,11 +119,13 @@ ROLES = {
 | `/api/v1/logs` | GET | JWT admin | — |
 | `/api/v1/document/{hash}/history` | GET | JWT admin/institution | — |
 | `/api/v1/stats` | GET | JWT admin | — |
-| `/api/v1/institutions` | POST/GET/PATCH | JWT admin | INSTITUTION_* |
-| `/api/v1/institutions/{id}/credits` | POST | JWT admin | CREDIT_ADD |
-| `/api/v1/institutions/{id}/credit-history` | GET | JWT admin | CREDIT_HISTORY |
-| `/api/v1/institutions/{id}/reset-password` | POST | JWT admin | PASSWORD_RESET |
-| `/api/v1/institutions/{id}/regenerate-api-key` | POST | JWT admin | API_KEY_REGEN |
+| `/api/v1/institutions` | POST/GET | JWT admin; 60/min | INSTITUTION_* |
+| `/api/v1/institutions/{id}` | GET | JWT admin; 30/min | — |
+| `/api/v1/institutions/{id}` | PATCH | JWT admin; 15/min | token_invalidation se desactivar/reprovar |
+| `/api/v1/institutions/{id}/credits` | POST | JWT admin; 10/min | CREDIT_ADD |
+| `/api/v1/institutions/{id}/credit-history` | GET | JWT admin; 30/min | CREDIT_HISTORY |
+| `/api/v1/institutions/{id}/reset-password` | POST | JWT admin; 5/min | PASSWORD_RESET (senha não logada) |
+| `/api/v1/institutions/{id}/regenerate-api-key` | POST | JWT admin; 5/min | API_KEY_REGEN |
 | `/api/v1/institutions/me/dashboard` | GET | JWT institution | DASHBOARD |
 | `/api/v1/institutions/me/credits` | GET | JWT institution | CREDITS_STATUS |
 | `/api/v1/institutions/me/credit-history` | GET | JWT institution | CREDIT_HISTORY |
@@ -163,7 +167,7 @@ ROLES = {
 ### Ataque 6: Brute-Force
 
 **Atacante:** "Vou tentar adivinhar hashes"  
-**Txeka:** Rate limiting (100 req/min por IP) + SHA-256 espaço de 2^256  
+**Txeka:** SlowAPI por IP/rota (verify 100/min; login 5/min) + SHA-256 espaço de 2^256  
 **Estado:** ✅ Mitigado
 
 ### Ataque 7: Man-in-the-Middle (MITM)
@@ -313,7 +317,7 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 | Proteção de ICI | Resolução 69/2021 (PENSC) | Rede isolada, usuário não-root, TLS 1.3 | ✅ |
 | Cifragem em trânsito | Resolução 69/2021 (PENSC) | HTTPS obrigatório (TLS 1.3) | ✅ |
 | Cifragem em repouso | Resolução 69/2021 (PENSC) | PostgreSQL encriptação nativa | ✅ |
-| Rate limiting | Banco de Moçambique | 100 req/min (público), 1000 req/min (B2B) | ✅ |
+| Rate limiting | Banco de Moçambique | SlowAPI por IP/rota (verify 100/min; login 5/min; admin 5–30/min) | ✅ |
 | Zero PII | Banco de Moçambique | Apenas hashes de 64 caracteres | ✅ |
 | Trilha de auditoria | Banco de Moçambique | Tabela `audit_logs` imutável | ✅ |
 | Backup automático | Decreto 59/2019 | Script diário + retenção 30 dias | ✅ |
