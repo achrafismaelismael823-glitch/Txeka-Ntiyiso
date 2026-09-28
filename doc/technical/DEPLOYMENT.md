@@ -328,13 +328,16 @@ POSTGRES_DB=txeka_ntiyiso
 SECRET_KEY=<32_BYTES_HEX>
 JWT_SECRET_KEY=<32_BYTES_HEX>
 
-# Rate Limiting
-RATE_LIMIT_REQUESTS=1000
-RATE_LIMIT_PERIOD_SECONDS=60
+# CORS (FASE 1.2) — fonte de verdade do CORSMiddleware
+# Producao: fail-closed se ausente/vazio/malformado/*
+ALLOWED_ORIGINS=["https://txeka-ntiyiso-portal.onrender.com"]
+
+# Rate limits efectivos estao nos decoradores SlowAPI (nao nestas env)
+# RATE_LIMIT_* em settings.py nao alimenta @limiter.limit
 
 # URLs
 BASE_URL=https://txeka-ntiyiso-api.onrender.com
-ALLOW_ANONYMOUS=false
+TXEKA_ALLOW_ANONYMOUS=false
 
 # Fase 2: Multi-tenancy e controlo de créditos
 ENABLE_MULTI_TENANT=true

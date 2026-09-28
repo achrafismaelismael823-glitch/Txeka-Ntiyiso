@@ -4,7 +4,7 @@
 
 | Versão | Estado | Última Atualização | Contacto |
 |--------|--------|-------------------|----------|
-| 2.0.0 | Final | 2026-07-23 | geral.txekantiyiso@gmail.com |
+| 2.1.0 | V3 homologação (`Staging/v3-homologacao`) | 2026-09-28 | geral.txekantiyiso@gmail.com |
 
 ---
 
@@ -144,7 +144,7 @@
 | Revogação | ⚠️ (blacklist) | ✅ (instantânea) |
 | Complexidade | Média | Baixa |
 
-**Decisão:** JWT oferece escalabilidade horizontal sem estado. Revogação é gerida via expiração curta (60 minutos) + refresh tokens (7 dias).
+**Decisão:** JWT oferece escalabilidade horizontal sem estado. Expiração efectiva no código: admin **90 dias**, instituição **30 dias** (`JWT_EXPIRATION_DAYS_*` em `security.py`). Campos `ACCESS_TOKEN_EXPIRE_MINUTES=60` e `REFRESH_TOKEN_EXPIRE_DAYS=7` existem em `settings.py` mas **não** são usados no login. Revogação institucional: Token Epoch (FASE 1.1) — `epoch` no JWT vs `institution.token_epoch`; tokens sem epoch são rejeitados em `verify_institution_active`. Não há refresh tokens implementados.
 
 ---
 
@@ -315,7 +315,7 @@ CREATE INDEX idx_audit_logs_details ON audit_logs USING GIN(details);
 | **T**ampering | Alterar documento | SHA-256 imutável; qualquer alteração invalida hash |
 | **R**epudiation | Negar emissão | Audit logs imutáveis com timestamp CAT |
 | **I**nformation Disclosure | Vazamento | Zero-Knowledge: apenas hashes armazenados |
-| **D**enial of Service | Sobrecarga | Rate limiting (100 req/min), resource limits |
+| **D**enial of Service | Sobrecarga | SlowAPI por IP/rota (ex.: verify 100/min, login 5/min, admin reset-password 5/min) |
 | **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root no container |
 
 ### 6.2 Criptografia
@@ -337,6 +337,14 @@ ROLES = {
 ```
 
 > **Regra crítica:** `user.role` é sempre forçado pelo servidor a partir do JWT decodificado. Nunca confiar no cliente.
+>
+> **Token Epoch (FASE 1.1):** JWT de instituição inclui `epoch`. `verify_institution_active` rejeita token sem epoch ou epoch desactualizado. PATCH admin que desactiva/reprova incrementa `token_epoch`.
+>
+> **CORS (FASE 1.2):** `ALLOWED_ORIGINS` env; produção fail-closed.
+>
+> **Audit LOGIN (FASE 1.4):** `AuditService.log_login` em admin e instituição; falha institucional `user_email=unknown`.
+>
+> **Rate limits admin (FASE 1.5):** GET `{id}` 30/min, PATCH 15/min, credits 10/min, credit-history 30/min, reset-password 5/min, regenerate-api-key 5/min.
 
 ---
 

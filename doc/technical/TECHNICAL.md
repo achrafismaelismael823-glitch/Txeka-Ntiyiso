@@ -6,9 +6,9 @@
 
 | | |
 |:---|:---|
-| **Versão** | 1.2.0 |
-| **Estado** | 🔄 Em curso (Fase 2) |
-| **Última atualização** | 2026-07-12 |
+| **Versão** | 1.3.0 |
+| **Estado** | V3 em homologação (`Staging/v3-homologacao`) |
+| **Última atualização** | 2026-09-28 |
 | **Autor** | Equipa Txeka Ntiyiso |
 | **Contacto técnico** | geral.txekantiyiso@gmail.com |
 
@@ -520,8 +520,8 @@ Admin ──GET /audit/logs + JWT──▶ API
                                                       │
                                                       ▼
                                                ┌─────────────┐
-                                               │ jwt.decode()│
-                                               │ + SECRET_KEY│
+                                                │ jwt.decode()│
+                                                │ JWT_SECRET_KEY│
                                                └──────┬──────┘
                                                       │
                                                ┌──────┴──────┐
@@ -534,24 +534,47 @@ Admin ──GET /audit/logs + JWT──▶ API
 
 ### 7.2 Payload JWT
 
+Assinatura: HS256 com `JWT_SECRET_KEY` (obrigatória e distinta de `SECRET_KEY`). `verify_token` é **stateless** — não consulta a base de dados.
+
 ```json
 {
   "sub": "admin@txeka.co.mz",
   "email": "admin@txeka.co.mz",
-  "id": "uuid",
+  "id": "admin",
   "role": "admin",
-  "institution": "txeka",
+  "institution": null,
   "exp": 1719900000,
-  "iat": 1719813600
+  "iat": 1719813600,
+  "type": "access"
 }
 ```
+
+Token de instituição inclui `epoch` (Token Epoch, FASE 1.1):
+
+```json
+{
+  "sub": "contacto@inage.gov.mz",
+  "email": "contacto@inage.gov.mz",
+  "id": "INAGE",
+  "role": "institution",
+  "institution": "INAGE",
+  "epoch": 1,
+  "exp": 1719900000,
+  "iat": 1719813600,
+  "type": "access"
+}
+```
+
+`verify_institution_active` rejeita tokens sem `epoch` ou com `epoch` diferente de `institution.token_epoch` (modo estrito). Admin sem `institution` faz bypass. PATCH admin que desactiva (`status != active`) ou reprova (`approved=false`) incrementa `token_epoch`.
 
 ### 7.3 Sistema Dual de Login
 
 | Tipo | Endpoint | Expiração | Acesso | Uso |
 |------|----------|-----------|--------|-----|
-| **Admin** | `/api/v1/auth/admin/login` | 90 dias | Sistema completo: emit, revoke, manage_institutions, audit_logs | Equipa Txeka, gestão de plataforma |
-| **Instituição** | `/api/v1/auth/login` | 30 dias | emit, verify, dashboard próprio | INAGE, bancos, universidades |
+| **Admin** | `POST /api/v1/auth/admin/login` (JSON `{email, password}`) | 90 dias | Sistema completo: emit, revoke, manage_institutions, audit_logs | Equipa Txeka, gestão de plataforma |
+| **Instituição** | `POST /api/v1/auth/login` (JSON `{institution_id, password}`) | 30 dias | emit, verify, dashboard próprio | INAGE, bancos, universidades |
+
+Falhas de autenticação institucional mapeiam para HTTP 401 `"Credenciais inválidas"`. Cada tentativa gera audit `LOGIN` via `AuditService.log_login` (FASE 1.4); falha institucional usa `user_email=unknown`. Erros de auditoria não quebram o login. Admin autentica contra `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` (env), sessão de audit isolada.
 
 ### 7.4 Roles e Permissões
 
@@ -632,32 +655,43 @@ Instituição ──compra créditos──▶ Admin
 | Magic bytes | `%PDF-` (primeiros 4 bytes) | Falsificação de extensão |
 | Limite | < 50MB | DoS por upload massivo |
 | Nome suspeito | Rejeita `.pdf.png`, `.pdf.exe` | Double extension attacks |
-| Rate limiting | 100 req/min (público) / 1000 req/min (B2B) | Brute force, scraping |
+| Rate limiting | SlowAPI por IP (`get_remote_address`) e por rota | Brute force, scraping |
 
-### 9.3 Rate Limiting por Tier
+### 9.3 Rate Limiting (SlowAPI)
 
-| Tier | Limite | Janela | Uso |
-|------|--------|--------|-----|
-| **Público** | 100 req/min | 60s | Verificação anónima via portal |
-| **B2B/B2G** | 1000 req/min | 60s | Integração API com API key |
-| **Admin** | 500 req/min | 60s | Gestão e auditoria |
-| **Bulk** | 100 docs/min | 60s | Emissão em lote |
+Limiter partilhado: `src/core/rate_limiter.py` — `Limiter(key_func=get_remote_address)`. Storage in-memory por processo. Variáveis `RATE_LIMIT_*` em `settings.py` **não** alimentam os decoradores.
 
-### 9.4 CORS
+| Rota | Limite |
+|------|--------|
+| `POST /api/v1/auth/admin/login` | 5/minuto |
+| `POST /api/v1/auth/login` | 5/minuto |
+| `GET`/`POST /api/v1/verify` | 100/minuto |
+| `POST /api/v1/certify` | 50/minuto |
+| `POST /api/v1/certify/bulk` | 10/minuto |
+| `POST /api/v1/emissions/{id}/revoke` | 10/minuto |
+| Rotas `/api/v1/audit/*` | 60/minuto |
+| `POST`/`GET /api/v1/institutions` | 60/minuto |
+| `GET /api/v1/institutions/{id}` | 30/minuto |
+| `PATCH /api/v1/institutions/{id}` | 15/minuto |
+| `POST /api/v1/institutions/{id}/credits` | 10/minuto |
+| `GET /api/v1/institutions/{id}/credit-history` | 30/minuto |
+| `POST /api/v1/institutions/{id}/reset-password` | 5/minuto |
+| `POST /api/v1/institutions/{id}/regenerate-api-key` | 5/minuto |
+| `GET /api/v1/institutions/me/dashboard` | 60/minuto |
+| `GET /api/v1/institutions/me/credits` | 60/minuto |
+| `GET /health` | 30/minuto |
 
-```python
-ALLOWED_ORIGINS = [
-    # Desenvolvimento local
-    "http://localhost:3000",
-    "http://localhost:5173",
-    # Produção cloud atual
-    "https://txeka-ntiyiso-portal.onrender.com",
-    # Futuro: domínio próprio
-    "https://txekantiyiso.co.mz",
-    "https://www.txekantiyiso.co.mz",
-    "https://api.txekantiyiso.co.mz",
-]
-```
+FASE 1.5 (homologação): os seis endpoints admin acima. Exceder o limite devolve **429**; códigos HTTP anteriores mantêm-se até ao limite. Baseline de homologação, não SLO de produção.
+
+### 9.4 CORS (FASE 1.2)
+
+Fonte de verdade: env `ALLOWED_ORIGINS` (`src/main.py` → `resolve_cors_origins()`).
+
+- Produção: fail-closed se ausente, vazio, malformado ou com `*`.
+- Não produção: fallback `http://localhost:3000` e `http://localhost:5173`.
+- Métodos: `GET`, `POST`, `OPTIONS`, `PATCH`. Headers: `Authorization`, `Content-Type`, `X-API-Key`, `Accept`.
+- Produção esperada: `ALLOWED_ORIGINS=["https://txeka-ntiyiso-portal.onrender.com"]`.
+- Não incluir `txekantiyiso.co.mz` nem wildcard a menos que esteja na env.
 
 ---
 
