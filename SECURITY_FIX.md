@@ -32,7 +32,7 @@ Este documento consolida todas as medidas de hardening de seguranca aplicadas e 
 | **Zero Trust** | Nenhuma entidade e confiavel por padrao |
 | **Least Privilege** | Permissoes minimas necessarias para cada role |
 | **Fail Secure** | Em caso de falha, o sistema nega acesso |
-| **Observabilidade** | Toda acao e registada em logs imutaveis |
+| **Observabilidade** | Toda acao e registada em logs de auditoria |
 
 ---
 
@@ -133,8 +133,8 @@ else:
 
 | Dado | Retencao | Backup |
 |------|----------|--------|
-| Hashes de documentos | 20 anos (Decreto 59/2019) | Diario, criptografado |
-| Logs de auditoria | 20 anos | Diario, criptografado |
+| Hashes de documentos | Politica operacional (prazo de 20 anos do Decreto 59/2019 aplica-se ao SCDM, nao comprovado nesta plataforma) | Diario, criptografado |
+| Logs de auditoria | Politica operacional | Diario, criptografado |
 | Dados de instituicoes | Indefinida | Semanal |
 | Tokens JWT | 30-90 dias | Nao aplicavel (stateless) |
 
@@ -198,28 +198,30 @@ def validate_pdf(file: UploadFile, content: bytes) -> None:
         raise HTTPException(status_code=413, detail="Tamanho excedido")
 ```
 
-### 4. Zero-Knowledge Architecture
+### 4. Privacy by Design (emissao)
 
 ```
 Documento Original (PDF)
          |
          v
 +---------------+
-| Client-Side   |  <- Hash SHA-256 calculado no navegador
-| SHA-256       |
+| Upload HTTPS  |  <- PDF em transito (multipart)
+| Portal / API  |
 +-------+-------+
-    |  Apenas hash (64 chars) viaja
+    |  PDF
     v
 +---------------+
-| Servidor      |  <- NUNCA ve o documento original
-| Txeka Ntiyiso |
+| Servidor      |  <- Hash SHA-256 em memoria;
+| Txeka Ntiyiso |     PDF nao persistido neste fluxo
 +---------------+
 ```
 
-**Garantias:**
-- O servidor nunca processa o conteudo do documento
-- Apenas o hash SHA-256 e persistido
-- Zero risco de vazamento de dados pessoais via servidor
+**Factos do fluxo de emissao inspecionado (`POST /api/v1/certify`):**
+- O PDF e recebido e validado no servidor (extensao, MIME, magic bytes `%PDF-`, limite 50MB)
+- O hash SHA-256 e calculado em memoria pelo servico de emissao a partir da representacao `decode('latin-1')` — nao e hashing directo dos bytes brutos
+- O conteudo do PDF nao e gravado na base de dados nem em disco neste fluxo
+- Persistimos hash, metadados (`file_name`, `file_size`) e dados operacionais de auditoria (email, IP)
+- Isto e Privacy by Design / minimizacao de dados, nao Zero-Knowledge
 
 ---
 

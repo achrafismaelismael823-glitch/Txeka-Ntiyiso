@@ -6,7 +6,7 @@
 
 | Versão | Estado | Última Atualização | Contacto |
 |--------|--------|-------------------|----------|
-| 2.1 | V3 homologação (`Staging/v3-homologacao`) | 2026-09-28 | geral.txekantiyiso@gmail.com |
+| 2.1.1 | V3 homologação (`Staging/v3-homologacao`) | 2026-10-21 | geral.txekantiyiso@gmail.com |
 
 Implementação de conformidade legal, modelo de ameaças e resposta a incidentes.
 
@@ -32,9 +32,9 @@ Implementação de conformidade legal, modelo de ameaças e resposta a incidente
 | Vetor | Descrição | Mitigação Txeka |
 |-------|-----------|-----------------|
 | **S**poofing | Falsificar identidade do emissor | JWT + institution_id validado no servidor |
-| **T**ampering | Alterar documento após emissão | SHA-256 imutável; qualquer alteração invalida hash |
-| **R**epudiation | Emissor negar que emitiu | Audit logs imutáveis com timestamp CAT (UTC+2) |
-| **I**nformation Disclosure | Vazamento de dados | Zero-Knowledge: apenas hashes de 64 caracteres armazenados |
+| **T**ampering | Alterar documento após emissão | SHA-256; qualquer alteração do conteúdo hashed invalida o hash |
+| **R**epudiation | Emissor negar que emitiu | Audit logs com timestamp CAT (UTC+2) — rasto operacional, não não-repúdio do SCDM |
+| **I**nformation Disclosure | Vazamento de dados | Privacy by Design: o PDF não é persistido no fluxo de emissão inspecionado; persistimos hashes, metadados e dados operacionais |
 | **D**enial of Service | Sobrecarga do sistema | SlowAPI por IP/rota (login 5/min, verify 100/min, admin reset-password 5/min); resource limits (1.0 CPU / 512M RAM) |
 | **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root `txeka` no container |
 
@@ -263,7 +263,7 @@ docker exec txeka-ntiyiso-db psql -U postgres -d txeka_ntiyiso \
 |---------|-------|------|
 | **RTO** | 4 horas | Tempo máximo para restaurar serviço |
 | **RPO** | 15 minutos | Perda máxima de dados aceitável |
-| **Retenção** | 20 anos | Hashes e logs (Decreto 59/2019) |
+| **Retenção** | Política operacional | Hashes e logs; prazo de 20 anos do Decreto 59/2019 aplica-se ao SCDM, não comprovado nesta plataforma |
 | **Retenção backup** | 30 dias | Cópias de segurança operacionais |
 
 ---
@@ -310,18 +310,17 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 | Requisito | Legislação | Implementação | Estado |
 |-----------|-----------|---------------|--------|
-| Autenticidade | Lei 3/2017, Art. 48 | JWT + institution_id | ✅ |
-| Integridade | Lei 3/2017, Art. 49 | SHA-256 imutável | ✅ |
-| Não-repúdio | Lei 3/2017, Art. 50 | Audit logs + timestamp CAT | ✅ |
-| Retenção 20 anos | Decreto 59/2019 | Volumes persistentes `txeka-data` | ✅ |
-| Proteção de ICI | Resolução 69/2021 (PENSC) | Rede isolada, usuário não-root, TLS 1.3 | ✅ |
-| Cifragem em trânsito | Resolução 69/2021 (PENSC) | HTTPS obrigatório (TLS 1.3) | ✅ |
-| Cifragem em repouso | Resolução 69/2021 (PENSC) | PostgreSQL encriptação nativa | ✅ |
-| Rate limiting | Banco de Moçambique | SlowAPI por IP/rota (verify 100/min; login 5/min; admin 5–30/min) | ✅ |
-| Zero PII | Banco de Moçambique | Apenas hashes de 64 caracteres | ✅ |
-| Trilha de auditoria | Banco de Moçambique | Tabela `audit_logs` imutável | ✅ |
-| Backup automático | Decreto 59/2019 | Script diário + retenção 30 dias | ✅ |
-| RTO/RPO | Decreto 59/2019 | 4h / 15min | ✅ |
+| Autenticidade operacional | Lei 3/2017 (princípios) | JWT + institution_id | Implementado |
+| Integridade criptográfica | Lei 3/2017 (princípios) | SHA-256 no serviço de emissão | Implementado |
+| Rastreabilidade operacional | Lei 3/2017 (princípios) | Audit logs + timestamp CAT | Implementado; não é não-repúdio do SCDM |
+| Retenção 20 anos | Decreto 59/2019 (SCDM) | Volumes persistentes `txeka-data` | **Não comprovado** como obrigação desta plataforma |
+| Proteção de ICI | Resolução 69/2021 (PENSC) | Rede isolada, usuário não-root, TLS 1.3 | Referência de governação |
+| Cifragem em trânsito | Resolução 69/2021 (PENSC) | HTTPS obrigatório (TLS 1.3) | Implementado no deploy inspecionado a nível de configuração |
+| Rate limiting | Controlo técnico | SlowAPI por IP/rota (verify 100/min; login 5/min; admin 5–30/min) | Implementado |
+| Minimização do PDF | Privacy by Design | PDF não persistido no fluxo de emissão inspecionado | Implementado neste fluxo; dados operacionais (email, IP) são tratados |
+| Trilha de auditoria | Controlo técnico | Tabela `audit_logs` | Implementado; imutabilidade absoluta **não comprovada** |
+| Backup automático | Política operacional | Script diário + retenção 30 dias | Declarado; não revalidado nesta auditoria |
+| RTO/RPO | Política operacional | 4h / 15min | Objectivo declarado; não verificado nesta auditoria |
 
 ---
 

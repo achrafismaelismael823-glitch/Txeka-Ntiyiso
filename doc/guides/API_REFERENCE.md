@@ -111,10 +111,11 @@ Login de instituição registada. Rate limit: 5/minuto. JWT inclui `epoch` (`ins
 ```
 
 **Erros:**
-- `401` — Todas as falhas de autenticação institucional (`authenticate_institution` devolve `None`) → `"Credenciais inválidas"`
+- `401` — `authenticate_institution` devolve `None` → `"Credenciais inválidas"` (fluxo auditado)
+- `403` — Password aceite mas instituição inactiva, não aprovada ou `_inactive_reason` (ramos **não** auditados com `log_login` no código inspeccionado)
 - `429` — Rate limit (5/minuto)
 
-Auditoria FASE 1.4: sucesso com `user_email` da instituição; falha com `user_email=unknown`. Falha de audit não quebra o login.
+Auditoria FASE 1.4: sucesso (200) com `user_email` da instituição; falha 401 com `user_email=unknown`. Falha de audit não quebra o login. Os testes T4/T5 mockam `authenticate_institution=None` e exercitam o 401, não o 403.
 
 ---
 
@@ -673,6 +674,8 @@ Status rápido de créditos da instituição autenticada.
 Histórico de transações de créditos da **instituição autenticada**.
 
 > **Auth:** token de Instituição (admin usa `/institutions/{institution_id}/credit-history`)
+>
+> **Rate limit:** sem decorator SlowAPI no código inspeccionado (ao contrário de `GET /institutions/{id}/credit-history`, 30/minuto).
 
 **Parâmetros de Query:**
 | Nome | Tipo | Padrão | Descrição |
@@ -1056,9 +1059,10 @@ SlowAPI (`src/core/rate_limiter.py`): `Limiter(key_func=get_remote_address)`, qu
 | `POST /api/v1/institutions/{id}/regenerate-api-key` | 5/minuto |
 | `GET /api/v1/institutions/me/dashboard` | 60/minuto |
 | `GET /api/v1/institutions/me/credits` | 60/minuto |
+| `GET /api/v1/institutions/me/credit-history` | Sem decorator SlowAPI no código inspeccionado |
 | `GET /health` | 30/minuto |
 
-FASE 1.5: os seis endpoints admin de instituição. Dentro do limite os códigos HTTP originais mantêm-se; só depois **429**. Baseline de homologação, não SLO de produção.
+FASE 1.5: os seis endpoints admin de instituição. Dentro do limite os códigos HTTP originais mantêm-se; só depois **429**. Baseline de homologação, não SLO de produção. `GET /institutions/me/credit-history` não tem `@limiter.limit` no código inspeccionado.
 
 ---
 
