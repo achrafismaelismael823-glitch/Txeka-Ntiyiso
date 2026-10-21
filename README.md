@@ -46,9 +46,9 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 | **Integridade** | Garantia de que o documento não foi alterado desde a emissão |
 | **Autenticidade** | Confirmação da origem e legitimidade do documento |
 | **Rastreabilidade** | Trilha de auditoria completa de todas as operações |
-| **Privacidade por Design** | Processamento exclusivo de hashes, zero exposição de dados pessoais |
+| **Privacidade por Design** | O PDF é processado em memória na API para calcular o hash e não é persistido no fluxo de emissão inspecionado. Persistimos hashes, metadados e dados operacionais de conta/auditoria. |
 | **Interoperabilidade** | API REST padronizada para integração com sistemas existentes |
-| **Auditabilidade** | Logs imutáveis acessíveis para auditorias internas e externas |
+| **Auditabilidade** | Logs de auditoria acessíveis para auditorias internas e externas |
 | **Segurança por Defeito** | Configurações seguras por padrão, sem necessidade de ajustes manuais |
 
 ---
@@ -60,7 +60,7 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 
 - **Validação Interinstitucional:** Verifique certidões, DUATs e alvarás emitidos por outros órgãos do Estado num piscar de olhos.
 - **Fim das Filas:** Elimine a necessidade de o cidadão deslocar-se fisicamente apenas para "autenticar cópias".
-- **Transparência Radical:** Trilha de auditoria criptográfica e imutável, pronta para auditorias do Tribunal de Contas.
+- **Transparência Radical:** Trilha de auditoria criptográfica, pronta para auditorias do Tribunal de Contas.
 
 🚀 **[Lidere a Modernização Administrativa ➡️ Agende uma Demo](mailto:geral.txekantiyiso@gmail.com)**
 
@@ -83,21 +83,21 @@ A digitalização dos serviços públicos e privados em Moçambique aumenta a ne
 - **Criptografia SHA-256:** Algoritmo criptográfico amplamente adotado na indústria. Qualquer alteração ao ficheiro original modifica completamente o hash, tornando a adulteração imediatamente detetável.
 - **Velocidade Extrema:** Desempenho típico inferior a 100 ms em ambiente de produção.
 - **Soberania Nacional:** Custos fixos em Meticais e total respeito pelo sigilo de dados do Estado.
-- **Retenção de 20 anos:** Registos de auditoria imutáveis conforme Decreto n.º 59/2019.
+- **Rasto de auditoria:** Hashes e logs conservados para verificação; o PDF original não é retido no fluxo de emissão inspecionado (não somos Entidade Certificadora).
 
 ---
 
-## 🛡️ Zero-Knowledge: Privacidade por Design
+## Privacidade por Design
 
-O Txeka Ntiyiso foi concebido para que os documentos originais permaneçam no dispositivo do utilizador. A plataforma processa apenas o hash criptográfico necessário para a verificação da integridade documental.
+O Txeka Ntiyiso calcula o hash SHA-256 **no servidor**, em memória. O PDF é enviado na emissão (`POST /api/v1/certify`), validado, hashed e **não é gravado** na base de dados nem em disco no fluxo de emissão inspecionado.
 
-1. O utilizador anexa o PDF no portal.
-2. O Hash SHA-256 é calculado **diretamente no navegador** (client-side).
-3. Apenas a linha de 64 caracteres viaja até ao servidor.
-4. O documento original **não sai do dispositivo**.
-5. O sistema regista: *"Esta impressão digital foi validada e existe desde [data]"*.
+1. A instituição anexa o PDF no portal (ou envia via API).
+2. A API valida o ficheiro (extensão `.pdf`, MIME `application/pdf`, magic bytes `%PDF-`).
+3. O hash SHA-256 é calculado em memória pelo serviço de emissão a partir da representação textual obtida com `decode('latin-1')` — não é hashing directo dos bytes brutos do PDF.
+4. Persistimos o hash (64 caracteres) e metadados operacionais — não o conteúdo do PDF.
+5. O documento original é descartado após o cálculo do hash neste fluxo.
 
-**Resultado:** O risco de exposição de dados confidenciais é minimizado na origem, por construção arquitetural.
+**Resultado:** minimização de dados por construção — o servidor precisa do PDF para emitir, mas não o retém. Email, IP, `file_name` e outros dados operacionais podem ser tratados ou registados.
 
 ---
 
@@ -105,7 +105,7 @@ O Txeka Ntiyiso foi concebido para que os documentos originais permaneçam no di
 
 O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que garante a **autenticidade, integridade e não-repúdio** de documentos digitais através de criptografia **SHA-256** e **QR codes verificáveis**.
 
-> **Declaração Regulatória:** O Txeka Ntiyiso **não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017. Não emite certificados digitais qualificados, chaves privadas, assinaturas digitais nem carimbos de tempo qualificados. Atua exclusivamente como **validador de integridade criptográfica** e **motor de registo de auditoria temporal imutável**.
+> **Declaração Regulatória:** O Txeka Ntiyiso **não se enquadra como Entidade Certificadora** nos termos da Lei n.º 3/2017. Não emite certificados digitais qualificados, chaves privadas, assinaturas digitais nem carimbos de tempo qualificados. Atua exclusivamente como **validador de integridade criptográfica** e **motor de registo de auditoria operacional**.
 
 ---
 
@@ -116,13 +116,13 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
            |
            v
    +---------------+
-   |  Client-Side  |  <- Hash SHA-256 calculado no navegador
-   |   SHA-256     |
+   |  Upload PDF   |  <- Ficheiro em trânsito (HTTPS)
+   |   (portal)    |
    +-------+-------+
-           |  Hash (64 chars)
+           |  PDF (multipart)
            v
    +---------------+
-   |  API REST     |  <- FastAPI + Python 3.11 + JWT + Rate Limiting
+   |  API REST     |  <- Hash SHA-256 em memória; PDF não persistido
    |  Txeka Ntiyiso|     Prefixo: /api/v1
    +-------+-------+
            |
@@ -130,8 +130,8 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
      |           |
      v           v
 +---------+  +--------------+
-|PostgreSQL|  |  Audit Logs  |  <- Trilha forense imutável (20 anos)
-|  15     |  |   Imutáveis  |
+|PostgreSQL|  |  Audit Logs  |  <- Rasto de auditoria operacional
+|  15     |  |              |
 +----+----+  +--------------+
      |
      v
@@ -167,7 +167,7 @@ O **Txeka Ntiyiso** é uma plataforma de infraestrutura digital **B2G/B2B** que 
 
 | Fase | Período | Estado | Entregáveis |
 |------|---------|--------|-------------|
-| **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs imutáveis |
+| **Fase 1** | Q1 2026 | ✅ Concluída | MVP core: emissão, verificação, revogação, audit logs |
 | **Fase 2** | Q2–Q3 2026 | 🔄 **Em curso** | Registo de Instituições + Dashboard Web + Emissão em Bulk + Controlo de Créditos |
 | **Fase 3** | Q3 2026 | ⏳ Planeada | Queries agregadas `/stats` + Go-to-market com INAGE e bancos |
 | **Fase 4** | Q4 2026 | ⏳ Planeada | Dashboard por perfil + Escala empresarial: 2FA, OAuth2, ML fraud detection |
@@ -225,7 +225,7 @@ Contacte: **geral.txekantiyiso@gmail.com**
 | Dashboard | `GET` | `/api/v1/me/credits` | Créditos disponíveis e status | Institution |
 | Dashboard | `GET` | `/api/v1/me/credit-history` | Histórico de transações de crédito | Institution |
 | Admin | `POST` | `/api/v1/emissions/{doc_id}/revoke` | Revogar documento (invalidação legal) | Admin |
-| Admin | `GET` | `/api/v1/logs` | Logs de auditoria imutáveis | Admin |
+| Admin | `GET` | `/api/v1/logs` | Logs de auditoria | Admin |
 | Admin | `GET` | `/api/v1/document/{doc_hash}/history` | Rasto cronológico do documento | Admin / Institution |
 | Admin | `GET` | `/api/v1/stats` | Métricas e volume de validações | Admin |
 | Admin | `POST` | `/api/v1/{institution_id}` | Criar nova instituição | Admin |
@@ -257,11 +257,11 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 
 | Legislação | Âmbito | Alinhamento |
 |------------|--------|-------------|
-| Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade, autenticidade e não-repúdio via hashes imutáveis |
-| Decreto n.º 59/2019 | Serviços de Validação Cronológica e Eletrónica | Retenção mínima de 20 anos; trilha de auditoria completa |
+| Lei n.º 3/2017 | Transações Eletrónicas de Moçambique | Integridade e autenticidade via hashes SHA-256; evidência operacional de emissão e verificação |
+| Decreto n.º 59/2019 | Sistema de Certificação Digital (SCDM) | Delimita a fronteira: o Txeka Ntiyiso **não pertence ao SCDM** e a verificação **não constitui certificado digital** |
 
-- **Proteção de Dados:** A arquitetura Zero-Knowledge reduz drasticamente o processamento de dados pessoais sensíveis em servidores centrais.
-- **Retenção:** Hashes e logs de auditoria imutáveis conservados de forma redundante pelo período mínimo de 20 anos.
+- **Proteção de Dados:** Privacy by Design — o PDF não é retido no fluxo de emissão inspecionado. Persistimos hashes, metadados e dados de conta/auditoria (email, IP, actor).
+- **Retenção:** Política operacional de conservação de hashes e logs — o prazo mínimo de 20 anos do Decreto n.º 59/2019 aplica-se ao SCDM, não está comprovado como funcionalidade desta plataforma.
 
 ---
 
@@ -271,8 +271,8 @@ O Txeka Ntiyiso foi concebido em conformidade com os princípios e requisitos ap
 |---------|-------|
 | ⏱️ Tempo de Validação | Desempenho típico < 100 ms em produção |
 | 🛡️ Algoritmo Core | SHA-256 Criptográfico |
-| 💾 Dados Pessoais Armazenados | Zero (0%) |
-| ⏳ Retenção de Trilha | 20 anos |
+| 💾 Conteúdo do PDF persistido | Não (fluxo de emissão inspecionado) |
+| ⏳ Retenção de trilha | Política operacional (não comprovada como 20 anos) |
 | 🌍 Cobertura Regional | Pronto para escala imediata em Maputo, Beira, Nampula e resto do país |
 
 ---

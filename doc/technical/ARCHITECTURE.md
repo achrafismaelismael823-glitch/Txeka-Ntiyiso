@@ -4,7 +4,7 @@
 
 | Versão | Estado | Última Atualização | Contacto |
 |--------|--------|-------------------|----------|
-| 2.1.0 | V3 homologação (`Staging/v3-homologacao`) | 2026-09-28 | geral.txekantiyiso@gmail.com |
+| 2.1.1 | V3 homologação (`Staging/v3-homologacao`) | 2026-10-21 | geral.txekantiyiso@gmail.com |
 
 ---
 
@@ -46,7 +46,7 @@
 +---------------------+
 ```
 
-**Princípio Zero-Knowledge:** A plataforma armazena apenas hashes SHA-256 (64 caracteres hexadecimais). Os documentos originais (PDF) nunca saem do ambiente do cliente.
+**Princípio de Privacidade por Design:** A plataforma armazena hashes SHA-256 (64 caracteres hexadecimais) e metadados operacionais. O PDF é processado em memória no servidor no fluxo de emissão inspecionado e não é persistido — o ficheiro original não fica na base de dados nem em disco neste fluxo. Isto não constitui Zero-Knowledge.
 
 ---
 
@@ -312,9 +312,9 @@ CREATE INDEX idx_audit_logs_details ON audit_logs USING GIN(details);
 | Vetor | Descrição | Mitigação |
 |-------|-----------|-----------|
 | **S**poofing | Falsificar identidade | JWT + institution_id validado no servidor |
-| **T**ampering | Alterar documento | SHA-256 imutável; qualquer alteração invalida hash |
-| **R**epudiation | Negar emissão | Audit logs imutáveis com timestamp CAT |
-| **I**nformation Disclosure | Vazamento | Zero-Knowledge: apenas hashes armazenados |
+| **T**ampering | Alterar documento | SHA-256; qualquer alteração do conteúdo hashed invalida o hash |
+| **R**epudiation | Negar emissão | Audit logs com timestamp CAT — rasto operacional |
+| **I**nformation Disclosure | Vazamento | Privacy by Design: PDF não persistido no fluxo de emissão inspecionado; persistimos hashes, metadados e dados operacionais |
 | **D**enial of Service | Sobrecarga | SlowAPI por IP/rota (ex.: verify 100/min, login 5/min, admin reset-password 5/min) |
 | **E**levation of Privilege | Escalar privilégios | Roles server-side; usuário não-root no container |
 
@@ -342,7 +342,7 @@ ROLES = {
 >
 > **CORS (FASE 1.2):** `ALLOWED_ORIGINS` env; produção fail-closed.
 >
-> **Audit LOGIN (FASE 1.4):** `AuditService.log_login` em admin e instituição; falha institucional `user_email=unknown`.
+> **Audit LOGIN (FASE 1.4):** `AuditService.log_login` em admin e instituição; falha institucional 401 usa `user_email=unknown`. Ramos 403 (instituição inactiva ou não aprovada após autenticação bem-sucedida da password) **não** geram `LOGIN` no código inspeccionado.
 >
 > **Rate limits admin (FASE 1.5):** GET `{id}` 30/min, PATCH 15/min, credits 10/min, credit-history 30/min, reset-password 5/min, regenerate-api-key 5/min.
 

@@ -20,7 +20,7 @@
 
 O Txeka Ntiyiso é uma plataforma de infraestrutura digital que permite às instituições emitirem documentos com **prova de integridade criptográfica** e a qualquer pessoa verificar a sua autenticidade em **menos de 100 milissegundos**.
 
-> **Princípio fundamental:** A plataforma armazena apenas **hashes SHA-256** (impressões digitais matemáticas de 64 caracteres). Os documentos originais **nunca** saem do ambiente do cliente.
+> **Princípio fundamental:** A plataforma armazena **hashes SHA-256** (impressões digitais matemáticas de 64 caracteres) e metadados operacionais. No fluxo de emissão inspecionado, o PDF é enviado à API, processado em memória e **não é persistido**.
 
 ---
 
@@ -113,7 +113,7 @@ Content-Type: application/json
 4. O sistema recalcula o hash e compara com o registo
 5. Resultado instantâneo
 
-> **Nota:** O cálculo do hash é feito **no navegador** (client-side). O documento original **nunca** é enviado para o servidor.
+> **Nota:** Na emissão (`POST /api/v1/certify`), o PDF é enviado à API e o hash SHA-256 é calculado **no servidor**, em memória. O ficheiro original **não é persistido** neste fluxo. A verificação pública consulta o hash já registado; um upload no portal de verificação, se existir, é um caminho de interface e não altera o facto de a emissão ser server-side.
 
 ---
 
@@ -180,10 +180,10 @@ R: SHA-256 é padrão militar e bancário. É impossível falsificar sem ser det
 R: A verificação é online apenas. Pode guardar o certificado PDF para consulta offline, mas a validação requer conectividade.
 
 **P: Quem tem acesso aos dados?**
-R: Só o hash SHA-256 e metadados (data, instituição). Nenhum dado pessoal é guardado. Totalmente conforme com a Lei 3/2017.
+R: Persistimos o hash SHA-256, metadados (data, tipo, instituição, nome do ficheiro) e dados operacionais de conta/auditoria (email, IP, actor). Não solicitamos identificação civil do titular do documento (nome, BI, NIF).
 
 **P: Quanto tempo os registos são guardados?**
-R: Mínimo 20 anos, em compliance com o Decreto n.º 59/2019. Impossível apagar (imutabilidade garantida).
+R: Hashes e logs são conservados segundo política operacional. O prazo mínimo de 20 anos do Decreto n.º 59/2019 aplica-se ao SCDM e **não está comprovado** como funcionalidade desta plataforma. Não se afirma imutabilidade absoluta.
 
 **P: Posso integrar com o meu sistema interno?**
 R: Sim. Oferecemos API REST completa com documentação Swagger e exemplos de código em Python e JavaScript.

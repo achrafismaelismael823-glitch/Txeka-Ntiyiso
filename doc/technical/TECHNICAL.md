@@ -8,7 +8,7 @@
 |:---|:---|
 | **Versão** | 1.3.0 |
 | **Estado** | V3 em homologação (`Staging/v3-homologacao`) |
-| **Última atualização** | 2026-09-28 |
+| **Última atualização** | 2026-10-21 |
 | **Autor** | Equipa Txeka Ntiyiso |
 | **Contacto técnico** | geral.txekantiyiso@gmail.com |
 
@@ -40,8 +40,8 @@ Sistema distribuído B2G/B2B com componente principal:
 
 - **API Gateway** (FastAPI + PostgreSQL)
 - **Portal Web** (React + Tailwind CSS)
-- **Motor de Hashing** (SHA-256 client-side/server-side)
-- **Sistema de Auditoria** (logs imutáveis estruturados em JSON)
+- **Motor de Hashing** (SHA-256 no servidor, em memória, no fluxo de emissão)
+- **Sistema de Auditoria** (logs estruturados em JSON)
 
 Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Docker Compose**. A produção cloud atual utiliza Render.com + Supabase; a produção nacional utiliza Docker on-premise em datacenters moçambicanos.
 
@@ -66,11 +66,10 @@ Deploy containerizado via **Docker** (multi-stage build) e orquestrado com **Doc
 |-----------|-----------|
 | **API First** | Toda a funcionalidade é exposta via API REST antes de ser consumida por qualquer interface. Documentação OpenAPI/Swagger gerada automaticamente. |
 | **Security by Design** | Autenticação JWT stateless, bcrypt para passwords, rate limiting por tier, validação rigorosa de inputs, CORS restrito. |
-| **Privacy by Design** | Zero retenção de documentos originais. Apenas hashes SHA-256 de 64 caracteres são persistidos. |
-| **Zero-Knowledge** | O documento original é processado em memória e descartado. O servidor nunca vê, armazena ou transmite o conteúdo do ficheiro. |
+| **Privacy by Design** | O PDF é processado em memória para calcular o hash e não é persistido no fluxo de emissão inspecionado. Persistimos hashes SHA-256, metadados e dados operacionais de conta/auditoria. |
 | **Multi-Tenant** | Segregação lógica por `institution_id`. Cada instituição opera num tenant isolado com dados, créditos e dashboard próprios. |
 | **Cloud Native** | Containerização Docker, healthchecks, auto-scaling ready, deploy em qualquer ambiente cloud ou on-premise. |
-| **Auditabilidade** | Cada operação é registada imutavelmente em JSON com timestamp CAT (UTC+2), IP, user e resultado. Retenção mínima de 20 anos. |
+| **Auditabilidade** | Cada operação é registada em JSON com timestamp CAT (UTC+2), IP, user e resultado. Retenção definida por política operacional (prazo de 20 anos do Decreto 59/2019 não comprovado nesta plataforma). |
 
 ---
 
@@ -574,7 +573,9 @@ Token de instituição inclui `epoch` (Token Epoch, FASE 1.1):
 | **Admin** | `POST /api/v1/auth/admin/login` (JSON `{email, password}`) | 90 dias | Sistema completo: emit, revoke, manage_institutions, audit_logs | Equipa Txeka, gestão de plataforma |
 | **Instituição** | `POST /api/v1/auth/login` (JSON `{institution_id, password}`) | 30 dias | emit, verify, dashboard próprio | INAGE, bancos, universidades |
 
-Falhas de autenticação institucional mapeiam para HTTP 401 `"Credenciais inválidas"`. Cada tentativa gera audit `LOGIN` via `AuditService.log_login` (FASE 1.4); falha institucional usa `user_email=unknown`. Erros de auditoria não quebram o login. Admin autentica contra `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` (env), sessão de audit isolada.
+Falhas de autenticação institucional em que `authenticate_institution` devolve `None` mapeiam para HTTP 401 `"Credenciais inválidas"` e geram audit `LOGIN` via `AuditService.log_login` (FASE 1.4), com `user_email=unknown`. Sucesso (200) também gera `LOGIN`. Erros de auditoria não quebram o login. Admin autentica contra `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` (env), sessão de audit isolada.
+
+**Lacuna 403:** se a password é aceite mas a instituição está inactiva (`status != active`), não aprovada (`approved` falso) ou marcada `_inactive_reason`, o código devolve HTTP 403 **sem** chamar `log_login`. Os testes T4/T5 de `test_auth_login_audit.py` mockam `authenticate_institution=None` e exercitam o fluxo 401, não o ramo 403 real.
 
 ### 7.4 Roles e Permissões
 
@@ -679,9 +680,11 @@ Limiter partilhado: `src/core/rate_limiter.py` — `Limiter(key_func=get_remote_
 | `POST /api/v1/institutions/{id}/regenerate-api-key` | 5/minuto |
 | `GET /api/v1/institutions/me/dashboard` | 60/minuto |
 | `GET /api/v1/institutions/me/credits` | 60/minuto |
+| `GET /api/v1/institutions/me/credit-history` | Sem decorator SlowAPI no código inspeccionado |
 | `GET /health` | 30/minuto |
+| `GET /ready` | Sem decorator SlowAPI no código inspeccionado |
 
-FASE 1.5 (homologação): os seis endpoints admin acima. Exceder o limite devolve **429**; códigos HTTP anteriores mantêm-se até ao limite. Baseline de homologação, não SLO de produção.
+FASE 1.5 (homologação): os seis endpoints admin acima. Exceder o limite devolve **429**; códigos HTTP anteriores mantêm-se até ao limite. Baseline de homologação, não SLO de produção. `GET /api/v1/institutions/me/credit-history` e `GET /ready` não têm `@limiter.limit` no código inspeccionado; não se afirma ausência de controlos externos não verificados.
 
 ### 9.4 CORS (FASE 1.2)
 
@@ -851,14 +854,15 @@ GET /health
 
 **Decisão:** SHA-256 com PostgreSQL oferece imutabilidade via audit logs sem complexidade de blockchain.
 
-### 13.4 Zero-Knowledge: Client-Side vs Server-Side Hashing
+### 13.4 Privacy by Design: hashing no servidor
 
-| Abordagem | Privacidade | Complexidade | Conformidade |
-|-----------|------------|--------------|--------------|
-| **Server-Side** (atual) | Alta (não guarda PDF) | Baixa | Lei 3/2017 ✅ |
-| **Client-Side** (futuro) | Máxima (nunca toca no PDF) | Média | Lei 3/2017 ✅ |
+| Abordagem | Privacidade | Complexidade | Notas |
+|-----------|------------|--------------|-------|
+| **Server-side** (atual, fluxo de emissão inspecionado) | O PDF transita para a API; não é persistido neste fluxo | Baixa | Implementado |
+| **Hashing directo dos bytes brutos** | Representação canónica do PDF | Fora de âmbito | Iniciativa futura; **não** implementar nesta missão |
+| **Client-side** | O PDF não transita | Fora de âmbito | **Não** implementado |
 
-**Decisão atual:** Server-side hashing — o PDF é processado em memória, o hash é guardado, o PDF é descartado. Nunca persistido.
+**Decisão atual:** no fluxo `POST /api/v1/certify`, o PDF é lido em memória, validado, e o hash SHA-256 é calculado por `hashlib.sha256(content.encode()).hexdigest()` sobre `document_bytes.decode('latin-1')` em `EmissionService.certify_document`. O módulo `src/core/hashing.py` (`gerar_hash_sha256`) **não** é usado neste fluxo. O PDF não é gravado na base de dados nem em disco neste fluxo. Isto é Privacy by Design / minimização de dados, **não** Zero-Knowledge.
 
 ---
 
@@ -869,6 +873,38 @@ GET /health
 | **Fase 2** (Atual) | Q2–Q3 2026 | Dashboard Web React, registo de instituições, emissão em bulk, controlo de créditos, relatórios analíticos, multi-tenant completo |
 | **Fase 3** | Q3 2026 | 2FA (TOTP), OAuth2, queries agregadas `/audit/stats`, SDK Python/JS, Go-to-market técnico |
 | **Fase 4** | Q4 2026 | ML fraud detection, multi-idioma (PT/EN), mobile app, API v2, escala empresarial |
+
+---
+
+## 14.1 Claw Bot (GitHub Actions)
+
+Workflow: `.github/workflows/claw.yml` (`Txeka Claw Bot v4.5`). Não foi alterado nesta missão.
+
+**Triggers inspeccionados:** `issues` (opened, reopened) e `issue_comment` (created) quando o corpo contém `@claw`; `pull_request` (opened, closed, merged) com comentário de auditoria.
+
+**Permissões do job:** `issues: write`, `pull-requests: write`, `contents: read`, `actions: read`. Token: `secrets.GITHUB_TOKEN`.
+
+**Comandos confirmados no workflow** (comentário em issue com `@claw …`):
+
+| Comando | Efeito inspeccionado |
+|---------|----------------------|
+| `@claw estrutura [path]` | Lista ficheiros do caminho (default `.`) |
+| `@claw ver <ficheiro>` | Lê até 4000 caracteres de um ficheiro |
+| `@claw busca <termo>` | `git grep -n` |
+| `@claw diff` | `git diff` vs branch padrão |
+| `@claw tamanho <path>` | `du` / `wc -l` |
+| `@claw status ci` | Última run cujo nome contém `txeka` |
+| `@claw logs` | Últimos 3 commits |
+| `@claw historico` | Últimas 5 workflow runs |
+| `@claw ambiente` | Versões Python / Node / Docker no runner |
+| `@claw commits [n]` | Últimos n commits (default 5) |
+| `@claw autores` | `git shortlog -sn --all` |
+| `@claw branches` | `git branch -r` |
+| `@claw tags` | Últimas 5 tags |
+| `@claw dependencias` | Existência de `requirements.txt` |
+| `@claw todo` | `git grep -i TODO` |
+
+Sem `@claw` reconhecido, o bot responde com a lista dos 15 comandos. Em Pull Request não executa estes comandos: apenas comenta abertura/fecho.
 
 ---
 
