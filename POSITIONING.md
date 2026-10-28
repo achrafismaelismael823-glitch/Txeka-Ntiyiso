@@ -1,18 +1,18 @@
 # Txeka Ntiyiso — Posicionamento Estratégico
 
-**Infraestrutura tecnológica para verificação da integridade e autenticidade documental em Moçambique**
+**Infraestrutura tecnológica para o registo e a consulta de referências criptográficas associadas a documentos digitais em Moçambique**
 
 ---
 
 ## Declaração de Posição
 
-> O Txeka Ntiyiso é uma infraestrutura digital de confiança B2G/B2B que contribui para a garantia da integridade e autenticidade documental através de mecanismos criptográficos, fornecendo evidências técnicas de suporte ao não-repúdio, sem armazenar os documentos originais nem competir com a ICP do Estado.
+> O Txeka Ntiyiso é uma infraestrutura tecnológica B2G/B2B destinada ao registo e à consulta de referências criptográficas associadas a documentos digitais. Permite consultar a existência e o estado dos respectivos registos e, quando suportado, a rastreabilidade operacional das operações. No fluxo de emissão inspecionado, o PDF é processado no servidor para cálculo da referência; o ficheiro original não é persistido neste fluxo. A plataforma não substitui as entidades competentes para emitir documentos ou manter os registos oficiais, nem compete com a ICP do Estado. A correspondência de uma referência criptográfica não prova, por si só, a identidade do emissor, a veracidade do conteúdo, a validade jurídica do documento nem o não-repúdio.
 
 ---
 
 ## Objetivo
 
-Disponibilizar uma infraestrutura tecnológica que permita às instituições públicas e privadas verificar, de forma rápida e segura, a integridade de documentos digitais, reduzindo fraudes documentais e promovendo a interoperabilidade entre sistemas.
+Disponibilizar uma infraestrutura tecnológica que permita às instituições públicas e privadas registar referências criptográficas de documentos digitais e consultar a existência e o estado desses registos. A plataforma visa apoiar a gestão de risco documental. A redução de fraudes, os ganhos de eficiência e a interoperabilidade são benefícios esperados, dependentes dos mecanismos de integração, das permissões e dos acordos institucionais. A validade jurídica ou a autenticidade de um documento não são garantidas isoladamente pelo hash.
 
 ---
 
@@ -20,13 +20,13 @@ Disponibilizar uma infraestrutura tecnológica que permita às instituições p�
 
 | Princípio | Fundamento Jurídico-Técnico |
 |-----------|---------------------------|
-| **Integridade** | Qualquer alteração de um único byte no documento original gera um hash SHA-256 completamente diferente, tornando a adulteração matematicamente detetável. |
-| **Autenticidade** | A impressão digital criptográfica vincula irrevogavelmente o documento à entidade emissora registada no sistema. |
-| **Rastreabilidade operacional** | Cada operação (emissão, verificação, revogação) é registada com timestamp CAT (UTC+2). Isto é evidência operacional, não o não-repúdio jurídico do SCDM. |
-| **Privacidade por Design** | O PDF é processado em memória para calcular o hash SHA-256 e é descartado de imediato no fluxo de emissão inspecionado. Não retemos o ficheiro original. Persistimos hashes, metadados e dados operacionais de conta/auditoria. |
-| **Interoperabilidade** | API REST padronizada para integração com sistemas governamentais e corporativos existentes, sem necessidade de substituição de infraestruturas legadas. |
-| **Auditabilidade** | Logs estruturados em JSON, acessíveis para auditorias internas, externas e perícias forenses digitais. |
-| **Segurança por Defeito** | Configurações técnicas seguras por padrão, com mascaramento de IPs em consultas públicas e isolamento lógico de tenants. |
+| **Integridade documental** | Princípio pretendido: a referência SHA-256 corresponde ao conteúdo processado no fluxo de emissão inspecionado. A detecção de alterações depende da correspondência entre esse conteúdo processado e a referência consultada; não constitui garantia universal de detecção de qualquer alteração nos bytes originais do ficheiro. |
+| **Associação institucional** | Princípio pretendido: o registo associa a referência criptográfica a metadados da entidade emissora registada. Esta associação não equivale, por si só, a prova independente da identidade, da competência legal do emissor nem a uma vinculação irrevogável. |
+| **Rastreabilidade operacional** | Capacidade implementada: operações de emissão, verificação e revogação são registadas com timestamp CAT (UTC+2). Isto constitui evidência operacional, não o não-repúdio jurídico do SCDM. |
+| **Privacidade por Design** | Princípio pretendido, parcialmente implementado: no fluxo de emissão inspecionado, o PDF é processado no servidor para cálculo da referência e o ficheiro original não é persistido. Persistimos hashes, metadados e dados operacionais de conta/auditoria. A não persistência do PDF não equivale a Zero-Knowledge nem demonstra, por si só, conformidade integral com legislação de privacidade. |
+| **Interoperabilidade** | Princípio pretendido: API REST para integração com sistemas existentes, sem necessidade de substituição de infraestruturas legadas. A interoperabilidade efectiva depende dos mecanismos de integração, das permissões e dos acordos institucionais. |
+| **Auditabilidade** | Princípio pretendido: existem registos operacionais estruturados associados às operações suportadas. A existência destes registos não prova, por si só, imutabilidade absoluta, suficiência probatória para qualquer processo nem integridade criptográfica dos próprios logs. |
+| **Segurança por Defeito** | Princípio pretendido: configurações técnicas seguras por padrão. Os registos associam operações a um identificador de instituição. O isolamento lógico integral entre tenants e o mascaramento de IPs em consultas públicas não foram confirmados no código inspecionado e não são aqui apresentados como capacidades verificadas. |
 
 ---
 
@@ -34,22 +34,22 @@ Disponibilizar uma infraestrutura tecnológica que permita às instituições p�
 
 ### 1. Camada de Confiança Intermédia (Middleware de Integridade)
 
-O sistema não compete com os órgãos emissores de documentos (como o INAGE, Ministérios ou Universidades), nem tenta substituir a Infraestrutura de Chaves Públicas (ICP) do Estado. O Txeka Ntiyiso posiciona-se exatamente no meio: recebe o PDF via API, calcula a impressão digital criptográfica (hash SHA-256) em memória, descarta o ficheiro original neste fluxo e carimba uma prova de existência na base de dados.
+O sistema não compete com os órgãos emissores de documentos (como o INAGE, Ministérios ou Universidades), nem tenta substituir a Infraestrutura de Chaves Públicas (ICP) do Estado. O Txeka Ntiyiso posiciona-se como camada tecnológica de apoio: no fluxo de emissão inspecionado, recebe o PDF via API, processa-o no servidor, calcula a referência SHA-256 segundo o método actual, regista essa referência e os metadados associados, e não persiste o ficheiro original neste fluxo. A consulta permite verificar a existência e o estado do registo (incluindo INVALID, REVOKED e VALID).
 
-> O hash SHA-256 funciona como uma impressão digital criptográfica única do documento: qualquer alteração de um único byte gera um hash completamente diferente, tornando a falsificação detetável instantaneamente.
+O resultado da consulta não substitui a entidade emissora e não constitui, isoladamente, prova da identidade do emissor, da veracidade do conteúdo, da validade jurídica do documento nem do não-repúdio. A detecção de alterações depende da correspondência entre o conteúdo processado e a referência consultada; não é uma garantia universal de detecção de qualquer alteração do ficheiro original.
 
 ### 2. Facilitador de Desmaterialização Pública e Privada
 
-O projeto resolve o problema da falsificação de documentos em Moçambique através de duas frentes estratégicas:
+O projecto apoia a modernização dos processos públicos e privados, disponibilizando o registo de referências criptográficas e a consulta do estado desses registos. Não substitui registos oficiais, entidades emissoras nem procedimentos legalmente obrigatórios. Distinguem-se as capacidades actuais, os casos de utilização pretendidos e os benefícios esperados:
 
-| Frente | Descrição | Benefício |
+| Frente | Capacidade actual / caso de utilização pretendido | Benefício esperado |
 |--------|-----------|-----------|
-| **B2G (Governo)** | Permite que instituições públicas verifiquem instantaneamente a autenticidade de certidões, alvarás, DUATs ou diplomas emitidos por outras instâncias do Estado. | Redução drástica da burocracia física, filas e intermediação fraudulenta entre órgãos. |
-| **B2B (Empresas)** | Permite que bancos, seguradoras e empresas privadas validem documentos submetidos por clientes de forma automatizada via API. | Redução do risco de fraude operacional, mitigação de perdas financeiras e aceleração de processos KYC. |
+| **B2G (Governo)** | Caso de utilização pretendido: instituições públicas consultam a existência e o estado do registo associado a certidões, alvarás, DUATs ou diplomas emitidos por outras instâncias do Estado. A consulta depende da API, das permissões e dos acordos institucionais. | Redução da burocracia física, filas e intermediação fraudulenta entre órgãos, quando a integração estiver operacional. |
+| **B2B (Empresas)** | Caso de utilização pretendido: bancos, seguradoras e empresas privadas consultam o estado do registo de documentos submetidos por clientes, de forma automatizada via API. | Redução do risco de fraude operacional e aceleração de processos KYC, enquanto apoio à gestão de risco, sem garantia isolada de autenticidade ou validade jurídica. |
 
-### 3. Motor de Auditoria Conforme a Legislação Moçambicana
+### 3. Motor de Auditoria e Rastreabilidade Operacional
 
-Ao registar cada ação de emissão, verificação e revogação na tabela audit_logs (com IP, método e identificador), o Txeka Ntiyiso produz rasto de auditoria operacional. Isto alinha a plataforma com a Lei n.º 3/2017 (Transações Eletrónicas) e com a Resolução n.º 69/2021 (PENSC, referência de governação), sem constituir certificado digital do SCDM.
+Ao registar operações de emissão, verificação e revogação na tabela audit_logs (com identificador, método e endereço IP observados no código inspecionado), o Txeka Ntiyiso produz rasto de auditoria operacional. Estes registos podem apoiar o acompanhamento e a análise das operações. Não garantem automaticamente não-repúdio jurídico, suficiência probatória, imutabilidade absoluta, selagem temporal qualificada nem conformidade integral com a legislação. A Lei n.º 3/2017 e a Resolução n.º 69/2021 constituem referências para análise jurídica; a aplicabilidade concreta deverá ser determinada em função das actividades efectivamente prestadas e do regime aplicável. A plataforma não constitui certificado digital do SCDM.
 
 ---
 
@@ -57,39 +57,44 @@ Ao registar cada ação de emissão, verificação e revogação na tabela audit
 
 | Componente | Descrição |
 |------------|-----------|
-| **Hash SHA-256** | Algoritmo criptográfico que gera uma impressão digital única de 64 caracteres hexadecimais para cada documento. |
-| **QR Code Verificável** | Código bidimensional que permite a qualquer cidadão verificar a autenticidade de um documento via telemóvel, sem registo obrigatório. |
-| **API REST** | Interface padronizada para integração com sistemas governamentais e corporativos existentes. |
-| **Logs de Auditoria** | Registos estruturados em JSON de todas as operações, conservados para auditoria (o Txeka Ntiyiso não é Entidade Certificadora). |
-| **Privacidade por Design** | O PDF transita para o servidor apenas para o cálculo do hash; é descartado de imediato no fluxo de emissão inspecionado. Não há persistência do ficheiro original. |
+| **Hash SHA-256** | Algoritmo criptográfico que gera uma referência de 64 caracteres hexadecimais a partir do conteúdo processado no fluxo de emissão inspecionado. Não constitui assinatura digital nem prova da identidade do emissor. |
+| **QR Code Verificável** | Código bidimensional que contém o identificador documental e a referência/hash utilizados na consulta. Não constitui assinatura digital, certificado digital qualificado nem prova criptográfica independente da identidade do emissor. |
+| **API REST** | Interface padronizada para integração com sistemas governamentais e corporativos existentes. A integração efectiva depende de permissões e acordos institucionais. |
+| **Logs de Auditoria** | Registos operacionais estruturados das operações suportadas (emissão, verificação e revogação). Podem apoiar o acompanhamento das operações; não garantem automaticamente não-repúdio, imutabilidade absoluta nem suficiência probatória. O Txeka Ntiyiso não é Entidade Certificadora. |
+| **Privacidade por Design** | No fluxo de emissão inspecionado, o PDF é processado no servidor para cálculo da referência e o ficheiro original não é persistido. Persistimos hashes, metadados e dados de conta/auditoria. A não persistência do PDF não equivale a Zero-Knowledge nem a ausência de dados pessoais. |
 
 ---
 
 ## Escopo Regulatório
 
-| Legislação / Regulamento | Alinhamento Txeka Ntiyiso |
+| Legislação / Regulamento | Relevância para o Txeka Ntiyiso |
 |--------------------------|---------------------------|
-| **Lei n.º 3/2017** (Transações Eletrónicas) | Integridade via SHA-256; evidência operacional de emissão e verificação. Não é Entidade Certificadora. Trata dados operacionais (email, IP, actor). |
-| **Decreto n.º 59/2019** (SCDM) | Delimita a fronteira: o Txeka Ntiyiso **não pertence ao SCDM** e a verificação **não constitui certificado digital**. |
-| **Proteção de Dados e Privacidade** | Privacy by Design: o PDF não é retido no fluxo de emissão inspecionado. Persistimos hashes, metadados e dados de conta/auditoria. |
-| **Resolução n.º 69/2021** (Segurança Cibernética) | Mascaramento ativo de IPs em consultas públicas e isolamento lógico para proteção de infraestruturas críticas. |
-| **Soberania Digital** | Arquitetura baseada em Docker, desenhada e pronta para deploys on-premises dentro de datacenters geolocalizados em território moçambicano, em resposta às exigências de localização de dados para Infraestruturas Críticas de Informação (ICI) previstas na PENSC. |
+| **Lei n.º 3/2017** (Transações Eletrónicas) | Referência para análise jurídica. A plataforma regista referências SHA-256 e evidência operacional de emissão e verificação; não é Entidade Certificadora. Trata dados operacionais (email, IP, actor). A aplicabilidade concreta deverá ser determinada em função das actividades efectivamente prestadas e do regime aplicável. |
+| **Decreto n.º 59/2019** (SCDM) | Referência de delimitação: o Txeka Ntiyiso **não se posiciona** como Entidade Certificadora do SCDM, **não se apresenta** como operador da ICP do Estado, e a consulta do registo **não constitui certificado digital**. |
+| **Decreto n.º 59/2023** e **Decreto n.º 44/2025** (provedores intermediários e operadores de plataformas digitais) | Referências para análise jurídica. A classificação regulatória e a eventual necessidade de registo, licença, autorização ou declaração prévia encontram-se por determinar. A enumeração não constitui declaração de conformidade nem de isenção. |
+| **Protecção de Dados e Privacidade** | Princípio de minimização: o PDF não é persistido no fluxo de emissão inspecionado. Persistimos hashes, metadados e dados de conta/auditoria. A não persistência do PDF não demonstra, por si só, conformidade integral com legislação de privacidade. |
+| **Resolução n.º 69/2021** (Política e Estratégia Nacional de Segurança Cibernética) | Referência de governação. Os registos associam operações a um identificador de instituição. O isolamento lógico integral entre tenants e o mascaramento de IPs em consultas públicas não foram confirmados no código inspecionado. |
+| **Lei n.º 13/2026** (Segurança Cibernética) e **Lei n.º 14/2026** (Crimes Cibernéticos) | Referências potencialmente relevantes. A incidência concreta sobre o Txeka Ntiyiso não foi estabelecida. |
+| **Decreto n.º 71/2025** e **Decreto n.º 72/2025** (centros de dados e computação em nuvem) | Referências potencialmente relevantes. A utilização de serviços de alojamento não determina, por si só, a classificação jurídica da plataforma. A aplicabilidade deverá ser determinada em função das actividades e do regime aplicável. |
+| **Soberania Digital** | Objectivo estratégico: arquitectura baseada em Docker, desenhada para eventual deploy on-premises em território moçambicano. Não constitui declaração de soberania digital garantida nem de conformidade com exigências de localização de dados. |
 
 ---
 
 ## Limitações e Escopo Excluído
 
-> ⚠️ Declaração formal de não-enquadramento e limitações de escopo:
+> Declaração formal de não-enquadramento e limitações de escopo:
 
-1. **Não somos uma Entidade Certificadora** — Não emitimos, não gerimos e não revogamos certificados digitais qualificados nos termos estritos da Lei n.º 3/2017.
+1. **Não nos posicionamos como Entidade Certificadora do SCDM** — Não emitimos, não gerimos e não revogamos certificados digitais qualificados. A classificação jurídica das actividades prestadas deverá ser determinada em função do regime aplicável.
 
-2. **Não somos uma ICP concorrente** — Não operamos Infraestruturas de Chaves Públicas, não geramos pares de chaves assimétricas para os utilizadores finais, nem emitimos assinaturas digitais qualificadas.
+2. **Não nos apresentamos como substituto da ICP do Estado** — Não operamos Infraestruturas de Chaves Públicas, não geramos pares de chaves assimétricas para os utilizadores finais, nem emitimos assinaturas digitais qualificadas.
 
-3. **Não retemos o PDF original** — No fluxo de emissão inspecionado, o ficheiro não é persistido. Persistimos hashes, metadados operacionais e dados de conta/auditoria (email, IP, actor). Não solicitamos identificação civil do titular do documento (nome, BI, NIF).
+3. **O PDF original não é persistido no fluxo de emissão inspecionado** — O ficheiro é processado no servidor para cálculo da referência. Persistimos hashes, metadados operacionais e dados de conta/auditoria (email, IP, actor). A não persistência do PDF não equivale a ausência de processamento, a ausência de dados pessoais nem a Zero-Knowledge. Não solicitamos identificação civil do titular do documento (nome, BI, NIF).
 
-4. **Não substituímos órgãos emissores** — Não competimos com o INAGE, Ministérios, Conservatórias ou Universidades. Somos uma camada tecnológica de validação daquilo que estas entidades de direito já emitiram.
+4. **Não substituímos a entidade competente para emitir o documento** — Não competimos com o INAGE, Ministérios, Conservatórias ou Universidades. Somos uma camada tecnológica de apoio ao registo e à consulta de referências associadas àquilo que estas entidades de direito já emitiram.
 
-5. **Não prestamos serviço de Validação Cronológica Qualificada** — O registo de data e hora utiliza o fuso horário de Moçambique (CAT, UTC+2) sincronizado internamente na infraestrutura, funcionando exclusivamente como rasto de auditoria cronológica transacional para consistência de logs, não constituindo um serviço de Validação Cronológica qualificada nos termos do Decreto n.º 59/2019.
+5. **Não oferecemos serviço de selagem temporal qualificada** — O registo de data e hora utiliza o fuso horário de Moçambique (CAT, UTC+2) sincronizado internamente na infraestrutura, funcionando exclusivamente como rasto de auditoria cronológica transacional para consistência de logs, não constituindo um serviço de selagem temporal qualificada nos termos do Decreto n.º 59/2019.
+
+6. **Não declaramos isenção legal absoluta** — A classificação regulatória, incluindo eventual necessidade de registo, licença, autorização ou declaração prévia, depende da análise das actividades efectivamente prestadas e dos regimes aplicáveis. A enumeração de diplomas neste documento identifica possíveis referências normativas, não constituindo declaração de conformidade.
 
 ---
 
